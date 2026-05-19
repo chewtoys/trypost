@@ -202,24 +202,28 @@ const activeTab = ref(initialTabFromQuery);
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const editorSidebarRef = ref<InstanceType<typeof PostEditorSidebar> | null>(null);
 
+const snapToCompatibleVariant = (platformId: string) => {
+    const pp = post.value.post_platforms.find((p) => p.id === platformId);
+    const current = platformContentTypes.value[platformId];
+    if (!pp || !current) return;
+    if (!getMediaIncompatibilityReason(current, media.value)) return;
+
+    const fallback = firstCompatibleVariant(pp.platform, media.value);
+    if (!fallback) return;
+
+    platformContentTypes.value = { ...platformContentTypes.value, [platformId]: fallback };
+};
+
 const togglePlatform = (platformId: string) => {
     if (isLocked.value) return;
-    const index = selectedPlatformIds.value.indexOf(platformId);
-    if (index === -1) {
-        const pp = post.value.post_platforms.find((p) => p.id === platformId);
-        const currentVariant = platformContentTypes.value[platformId];
-        const currentIncompatible = pp && currentVariant
-            && getMediaIncompatibilityReason(currentVariant, media.value) !== null;
-        if (pp && currentIncompatible) {
-            const fallback = firstCompatibleVariant(pp.platform, media.value);
-            if (fallback) {
-                platformContentTypes.value = { ...platformContentTypes.value, [platformId]: fallback };
-            }
-        }
-        selectedPlatformIds.value.push(platformId);
-    } else {
-        selectedPlatformIds.value.splice(index, 1);
+
+    if (selectedPlatformIds.value.includes(platformId)) {
+        selectedPlatformIds.value = selectedPlatformIds.value.filter((id) => id !== platformId);
+        return;
     }
+
+    snapToCompatibleVariant(platformId);
+    selectedPlatformIds.value.push(platformId);
 };
 
 // Save logic
