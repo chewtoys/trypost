@@ -101,7 +101,7 @@ class ProfileController extends Controller
             }
 
             if ($account) {
-            $account->subscriptions()->delete();
+                $account->subscriptions()->delete();
             }
 
             $ownedWorkspaces = Workspace::where('user_id', $user->id)->get();
@@ -127,7 +127,7 @@ class ProfileController extends Controller
             $user->workspaces()->detach();
 
             if ($account) {
-            $account->delete();
+                $account->delete();
             }
         });
 
