@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\PinterestPublishException;
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
@@ -35,8 +34,7 @@ class PinterestPublisher
         $account = $postPlatform->socialAccount;
 
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
@@ -401,42 +399,13 @@ class PinterestPublisher
         );
     }
 
-    private function refreshToken(SocialAccount $account): void
-    {
-        $response = Http::asForm()
-            ->withBasicAuth(
-                config('services.pinterest.client_id'),
-                config('services.pinterest.client_secret')
-            )
-            ->post($this->baseUrl.'/oauth/token', [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $account->refresh_token,
-            ]);
-
-        if ($response->failed()) {
-            throw new TokenExpiredException(
-                message: data_get($response->json(), 'error_description', 'Failed to refresh Pinterest token'),
-                platformErrorCode: (string) $response->status(),
-            );
-        }
-
-        $data = $response->json();
-
-        $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
-            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : now()->addDays(30),
-        ]);
-    }
-
     /**
      * Get user's boards for board selection.
      */
     public function getBoards(SocialAccount $account): array
     {
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $response = $this->socialHttp()->withToken($account->access_token)

@@ -6,9 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\XPublishException;
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
-use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
@@ -39,8 +37,7 @@ class XPublisher
 
         // Refresh token if expired or expiring soon
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $this->accessToken = $account->access_token;
@@ -327,35 +324,6 @@ class XPublisher
         }
 
         return false;
-    }
-
-    private function refreshToken(SocialAccount $account): void
-    {
-        if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for X account');
-        }
-
-        $response = Http::asForm()
-            ->withBasicAuth(config('services.x.client_id'), config('services.x.client_secret'))
-            ->post("{$this->baseUrl}/oauth2/token", [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $account->refresh_token,
-            ]);
-
-        if ($response->failed()) {
-            throw new TokenExpiredException(
-                message: data_get($response->json(), 'error_description', 'Failed to refresh X token'),
-                platformErrorCode: (string) $response->status(),
-            );
-        }
-
-        $data = $response->json();
-
-        $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
-            'token_expires_at' => now()->addSeconds(data_get($data, 'expires_in', 7200)),
-        ]);
     }
 
     private function handleApiError(Response $response): never

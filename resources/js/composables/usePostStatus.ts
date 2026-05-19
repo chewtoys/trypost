@@ -19,6 +19,7 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon'>> = {
     draft: { variant: 'outline', icon: IconFileText },
     scheduled: { variant: 'default', icon: IconClock },
     publishing: { variant: 'warning', icon: IconLoader2 },
+    retrying: { variant: 'warning', icon: IconLoader2 },
     published: { variant: 'success', icon: IconCircleCheck },
     partially_published: { variant: 'warning', icon: IconAlertCircle },
     failed: { variant: 'destructive', icon: IconAlertCircle },
@@ -33,6 +34,7 @@ export const getPlatformStatusConfig = (status: string): StatusConfig => {
     const map: Record<string, string> = {
         pending: 'draft',
         publishing: 'publishing',
+        retrying: 'retrying',
         published: 'published',
         failed: 'failed',
     };

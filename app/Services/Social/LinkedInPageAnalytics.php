@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class LinkedInPageAnalytics
@@ -53,8 +51,7 @@ class LinkedInPageAnalytics
         }
 
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         // platform_post_id is the share URN (e.g., "urn:li:share:12345").
@@ -83,8 +80,7 @@ class LinkedInPageAnalytics
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $this->accessToken = $account->access_token;
@@ -232,32 +228,5 @@ class LinkedInPageAnalytics
                 'Linkedin-Version' => '202601',
                 'X-Restli-Protocol-Version' => '2.0.0',
             ]);
-    }
-
-    private function refreshToken(SocialAccount $account): void
-    {
-        if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for LinkedIn Page account');
-        }
-
-        $response = Http::asForm()->post('https://www.linkedin.com/oauth/v2/accessToken', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-            'client_id' => config('services.linkedin-openid.client_id'),
-            'client_secret' => config('services.linkedin-openid.client_secret'),
-        ]);
-
-        if ($response->failed()) {
-            Log::error('LinkedIn token refresh failed', ['body' => $this->redactResponseBody($response->body())]);
-            throw new TokenExpiredException('LinkedIn token refresh failed');
-        }
-
-        $data = $response->json();
-
-        $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
-            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
-        ]);
     }
 }

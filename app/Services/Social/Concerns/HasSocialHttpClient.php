@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Social\Concerns;
 
 use App\Models\PostPlatform;
-use App\Models\SocialAccount;
+use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 trait HasSocialHttpClient
@@ -28,25 +27,6 @@ trait HasSocialHttpClient
         );
     }
 
-    protected function refreshTokenWithLock(SocialAccount $account, callable $refreshFn): void
-    {
-        $lock = Cache::lock("token_refresh:{$account->id}", 30);
-
-        if (! $lock->get()) {
-            // Another process is refreshing, wait and reload
-            sleep(2);
-            $account->refresh();
-
-            return;
-        }
-
-        try {
-            $refreshFn();
-        } finally {
-            $lock->release();
-        }
-    }
-
     protected function socialHttp(): PendingRequest
     {
         return Http::retry(
@@ -59,20 +39,6 @@ trait HasSocialHttpClient
 
     protected function redactResponseBody(string $body): string
     {
-        return preg_replace(
-            [
-                '/access_token=([^&"\s]+)/',
-                '/"access_token"\s*:\s*"([^"]+)"/',
-                '/Bearer\s+\S+/',
-                '/"token"\s*:\s*"([^"]+)"/',
-            ],
-            [
-                'access_token=[REDACTED]',
-                '"access_token":"[REDACTED]"',
-                'Bearer [REDACTED]',
-                '"token":"[REDACTED]"',
-            ],
-            $body
-        );
+        return TokenRedactor::redact($body);
     }
 }

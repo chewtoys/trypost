@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 test('verifies account without refresh when token is not expired', function () {
@@ -359,4 +361,90 @@ test('throws when refresh fails AND token is hard-expired', function () {
     $verifier = new ConnectionVerifier;
 
     expect(fn () => $verifier->verify($account))->toThrow(TokenExpiredException::class);
+});
+
+test('5xx during refresh raises PlatformUnavailableException, not TokenExpiredException', function () {
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.refreshSession" => Http::response('upstream timeout', 503),
+    ]);
+
+    $account = SocialAccount::factory()->bluesky()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+        'meta' => ['service' => $service],
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
+});
+
+test('connection failure during refresh raises PlatformUnavailableException', function () {
+    Http::fake([
+        config('trypost.platforms.youtube.oauth_api').'/token' => fn () => throw new ConnectionException('cURL error 7: connection refused'),
+    ]);
+
+    $account = SocialAccount::factory()->youtube()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
+});
+
+test('4xx during refresh keeps raising TokenExpiredException', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(TokenExpiredException::class);
+});
+
+test('429 during refresh raises PlatformUnavailableException (rate limit is transient)', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'rate_limit_exceeded'], 429),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
+});
+
+test('bluesky 5xx during refresh raises PlatformUnavailable even when password fallback is stored', function () {
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.refreshSession" => Http::response('upstream timeout', 503),
+        "{$service}/xrpc/com.atproto.server.createSession" => Http::response('upstream timeout', 503),
+    ]);
+
+    $account = SocialAccount::factory()->bluesky()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+        'meta' => [
+            'service' => $service,
+            'identifier' => 'user.bsky.social',
+            'password' => encrypt('app-password'),
+        ],
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
 });

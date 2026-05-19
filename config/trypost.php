@@ -63,6 +63,8 @@ return [
         'linkedin' => [
             'enabled' => env('LINKEDIN_ENABLED', true),
             'api' => env('LINKEDIN_API', 'https://api.linkedin.com'),
+            // OAuth host is different from the data API (api.linkedin.com).
+            'oauth_api' => env('LINKEDIN_OAUTH_API', 'https://www.linkedin.com'),
         ],
         'linkedin-page' => [
             'enabled' => env('LINKEDIN_PAGE_ENABLED', true),
@@ -80,6 +82,7 @@ return [
             'enabled' => env('YOUTUBE_ENABLED', true),
             'data_api' => env('YOUTUBE_DATA_API', 'https://www.googleapis.com/youtube/v3'),
             'analytics_api' => env('YOUTUBE_ANALYTICS_API', 'https://youtubeanalytics.googleapis.com/v2'),
+            'oauth_api' => env('YOUTUBE_OAUTH_API', 'https://oauth2.googleapis.com'),
         ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
@@ -108,9 +111,13 @@ return [
         'bluesky' => [
             'enabled' => env('BLUESKY_ENABLED', true),
             'public_appview' => env('BLUESKY_PUBLIC_APPVIEW', 'https://public.api.bsky.app'),
+            // Default PDS used when the account has no `meta.service` override.
+            'default_service' => env('BLUESKY_DEFAULT_SERVICE', 'https://bsky.social'),
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
+            // Default instance used when the account has no `meta.instance` override.
+            'default_instance' => env('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
         ],
     ],
 

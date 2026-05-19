@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class ConnectionVerifier
 {
@@ -17,6 +17,7 @@ class ConnectionVerifier
      * Verify that a social account connection is still valid.
      *
      * @throws TokenExpiredException if the connection is invalid
+     * @throws PlatformUnavailableException if the platform's API is down
      */
     public function verify(SocialAccount $account): bool
     {
@@ -72,9 +73,10 @@ class ConnectionVerifier
      * Refresh the account's token via the platform-specific OAuth flow.
      * Callers that want the smart "try access_token first" behavior should
      * use verify() instead. This method always attempts a refresh under
-     * the per-account lock and throws TokenExpiredException on failure.
+     * the per-account lock.
      *
-     * @throws TokenExpiredException if refresh fails
+     * @throws TokenExpiredException if refresh is rejected by the provider (4xx)
+     * @throws PlatformUnavailableException if the platform is unreachable (5xx / network)
      */
     public function refreshToken(SocialAccount $account): void
     {
@@ -97,9 +99,8 @@ class ConnectionVerifier
                 Platform::Pinterest => $this->refreshPinterestToken($account),
                 Platform::Threads => $this->refreshThreadsToken($account),
                 Platform::Instagram => $this->refreshInstagramToken($account),
-                // InstagramFacebook uses page tokens that don't expire (like Facebook)
-                // Mastodon tokens don't expire
-                // Mastodon tokens don't expire
+                // Facebook / InstagramFacebook use Page tokens that don't expire.
+                // Mastodon tokens don't expire either.
                 default => null,
             };
         } finally {
@@ -110,20 +111,16 @@ class ConnectionVerifier
     private function refreshLinkedInToken(SocialAccount $account): void
     {
         if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for LinkedIn account');
+            throw new TokenExpiredException("No refresh token available for {$account->platform->label()} account");
         }
 
-        $response = Http::asForm()->post('https://www.linkedin.com/oauth/v2/accessToken', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-            'client_id' => config('services.linkedin.client_id'),
-            'client_secret' => config('services.linkedin.client_secret'),
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: LinkedIn token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh LinkedIn token');
-        }
+        $response = TokenRefreshClient::for($account->platform)->send(fn () => Http::asForm()
+            ->post(config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+                'client_id' => config('services.linkedin.client_id'),
+                'client_secret' => config('services.linkedin.client_secret'),
+            ]));
 
         $data = $response->json();
 
@@ -145,17 +142,12 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for X account');
         }
 
-        $response = Http::asForm()
+        $response = TokenRefreshClient::for(Platform::X)->send(fn () => Http::asForm()
             ->withBasicAuth(config('services.x.client_id'), config('services.x.client_secret'))
             ->post(config('trypost.platforms.x.api').'/oauth2/token', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
-            ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: X token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh X token');
-        }
+            ]));
 
         $data = $response->json();
 
@@ -170,13 +162,13 @@ class ConnectionVerifier
 
     private function refreshBlueskyToken(SocialAccount $account): void
     {
-        $service = $account->meta['service'] ?? 'https://bsky.social';
+        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $client = TokenRefreshClient::for(Platform::Bluesky);
 
-        // Try refresh token first
-        $response = Http::withToken($account->refresh_token)
-            ->post("{$service}/xrpc/com.atproto.server.refreshSession");
+        try {
+            $response = $client->send(fn () => Http::withToken($account->refresh_token)
+                ->post("{$service}/xrpc/com.atproto.server.refreshSession"));
 
-        if ($response->successful()) {
             $data = $response->json();
             $account->update([
                 'access_token' => data_get($data, 'accessJwt'),
@@ -187,35 +179,29 @@ class ConnectionVerifier
             $account->refresh();
 
             return;
+        } catch (TokenExpiredException) {
+            // refresh token was rejected (4xx) — fall back to re-auth below
         }
 
-        // If refresh fails, re-authenticate with stored credentials
         if (isset($account->meta['password'])) {
             try {
-                $password = decrypt($account->meta['password']);
-                $identifier = $account->meta['identifier'];
+                $reauth = $client->send(fn () => Http::post("{$service}/xrpc/com.atproto.server.createSession", [
+                    'identifier' => $account->meta['identifier'],
+                    'password' => decrypt($account->meta['password']),
+                ]));
 
-                $response = Http::post("{$service}/xrpc/com.atproto.server.createSession", [
-                    'identifier' => $identifier,
-                    'password' => $password,
+                $data = $reauth->json();
+                $account->update([
+                    'access_token' => data_get($data, 'accessJwt'),
+                    'refresh_token' => data_get($data, 'refreshJwt'),
+                    'token_expires_at' => now()->addHours(2),
                 ]);
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $account->update([
-                        'access_token' => data_get($data, 'accessJwt'),
-                        'refresh_token' => data_get($data, 'refreshJwt'),
-                        'token_expires_at' => now()->addHours(2),
-                    ]);
+                $account->refresh();
 
-                    $account->refresh();
-
-                    return;
-                }
-            } catch (\Exception $e) {
-                Log::error('ConnectionVerifier: Bluesky re-authentication failed', [
-                    'error' => $e->getMessage(),
-                ]);
+                return;
+            } catch (TokenExpiredException) {
+                // re-auth rejected with stored credentials — fall through
             }
         }
 
@@ -228,17 +214,13 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for YouTube account');
         }
 
-        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-            'client_id' => config('services.google.client_id'),
-            'client_secret' => config('services.google.client_secret'),
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: YouTube token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh YouTube token');
-        }
+        $response = TokenRefreshClient::for(Platform::YouTube)->send(fn () => Http::asForm()
+            ->post(config('trypost.platforms.youtube.oauth_api').'/token', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+                'client_id' => config('services.google.client_id'),
+                'client_secret' => config('services.google.client_secret'),
+            ]));
 
         $data = $response->json();
 
@@ -256,17 +238,13 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for TikTok account');
         }
 
-        $response = Http::asForm()->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-            'client_key' => config('services.tiktok.client_id'),
-            'client_secret' => config('services.tiktok.client_secret'),
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: TikTok token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh TikTok token');
-        }
+        $response = TokenRefreshClient::for(Platform::TikTok)->send(fn () => Http::asForm()
+            ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+                'client_key' => config('services.tiktok.client_id'),
+                'client_secret' => config('services.tiktok.client_secret'),
+            ]));
 
         $data = $response->json();
 
@@ -287,18 +265,13 @@ class ConnectionVerifier
 
         $credentials = base64_encode(config('services.pinterest.client_id').':'.config('services.pinterest.client_secret'));
 
-        $response = Http::withHeaders([
+        $response = TokenRefreshClient::for(Platform::Pinterest)->send(fn () => Http::withHeaders([
             'Authorization' => "Basic {$credentials}",
             'Content-Type' => 'application/x-www-form-urlencoded',
         ])->asForm()->post(config('trypost.platforms.pinterest.api').'/oauth/token', [
             'grant_type' => 'refresh_token',
             'refresh_token' => $account->refresh_token,
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: Pinterest token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh Pinterest token');
-        }
+        ]));
 
         $data = $response->json();
 
@@ -314,15 +287,10 @@ class ConnectionVerifier
     private function refreshThreadsToken(SocialAccount $account): void
     {
         // Threads uses long-lived tokens that can be refreshed
-        $response = Http::get(config('trypost.platforms.threads.auth_api').'/refresh_access_token', [
+        $response = TokenRefreshClient::for(Platform::Threads)->send(fn () => Http::get(config('trypost.platforms.threads.auth_api').'/refresh_access_token', [
             'grant_type' => 'th_refresh_token',
             'access_token' => $account->access_token,
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: Threads token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh Threads token');
-        }
+        ]));
 
         $data = $response->json();
         $newToken = data_get($data, 'access_token');
@@ -338,15 +306,10 @@ class ConnectionVerifier
 
     private function refreshInstagramToken(SocialAccount $account): void
     {
-        $response = Http::get(config('trypost.platforms.instagram.auth_api').'/refresh_access_token', [
+        $response = TokenRefreshClient::for(Platform::Instagram)->send(fn () => Http::get(config('trypost.platforms.instagram.auth_api').'/refresh_access_token', [
             'grant_type' => 'ig_refresh_token',
             'access_token' => $account->access_token,
-        ]);
-
-        if ($response->failed()) {
-            Log::error('ConnectionVerifier: Instagram token refresh failed', ['body' => $this->redactBody($response->body())]);
-            throw new TokenExpiredException('Failed to refresh Instagram token');
-        }
+        ]));
 
         $data = $response->json();
         $newToken = data_get($data, 'access_token');
@@ -524,7 +487,7 @@ class ConnectionVerifier
 
     private function verifyBluesky(SocialAccount $account): bool
     {
-        $service = $account->meta['service'] ?? 'https://bsky.social';
+        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         $response = Http::withToken($account->access_token)
             ->get("{$service}/xrpc/app.bsky.actor.getProfile", [
@@ -543,7 +506,7 @@ class ConnectionVerifier
 
     private function verifyMastodon(SocialAccount $account): bool
     {
-        $instance = $account->meta['instance'] ?? 'https://mastodon.social';
+        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
         $response = Http::withToken($account->access_token)
             ->get("{$instance}/api/v1/accounts/verify_credentials");
@@ -553,24 +516,5 @@ class ConnectionVerifier
         }
 
         return $response->successful();
-    }
-
-    private function redactBody(string $body): string
-    {
-        return preg_replace(
-            [
-                '/access_token=([^&"\s]+)/',
-                '/"access_token"\s*:\s*"([^"]+)"/',
-                '/Bearer\s+\S+/',
-                '/"token"\s*:\s*"([^"]+)"/',
-            ],
-            [
-                'access_token=[REDACTED]',
-                '"access_token":"[REDACTED]"',
-                'Bearer [REDACTED]',
-                '"token":"[REDACTED]"',
-            ],
-            $body
-        );
     }
 }

@@ -10,6 +10,7 @@ use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Events\PostPlatformStatusUpdated;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Mail\PostPublished;
@@ -110,12 +111,18 @@ class PublishToSocialPlatform implements ShouldQueue
                 $result = $publisher->publish($this->postPlatform);
                 $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
                 break;
+            } catch (PlatformUnavailableException $e) {
+                $this->rescheduleForRetry($e);
+                break;
             } catch (TokenExpiredException $e) {
                 if ($attempt < $maxAttempts) {
                     try {
                         $this->refreshAccountToken();
 
                         continue;
+                    } catch (PlatformUnavailableException $refreshError) {
+                        $this->rescheduleForRetry($refreshError);
+                        break;
                     } catch (\Throwable $refreshError) {
                         Log::error('Token refresh failed during publish retry', [
                             'post_platform_id' => $this->postPlatform->id,
@@ -179,6 +186,34 @@ class PublishToSocialPlatform implements ShouldQueue
 
         // Delegate to ConnectionVerifier which already has per-platform refresh logic
         app(ConnectionVerifier::class)->verify($account);
+    }
+
+    private function rescheduleForRetry(PlatformUnavailableException $e): void
+    {
+        $retryCount = (int) ($this->postPlatform->error_context['retry_count'] ?? 0) + 1;
+        $nextAttemptAt = now()->addMinutes(10);
+
+        Log::warning('Publish rescheduled: platform unavailable', [
+            'post_platform_id' => $this->postPlatform->id,
+            'platform' => $this->postPlatform->platform->value,
+            'retry_count' => $retryCount,
+            'next_attempt_at' => $nextAttemptAt->toIso8601String(),
+            'error' => $e->getMessage(),
+        ]);
+
+        $this->postPlatform->update([
+            'status' => PostPlatformStatus::Retrying,
+            'error_message' => $e->getMessage(),
+            'error_context' => [
+                'category' => 'platform_unavailable',
+                'http_status' => $e->httpStatus,
+                'retry_count' => $retryCount,
+                'last_attempt_at' => now()->toIso8601String(),
+                'next_attempt_at' => $nextAttemptAt->toIso8601String(),
+            ],
+        ]);
+
+        self::dispatch($this->postPlatform)->delay($nextAttemptAt);
     }
 
     private function broadcastStatus(): void

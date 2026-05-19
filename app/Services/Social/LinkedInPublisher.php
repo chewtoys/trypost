@@ -46,8 +46,7 @@ class LinkedInPublisher
         $this->hasRetried = false;
 
         if ($this->account->is_token_expired || $this->account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($this->account, fn () => $this->refreshToken($this->account));
-            $this->account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($this->account);
         }
 
         $this->accessToken = $this->account->access_token;
@@ -75,8 +74,7 @@ class LinkedInPublisher
         $this->hasRetried = true;
 
         try {
-            $this->refreshToken($this->account);
-            $this->account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($this->account);
             $this->accessToken = $this->account->access_token;
 
             $personUrn = "urn:li:person:{$this->account->platform_user_id}";
@@ -431,38 +429,6 @@ class LinkedInPublisher
         }
 
         Log::warning('LinkedIn video processing timeout, proceeding anyway');
-    }
-
-    private function refreshToken(SocialAccount $account): void
-    {
-        if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for LinkedIn account');
-        }
-
-        $response = Http::asForm()->post('https://www.linkedin.com/oauth/v2/accessToken', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-            'client_id' => config('services.linkedin.client_id'),
-            'client_secret' => config('services.linkedin.client_secret'),
-        ]);
-
-        if ($response->failed()) {
-            throw new TokenExpiredException(
-                message: data_get($response->json(), 'error_description', 'Failed to refresh LinkedIn token'),
-                platformErrorCode: (string) $response->status(),
-            );
-        }
-
-        $data = $response->json();
-
-        $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
-            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
-        ]);
-
-        // Sync tokens to LinkedIn Page if it exists
-        app(LinkedInTokenSynchronizer::class)->syncTokens($account);
     }
 
     private function handleApiError(Response $response): never

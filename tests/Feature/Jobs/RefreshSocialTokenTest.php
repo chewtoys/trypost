@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\RefreshSocialToken;
 use App\Jobs\SendNotification;
@@ -66,4 +67,25 @@ test('refresh job logs warning on non-token errors and leaves status alone', fun
     (new RefreshSocialToken($this->account))->handle($verifier);
 
     expect($this->account->fresh()->status)->toBe(Status::Connected);
+});
+
+test('refresh job does NOT mark account expired when platform is unavailable', function () {
+    Queue::fake();
+
+    Log::shouldReceive('warning')->once()->withArgs(function ($message, $context) {
+        return $message === 'Token refresh skipped: platform unavailable'
+            && $context['account_id'] === $this->account->id
+            && str_contains($context['error'], '503');
+    });
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(
+        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+    );
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    (new RefreshSocialToken($this->account))->handle($verifier);
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
 });

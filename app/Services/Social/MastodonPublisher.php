@@ -25,7 +25,7 @@ class MastodonPublisher
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
 
         $account = $postPlatform->socialAccount;
-        $instance = $account->meta['instance'] ?? 'https://mastodon.social';
+        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
         $medias = $postPlatform->post->mediaItems;
         $mediaIds = [];

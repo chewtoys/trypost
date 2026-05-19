@@ -175,6 +175,7 @@ return [
         'draft' => 'Draft',
         'scheduled' => 'Scheduled',
         'publishing' => 'Publishing',
+        'retrying' => 'Retrying',
         'published' => 'Published',
         'partially_published' => 'Partially Published',
         'failed' => 'Failed',
@@ -323,6 +324,7 @@ return [
             'scheduled' => 'Scheduled',
             'published' => 'Published',
             'publishing' => 'Publishing...',
+            'retrying' => 'Retrying...',
             'failed' => 'Failed',
         ],
 

@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\TikTokPublishException;
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class TikTokPublisher
@@ -37,8 +36,7 @@ class TikTokPublisher
         $account = $postPlatform->socialAccount;
 
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $this->accessToken = $account->access_token;
@@ -314,36 +312,6 @@ class TikTokPublisher
         }
 
         return null;
-    }
-
-    private function refreshToken(SocialAccount $account): void
-    {
-        if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for TikTok account');
-        }
-
-        $response = Http::asForm()->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
-            'client_key' => config('services.tiktok.client_id'),
-            'client_secret' => config('services.tiktok.client_secret'),
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-        ]);
-
-        if ($response->failed()) {
-            throw new TokenExpiredException(
-                message: data_get($response->json(), 'error.message', 'Failed to refresh TikTok token'),
-                platformErrorCode: (string) $response->status(),
-            );
-        }
-
-        $data = $response->json();
-
-        $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
-            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
-        ]);
-
     }
 
     private function handleApiError(Response $response): never

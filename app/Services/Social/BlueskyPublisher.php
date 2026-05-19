@@ -6,7 +6,6 @@ namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
@@ -26,12 +25,11 @@ class BlueskyPublisher
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
 
         $account = $postPlatform->socialAccount;
-        $service = $account->meta['service'] ?? 'https://bsky.social';
+        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         // Refresh token if needed
         if ($account->is_token_expired || $account->is_token_expiring_soon) {
-            $this->refreshTokenWithLock($account, fn () => $this->refreshToken($account));
-            $account->refresh();
+            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $medias = $postPlatform->post->mediaItems;
@@ -266,60 +264,6 @@ class BlueskyPublisher
     private function buildPostUrl(string $handle, string $postId): string
     {
         return "https://bsky.app/profile/{$handle}/post/{$postId}";
-    }
-
-    public function refreshToken(SocialAccount $account): void
-    {
-        $service = $account->meta['service'] ?? 'https://bsky.social';
-
-        // Try refresh first
-        $response = $this->socialHttp()->withToken($account->refresh_token)
-            ->post("{$service}/xrpc/com.atproto.server.refreshSession");
-
-        if ($response->successful()) {
-            $data = $response->json();
-            $account->update([
-                'access_token' => data_get($data, 'accessJwt'),
-                'refresh_token' => data_get($data, 'refreshJwt'),
-                'token_expires_at' => now()->addHours(2),
-            ]);
-
-            return;
-        }
-
-        Log::warning('Bluesky refresh token failed, trying re-authentication', [
-            'status' => $response->status(),
-        ]);
-
-        // If refresh fails, re-authenticate with stored credentials
-        if (isset($account->meta['password'])) {
-            try {
-                $password = decrypt($account->meta['password']);
-                $identifier = $account->meta['identifier'];
-
-                $response = Http::post("{$service}/xrpc/com.atproto.server.createSession", [
-                    'identifier' => $identifier,
-                    'password' => $password,
-                ]);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $account->update([
-                        'access_token' => data_get($data, 'accessJwt'),
-                        'refresh_token' => data_get($data, 'refreshJwt'),
-                        'token_expires_at' => now()->addHours(2),
-                    ]);
-
-                    return;
-                }
-            } catch (\Exception $e) {
-                Log::error('Bluesky re-authentication failed', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        throw new TokenExpiredException('Bluesky session expired');
     }
 
     private function handleApiError(Response $response): never

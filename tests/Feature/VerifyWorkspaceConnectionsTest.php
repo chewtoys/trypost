@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\VerifyWorkspaceConnections;
 use App\Mail\WorkspaceConnectionsDisconnected;
@@ -119,6 +120,25 @@ test('job only includes failed accounts in email', function () {
         return $mail->disconnectedAccounts->count() === 1
             && $mail->disconnectedAccounts->first()->id === $invalidAccount->id;
     });
+});
+
+test('job does NOT disconnect or email when platform is unavailable', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->bluesky()->create(['workspace_id' => $workspace->id]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->andThrow(
+        new PlatformUnavailableException('Bluesky API returned 503 during token refresh', 503)
+    );
+
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    expect($account->fresh()->status)->toBe(Status::Connected);
+    Mail::assertNothingQueued();
 });
 
 test('job skips already disconnected accounts', function () {

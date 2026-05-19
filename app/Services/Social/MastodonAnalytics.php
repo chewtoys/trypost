@@ -20,7 +20,7 @@ class MastodonAnalytics
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
-        $instance = data_get($account->meta, 'instance', 'https://mastodon.social');
+        $instance = data_get($account->meta, 'instance', config('trypost.platforms.mastodon.default_instance'));
 
         // Public posts: no auth needed. Our token only requests write scopes
         // (read:accounts + write:statuses + write:media), so attaching the
