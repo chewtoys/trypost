@@ -409,6 +409,21 @@ test('4xx during refresh keeps raising TokenExpiredException', function () {
     expect(fn () => $verifier->refreshToken($account))->toThrow(TokenExpiredException::class);
 });
 
+test('429 during refresh raises PlatformUnavailableException (rate limit is transient)', function () {
+    Http::fake([
+        'api.x.com/2/oauth2/token' => Http::response(['error' => 'rate_limit_exceeded'], 429),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'token_expires_at' => now()->subMinutes(5),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
+});
+
 test('bluesky 5xx during refresh raises PlatformUnavailable even when password fallback is stored', function () {
     Http::fake([
         'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response('upstream timeout', 503),
