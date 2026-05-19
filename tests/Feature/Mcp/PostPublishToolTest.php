@@ -256,3 +256,26 @@ test('publish post 404 from another workspace', function () {
 
     $response->assertHasErrors(['Post not found.']);
 });
+
+test('publish post rejects posts already in a terminal state', function (PostStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => $status,
+    ]);
+
+    PostPlatform::factory()->linkedin()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors(['Post is already published or in a terminal state.']);
+})->with([
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+    PostStatus::Failed,
+    PostStatus::Publishing,
+]);
