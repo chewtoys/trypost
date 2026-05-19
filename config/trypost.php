@@ -116,6 +116,8 @@ return [
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
+            // Default instance used when the account has no `meta.instance` override.
+            'default_instance' => env('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
         ],
     ],
 

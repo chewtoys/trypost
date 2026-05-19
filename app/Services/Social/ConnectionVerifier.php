@@ -28,9 +28,6 @@ class ConnectionVerifier
         // LinkedIn, etc.) invalidate the previous refresh_token on each
         // refresh, so proactive refreshes during races cause false-positive
         // disconnects even though the access_token still works fine.
-        //
-        // PlatformUnavailableException from refresh propagates naturally so
-        // the caller can distinguish "platform is down" from "token bad".
         if ($account->is_token_expired) {
             $this->refreshToken($account);
 
@@ -76,9 +73,10 @@ class ConnectionVerifier
      * Refresh the account's token via the platform-specific OAuth flow.
      * Callers that want the smart "try access_token first" behavior should
      * use verify() instead. This method always attempts a refresh under
-     * the per-account lock and throws TokenExpiredException on failure.
+     * the per-account lock.
      *
-     * @throws TokenExpiredException if refresh fails
+     * @throws TokenExpiredException if refresh is rejected by the provider (4xx)
+     * @throws PlatformUnavailableException if the platform is unreachable (5xx / network)
      */
     public function refreshToken(SocialAccount $account): void
     {
@@ -168,9 +166,6 @@ class ConnectionVerifier
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
         $client = TokenRefreshClient::for(Platform::Bluesky);
 
-        // Try refresh token first. Connection errors / 5xx surface as
-        // PlatformUnavailableException (Bluesky is down — don't touch the
-        // account's status). 4xx falls through to the re-auth fallback.
         try {
             $response = $client->send(fn () => Http::withToken($account->refresh_token)
                 ->post("{$service}/xrpc/com.atproto.server.refreshSession"));
@@ -512,7 +507,7 @@ class ConnectionVerifier
 
     private function verifyMastodon(SocialAccount $account): bool
     {
-        $instance = $account->meta['instance'] ?? 'https://mastodon.social';
+        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
         $response = Http::withToken($account->access_token)
             ->get("{$instance}/api/v1/accounts/verify_credentials");

@@ -86,7 +86,6 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
 
     (new RefreshSocialToken($this->account))->handle($verifier);
 
-    // Critically: account status stays Connected, no notification dispatched.
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
 });

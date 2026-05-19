@@ -66,8 +66,6 @@ class VerifyWorkspaceConnections implements ShouldQueue
 
             return true;
         } catch (PlatformUnavailableException $e) {
-            // Platform is down (5xx / network). The account's token is not
-            // provably bad — skip silently and try again next pass.
             Log::warning('Social account verification skipped: platform unavailable', [
                 'account_id' => $account->id,
                 'platform' => $account->platform->value,

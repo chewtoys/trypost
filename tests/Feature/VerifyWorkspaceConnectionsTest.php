@@ -137,7 +137,6 @@ test('job does NOT disconnect or email when platform is unavailable', function (
 
     VerifyWorkspaceConnections::dispatch($workspace);
 
-    // Status untouched, no notification email.
     expect($account->fresh()->status)->toBe(Status::Connected);
     Mail::assertNothingQueued();
 });

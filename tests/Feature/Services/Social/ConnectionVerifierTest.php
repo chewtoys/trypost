@@ -411,7 +411,6 @@ test('4xx during refresh keeps raising TokenExpiredException', function () {
 
 test('bluesky 5xx during refresh raises PlatformUnavailable even when password fallback is stored', function () {
     Http::fake([
-        // Both endpoints return 5xx — the platform is genuinely down.
         'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response('upstream timeout', 503),
         'bsky.social/xrpc/com.atproto.server.createSession' => Http::response('upstream timeout', 503),
     ]);
