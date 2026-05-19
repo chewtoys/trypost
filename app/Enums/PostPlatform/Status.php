@@ -8,6 +8,7 @@ enum Status: string
 {
     case Pending = 'pending';
     case Publishing = 'publishing';
+    case Retrying = 'retrying';
     case Published = 'published';
     case Failed = 'failed';
 }

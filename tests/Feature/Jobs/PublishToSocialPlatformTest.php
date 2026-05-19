@@ -7,9 +7,9 @@ use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\LinkedInPublishException;
-use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\LinkedInPublisher;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -110,14 +111,42 @@ test('publish to social platform marks account as token expired on auth failure'
     expect($this->socialAccount->status)->toBe(AccountStatus::TokenExpired);
 });
 
-test('publish does NOT mark account expired when retry refresh hits platform unavailable', function () {
+test('publish reschedules platform unavailable retry via Bus dispatch (not marked Failed, not expired)', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('LinkedIn API returned 503 during token refresh', 503)
+    );
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+    $this->socialAccount->refresh();
+
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Retrying);
+    expect($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable');
+    expect($this->postPlatform->error_context['http_status'] ?? null)->toBe(503);
+    expect($this->postPlatform->error_context['retry_count'] ?? null)->toBe(1);
+    expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, function ($job) {
+        return $job->postPlatform->id === $this->postPlatform->id;
+    });
+});
+
+test('publish reschedules retry when retry-refresh path hits platform unavailable', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
     Mail::fake();
 
     // Publisher first throws TokenExpired (401-style), the retry-refresh
     // path goes through ConnectionVerifier::verify which can in turn raise
-    // PlatformUnavailable if the platform is down. The account must stay
-    // Connected — it was the platform that failed, not the token.
+    // PlatformUnavailable if the platform is down.
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '401'));
 
@@ -134,32 +163,34 @@ test('publish does NOT mark account expired when retry refresh hits platform una
     $this->postPlatform->refresh();
     $this->socialAccount->refresh();
 
-    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Retrying);
     expect($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable');
-    expect($this->postPlatform->error_context['http_status'] ?? null)->toBe(503);
     expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
+
+    Bus::assertDispatched(PublishToSocialPlatform::class);
 });
 
-test('publish to social platform does NOT mark account expired when platform is unavailable', function () {
+test('publish retry count increments across successive platform_unavailable attempts', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
     Mail::fake();
 
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new PlatformUnavailableException('LinkedIn API returned 503 during token refresh', 503)
+        new PlatformUnavailableException('LinkedIn 503', 503)
     );
-
     $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    // Simulate prior attempts
+    $this->postPlatform->update([
+        'error_context' => ['retry_count' => 5],
+    ]);
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
     $this->postPlatform->refresh();
-    $this->socialAccount->refresh();
 
-    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
-    expect($this->postPlatform->error_context['category'] ?? null)->toBe('platform_unavailable');
-    expect($this->postPlatform->error_context['http_status'] ?? null)->toBe(503);
-    expect($this->socialAccount->status)->toBe(AccountStatus::Connected);
+    expect($this->postPlatform->error_context['retry_count'] ?? null)->toBe(6);
 });
 
 test('publish to social platform updates post status when all platforms finished', function () {

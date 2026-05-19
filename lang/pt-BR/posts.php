@@ -175,6 +175,7 @@ return [
         'draft' => 'Rascunho',
         'scheduled' => 'Agendado',
         'publishing' => 'Publicando',
+        'retrying' => 'Tentando novamente',
         'published' => 'Publicado',
         'partially_published' => 'Parcialmente Publicado',
         'failed' => 'Falhou',
@@ -323,6 +324,7 @@ return [
             'scheduled' => 'Agendado',
             'published' => 'Publicado',
             'publishing' => 'Publicando...',
+            'retrying' => 'Tentando novamente...',
             'failed' => 'Falhou',
         ],
 
