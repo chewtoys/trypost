@@ -88,7 +88,7 @@ trait HasMedia
         $filename = Str::uuid().'.'.$normalizedExt;
         $path = 'medias/'.$filename;
 
-        Storage::put($path, $normalizedBytes);
+        Storage::disk('public')->put($path, $normalizedBytes);
 
         return $this->media()->create([
             'group_id' => $groupId ?? Str::uuid()->toString(),
@@ -126,7 +126,7 @@ trait HasMedia
         $filename = Str::uuid().'.'.$normalizedExt;
         $storagePath = 'medias/'.$filename;
 
-        Storage::put($storagePath, $normalizedBytes);
+        Storage::disk('public')->put($storagePath, $normalizedBytes);
 
         return $this->media()->create([
             'group_id' => $groupId ?? Str::uuid()->toString(),
