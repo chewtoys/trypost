@@ -28,7 +28,7 @@ return [
     */
 
     'billing' => [
-        'require_card_for_trial' => true,
+        'require_card_for_trial' => (bool) env('REQUIRE_CARD_FOR_TRIAL', true),
     ],
 
     /*
