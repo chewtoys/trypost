@@ -11,12 +11,12 @@ use App\Models\Workspace;
 
 class CreateAutomation
 {
-    public function __invoke(Workspace $workspace, User $user, string $name): Automation
+    public function __invoke(Workspace $workspace, User $user, ?string $name = null): Automation
     {
         return Automation::create([
             'workspace_id' => $workspace->id,
             'user_id' => $user->id,
-            'name' => $name,
+            'name' => $name ?: __('automations.default_name'),
             'status' => Status::Draft,
             'nodes' => [],
             'connections' => [],

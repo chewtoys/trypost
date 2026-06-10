@@ -6,11 +6,14 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Automation\Automation\ActivateAutomation;
 use App\Actions\Automation\Automation\CreateAutomation;
+use App\Actions\Automation\Automation\DeleteAutomation;
+use App\Actions\Automation\Automation\GetAutomationDetails;
+use App\Actions\Automation\Automation\GetAutomationEditorData;
+use App\Actions\Automation\Automation\ListAutomations;
 use App\Actions\Automation\Automation\PauseAutomation;
 use App\Actions\Automation\Automation\UpdateAutomation;
 use App\Actions\Automation\Run\RetryRunFromNode;
 use App\Actions\Automation\Run\TestAutomation;
-use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Automations\ActivateAutomationRequest;
 use App\Http\Requests\App\Automations\PauseAutomationRequest;
@@ -26,8 +29,6 @@ use App\Http\Resources\AutomationRunResource;
 use App\Http\Resources\AutomationTriggerItemResource;
 use App\Models\Automation;
 use App\Models\AutomationRun;
-use App\Services\Social\PinterestPublisher;
-use App\Services\Social\TikTokCreatorInfo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -35,13 +36,12 @@ use Inertia\Response;
 
 class AutomationController extends Controller
 {
-    public function index(): Response
+    public function index(ListAutomations $list): Response
     {
+        $workspace = request()->user()->currentWorkspace;
+
         $automations = Inertia::scroll(fn () => AutomationResource::collection(
-            Automation::query()
-                ->where('workspace_id', request()->user()->current_workspace_id)
-                ->orderByDesc('created_at')
-                ->paginate(config('app.pagination.default'))
+            $list($workspace)
         ));
 
         return Inertia::render('automations/Index', [
@@ -51,51 +51,23 @@ class AutomationController extends Controller
 
     public function store(StoreAutomationRequest $request, CreateAutomation $create): RedirectResponse
     {
-        $name = $request->validated('name');
-
-        if (! $name || $name === 'automations.default_name') {
-            $name = __('automations.default_name');
-        }
-
         $automation = $create(
             $request->user()->currentWorkspace,
             $request->user(),
-            $name,
         );
 
         return redirect()->route('app.automations.edit', $automation->id);
     }
 
-    public function edit(Automation $automation): Response
+    public function edit(Automation $automation, GetAutomationEditorData $editorData): Response
     {
         $this->authorize('update', $automation);
 
-        $socialAccounts = $automation->workspace->socialAccounts()->active()->get();
+        ['socialAccounts' => $socialAccounts, 'pinterestBoards' => $pinterestBoards, 'tiktokCreatorInfos' => $tiktokCreatorInfos] = $editorData($automation);
 
         $platformConfigs = $socialAccounts->mapWithKeys(fn ($account) => [
             $account->id => new PlatformConfigResource($account),
         ]);
-
-        $pinterestBoards = $socialAccounts
-            ->where('platform', Platform::Pinterest)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => app(PinterestPublisher::class)->getBoards($account),
-                    [],
-                    report: false,
-                ),
-            ]);
-
-        $tiktokCreatorInfos = $socialAccounts
-            ->where('platform', Platform::TikTok)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => app(TikTokCreatorInfo::class)->fetch($account),
-                    null,
-                    report: false,
-                ),
-            ])
-            ->filter();
 
         return Inertia::render('automations/Form', [
             'automation' => AutomationResource::make($automation),
@@ -106,16 +78,16 @@ class AutomationController extends Controller
         ]);
     }
 
-    public function show(Automation $automation): Response
+    public function show(Automation $automation, GetAutomationDetails $details): Response
     {
         $this->authorize('view', $automation);
 
+        ['runs' => $runs, 'triggerItems' => $triggerItems] = $details($automation);
+
         return Inertia::render('automations/Show', [
             'automation' => AutomationResource::make($automation),
-            'runs' => AutomationRunResource::collection($automation->runs()->excludingDryRuns()->latest()->take(50)->get()),
-            'triggerItems' => AutomationTriggerItemResource::collection(
-                $automation->triggerItems()->with('run')->latest()->take(50)->get()
-            ),
+            'runs' => AutomationRunResource::collection($runs),
+            'triggerItems' => AutomationTriggerItemResource::collection($triggerItems),
         ]);
     }
 
@@ -128,10 +100,10 @@ class AutomationController extends Controller
         return back();
     }
 
-    public function destroy(Automation $automation): RedirectResponse
+    public function destroy(Automation $automation, DeleteAutomation $delete): RedirectResponse
     {
         $this->authorize('delete', $automation);
-        $automation->delete();
+        $delete($automation);
 
         session()->flash('flash.banner', __('automations.flash.deleted'));
         session()->flash('flash.bannerStyle', 'success');

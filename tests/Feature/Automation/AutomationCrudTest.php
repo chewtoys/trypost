@@ -16,12 +16,14 @@ beforeEach(function () {
     $this->user->refresh();
 });
 
-it('creates an automation via POST', function () {
+it('creates an automation with the default name (web sends no name)', function () {
     $response = $this->actingAs($this->user)
-        ->post(route('app.automations.store'), ['name' => 'My RSS auto']);
+        ->post(route('app.automations.store'));
 
     $response->assertRedirect();
-    expect(Automation::where('workspace_id', $this->workspace->id)->count())->toBe(1);
+
+    $automation = Automation::where('workspace_id', $this->workspace->id)->sole();
+    expect($automation->name)->toBe(__('automations.default_name'));
 });
 
 it('updates nodes and connections via PUT', function () {
