@@ -10,7 +10,7 @@ import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDial
 import AiReviewDialog from '@/components/posts/ai/AiReviewDialog.vue';
 import PostEditorComposer from '@/components/posts/editor/PostEditorComposer.vue';
 import PostEditorHeader from '@/components/posts/editor/PostEditorHeader.vue';
-import PostEditorSidebar from '@/components/posts/editor/PostEditorSidebar.vue';
+import PostEditorTabs from '@/components/posts/editor/PostEditorTabs.vue';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import {
     firstCompatibleVariant,
@@ -206,7 +206,7 @@ const initialTabFromQuery = (() => {
 const initialHighlightCommentId = queryParams?.get('comment') ?? null;
 const activeTab = ref(initialTabFromQuery);
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
-const editorSidebarRef = ref<InstanceType<typeof PostEditorSidebar> | null>(null);
+const editorTabsRef = ref<InstanceType<typeof PostEditorTabs> | null>(null);
 
 const snapToCompatibleVariant = (platformId: string) => {
     const pp = post.value.post_platforms.find((p) => p.id === platformId);
@@ -339,9 +339,9 @@ usePostEcho(post.value.id, '.post.platform.status.updated', () => {
 // Echo: listen for real-time comments
 usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
     if (e.mentioned_users) {
-        editorSidebarRef.value?.registerMentionedUsers(e.mentioned_users);
+        editorTabsRef.value?.registerMentionedUsers(e.mentioned_users);
     }
-    editorSidebarRef.value?.addCommentFromBroadcast(e.comment);
+    editorTabsRef.value?.addCommentFromBroadcast(e.comment);
 });
 </script>
 
@@ -402,8 +402,8 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                     </div>
 
                     <div class="hidden lg:block lg:w-1/3 overflow-hidden">
-                        <PostEditorSidebar
-                            ref="editorSidebarRef"
+                        <PostEditorTabs
+                            ref="editorTabsRef"
                             v-model:active-tab="activeTab"
                             :post="post"
                             :workspace-id="workspace.id"

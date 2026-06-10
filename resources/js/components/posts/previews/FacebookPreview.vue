@@ -18,6 +18,7 @@ interface Props {
     content: string;
     media: MediaItem[];
     contentType?: string;
+    meta?: Record<string, any>;
     charCount?: number;
     maxLength?: number;
     isValid?: boolean;
@@ -30,6 +31,21 @@ const props = defineProps<Props>();
 const isReel = computed(() => props.contentType === 'facebook_reel');
 const isStory = computed(() => props.contentType === 'facebook_story');
 const isFeed = computed(() => !isReel.value && !isStory.value);
+
+// Padding-bottom percentage = height/width. Reflects the user's chosen crop in
+// the feed preview. `null` (original / unset) keeps the natural fill layout.
+const ASPECT_PADDING: Record<string, number> = {
+    '1:1': 100,
+    '4:5': 125,
+    '16:9': 56.25,
+};
+const feedAspectPadding = computed<number | null>(() => ASPECT_PADDING[props.meta?.aspect_ratio ?? ''] ?? null);
+
+const feedMediaProps = {
+    placeholderIcon: IconPhoto,
+    dotActiveClass: 'bg-[#1877f2]',
+    placeholderClass: 'w-full h-full flex items-center justify-center bg-[#f0f2f5] dark:bg-[#3a3b3c]',
+};
 
 // Format numbers like Facebook
 const formatNumber = (num: number): string => {
@@ -122,14 +138,18 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                         </p>
                     </div>
 
-                    <!-- Post Media -->
-                    <div class="flex-1 relative bg-black min-h-0">
-                        <PostMediaPreview
-                            :media="media"
-                            :placeholder-icon="IconPhoto"
-                            dot-active-class="bg-[#1877f2]"
-                            placeholder-class="w-full h-full flex items-center justify-center bg-[#f0f2f5] dark:bg-[#3a3b3c]"
-                        />
+                    <!-- Post Media - Aspect ratio matches user's chosen crop -->
+                    <div
+                        v-if="feedAspectPadding !== null"
+                        class="relative w-full shrink-0 bg-black"
+                        :style="{ paddingBottom: `${feedAspectPadding}%` }"
+                    >
+                        <div class="absolute inset-0">
+                            <PostMediaPreview :media="media" v-bind="feedMediaProps" />
+                        </div>
+                    </div>
+                    <div v-else class="flex-1 relative bg-black min-h-0">
+                        <PostMediaPreview :media="media" v-bind="feedMediaProps" />
                     </div>
 
                     <!-- Reactions Bar -->

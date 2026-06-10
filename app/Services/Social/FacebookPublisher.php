@@ -7,7 +7,9 @@ namespace App\Services\Social;
 use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
+use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
+use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 
 class FacebookPublisher
 {
+    use CropsImageForAspectRatio;
     use HasSocialHttpClient;
 
     private string $baseUrl;
@@ -46,16 +49,17 @@ class FacebookPublisher
 
         $media = $postPlatform->post->mediaItems;
         $contentType = $postPlatform->content_type;
+        $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first()),
-            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media),
+            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
             default => throw new \Exception("Unsupported Facebook content type: {$contentType?->value}"),
         };
     }
 
-    private function publishPost(string $pageId, string $accessToken, ?string $content, $media): array
+    private function publishPost(string $pageId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
         // Text only post
         if ($media->isEmpty()) {
@@ -77,10 +81,10 @@ class FacebookPublisher
         if ($isImage) {
             // Single or multiple images
             if ($media->count() === 1) {
-                return $this->publishSingleImagePost($pageId, $accessToken, $content, $firstMedia);
+                return $this->publishSingleImagePost($pageId, $accessToken, $content, $firstMedia, $aspectRatio);
             }
 
-            return $this->publishMultiImagePost($pageId, $accessToken, $content, $media);
+            return $this->publishMultiImagePost($pageId, $accessToken, $content, $media, $aspectRatio);
         }
 
         throw new \Exception('Unsupported media type for Facebook');
@@ -110,10 +114,10 @@ class FacebookPublisher
         ];
     }
 
-    private function publishSingleImagePost(string $pageId, string $accessToken, ?string $content, $media): array
+    private function publishSingleImagePost(string $pageId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
         $payload = [
-            'url' => $media->url,
+            'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
             'access_token' => $accessToken,
         ];
 
@@ -140,7 +144,7 @@ class FacebookPublisher
         ];
     }
 
-    private function publishMultiImagePost(string $pageId, string $accessToken, ?string $content, $mediaCollection): array
+    private function publishMultiImagePost(string $pageId, string $accessToken, ?string $content, $mediaCollection, ?string $aspectRatio): array
     {
         // Upload each image as unpublished
         $attachedMedia = [];
@@ -151,7 +155,7 @@ class FacebookPublisher
             }
 
             $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
-                'url' => $media->url,
+                'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
                 'published' => 'false',
                 'access_token' => $accessToken,
             ]);
@@ -391,5 +395,13 @@ class FacebookPublisher
     private function handleApiError(Response $response): never
     {
         throw FacebookPublishException::fromApiResponse($response);
+    }
+
+    protected function cropFailureException(string $message): SocialPublishException
+    {
+        return new FacebookPublishException(
+            userMessage: $message,
+            category: ErrorCategory::ServerError,
+        );
     }
 }

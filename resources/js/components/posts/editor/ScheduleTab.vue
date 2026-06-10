@@ -315,8 +315,10 @@ const contentTypeErrorFor = (pp: PostPlatform): string | undefined => {
                 :social-account="pp.social_account"
                 :content-type="platformContentTypes[pp.id] ?? ''"
                 :media="media ?? []"
+                :meta="platformMeta[pp.id] ?? {}"
                 :disabled="isReadOnly"
                 @update:content-type="emit('update:platformContentType', pp.id, $event)"
+                @update:meta="emit('update:platformMeta', pp.id, $event)"
             />
         </div>
 

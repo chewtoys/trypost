@@ -13,6 +13,17 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
+
+function facebookJpegBytes(int $width = 1200, int $height = 800): string
+{
+    $manager = new ImageManager(Driver::class);
+    $image = $manager->createImage($width, $height)->fill('888888');
+
+    return (string) $image->encodeUsingMediaType('image/jpeg', quality: 80);
+}
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -635,4 +646,164 @@ test('reel post without description omits description from payload (finish phase
         return data_get($data, 'upload_phase') === 'finish'
             && ! array_key_exists('description', $data);
     });
+});
+
+test('facebook single image post applies the selected aspect ratio crop and uploads the crop', function (string $ratio, float $expected) {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => $ratio]]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response(facebookJpegBytes(1600, 900), 200),
+        '*/page_123/photos' => Http::response(['id' => 'photo_1', 'post_id' => 'post_1'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $crops = collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'social-crops/'));
+    expect($crops)->toHaveCount(1);
+
+    $manager = new ImageManager(Driver::class);
+    $tempFile = tempnam(sys_get_temp_dir(), 'verify_');
+    file_put_contents($tempFile, Storage::get($crops->first()));
+    $image = $manager->decodePath($tempFile);
+    expect(round($image->width() / $image->height(), 2))->toBe(round($expected, 2));
+    @unlink($tempFile);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
+        && str_contains($request['url'], 'social-crops/')
+        && ! str_contains($request['url'], 'example.com'));
+})->with([
+    '1:1' => ['1:1', 1.0],
+    '4:5' => ['4:5', 4 / 5],
+    '16:9' => ['16:9', 16 / 9],
+]);
+
+test('facebook multi image post applies the chosen aspect ratio crop to every image', function (string $aspectRatio, float $expected) {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => $aspectRatio]]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+            ['id' => 'm2', 'path' => 'media/b.jpg', 'url' => 'https://example.com/media/b.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'b.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response(facebookJpegBytes(1600, 900), 200),
+        'https://example.com/media/b.jpg' => Http::response(facebookJpegBytes(900, 1600), 200),
+        '*/page_123/photos' => Http::sequence()
+            ->push(['id' => 'up_1'], 200)
+            ->push(['id' => 'up_2'], 200),
+        '*/page_123/feed' => Http::response(['id' => 'post_1'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $crops = collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'social-crops/'));
+    expect($crops)->toHaveCount(2);
+
+    $manager = new ImageManager(Driver::class);
+    foreach ($crops as $cropPath) {
+        $tempFile = tempnam(sys_get_temp_dir(), 'verify_');
+        file_put_contents($tempFile, Storage::get($cropPath));
+        $image = $manager->decodePath($tempFile);
+        expect(abs($image->width() / $image->height() - $expected))->toBeLessThan(0.01);
+        @unlink($tempFile);
+    }
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
+        && str_contains($request['url'] ?? '', 'social-crops/'));
+})->with([
+    '1:1' => ['1:1', 1.0],
+    '4:5' => ['4:5', 4 / 5],
+]);
+
+test('facebook multi image post aborts entirely when one image cannot be downloaded for cropping', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+            ['id' => 'm2', 'path' => 'media/b.jpg', 'url' => 'https://example.com/media/b.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'b.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('', 404),
+        'https://example.com/media/b.jpg' => Http::response(facebookJpegBytes(900, 1600), 200),
+        '*/page_123/photos' => Http::response(['id' => 'up'], 200),
+        '*/page_123/feed' => Http::response(['id' => 'post_1'], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Failed to download image for cropping');
+});
+
+test('facebook image post throws when the source image cannot be downloaded for cropping', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('', 404),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Failed to download image for cropping');
+});
+
+test('facebook single image post without aspect ratio uploads the original image (no crop)', function () {
+    Storage::fake();
+
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::response(['id' => 'photo_1', 'post_id' => 'post_1'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    expect(collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'social-crops/')))->toBeEmpty();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
+        && $request['url'] === 'https://example.com/media/a.jpg');
+});
+
+test('facebook single image post with original aspect ratio uploads the original image (no crop)', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => 'original']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::response(['id' => 'photo_1', 'post_id' => 'post_1'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    expect(collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'social-crops/')))->toBeEmpty();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
+        && $request['url'] === 'https://example.com/media/a.jpg');
 });

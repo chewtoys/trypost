@@ -127,6 +127,13 @@ return [
                 'reel' => 'Reel',
                 'story' => 'Story',
             ],
+            'aspect_label' => 'Aspect ratio',
+            'aspect' => [
+                'square' => 'Square (1:1)',
+                'portrait' => 'Portrait (4:5)',
+                'landscape' => 'Landscape (16:9)',
+                'original' => 'Original',
+            ],
         ],
         'linkedin' => [
             'settings' => 'LinkedIn Settings',

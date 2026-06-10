@@ -94,7 +94,7 @@ const activeContentType = computed((): string | undefined => {
             </div>
         </div>
 
-        <div class="flex flex-1 items-start justify-center bg-foreground/5 px-4 pb-8 pt-6">
+        <div class="flex flex-1 items-start justify-center px-4 pb-8 pt-6">
             <PhoneMockup v-if="activePlatform">
                 <PlatformPreview
                     :platform="activePlatform.platform"

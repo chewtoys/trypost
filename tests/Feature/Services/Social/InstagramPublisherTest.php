@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -726,10 +727,10 @@ test('instagram publisher handles publish failure', function () {
         ->toThrow(Exception::class);
 });
 
-test('feed image is cropped to chosen aspect ratio before publishing', function () {
+test('feed image is cropped to chosen aspect ratio before publishing', function (string $aspectRatio, float $expected) {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => $aspectRatio]]);
 
     $this->post->update([
         'media' => [
@@ -753,15 +754,14 @@ test('feed image is cropped to chosen aspect ratio before publishing', function 
 
     $this->publisher->publish($this->postPlatform);
 
-    $cropped = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'instagram-crops/'));
+    $cropped = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'social-crops/'));
     expect($cropped)->not->toBeNull();
 
     $manager = new ImageManager(Driver::class);
     $tempFile = tempnam(sys_get_temp_dir(), 'verify_');
     file_put_contents($tempFile, Storage::get($cropped));
     $image = $manager->decodePath($tempFile);
-    $ratio = $image->width() / $image->height();
-    expect(abs($ratio - 0.8))->toBeLessThan(0.01);
+    expect(abs($image->width() / $image->height() - $expected))->toBeLessThan(0.01);
     @unlink($tempFile);
 
     Http::assertSent(function ($request) {
@@ -770,9 +770,31 @@ test('feed image is cropped to chosen aspect ratio before publishing', function 
         }
         $imageUrl = $request['image_url'] ?? '';
 
-        return str_contains($imageUrl, 'instagram-crops/')
+        return str_contains($imageUrl, 'social-crops/')
             && ! str_contains($imageUrl, 'example.com/media/test.jpg');
     });
+})->with([
+    '1:1' => ['1:1', 1.0],
+    '4:5' => ['4:5', 4 / 5],
+    '16:9' => ['16:9', 16 / 9],
+]);
+
+test('feed image throws when the source image cannot be downloaded for cropping', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('', 404),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to download image for cropping');
 });
 
 test('feed image with original aspect ratio bypasses crop', function () {
@@ -847,10 +869,10 @@ test('feed image without aspect_ratio meta uses original URL', function () {
     });
 });
 
-test('carousel applies aspect ratio crop to every image', function () {
+test('carousel applies the chosen aspect ratio crop to every image', function (string $aspectRatio, float $expected) {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['aspect_ratio' => '1:1']]);
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => $aspectRatio]]);
 
     $this->post->update([
         'media' => [
@@ -875,7 +897,7 @@ test('carousel applies aspect ratio crop to every image', function () {
 
     $this->publisher->publish($this->postPlatform);
 
-    $crops = collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'instagram-crops/'));
+    $crops = collect(Storage::allFiles())->filter(fn (string $path) => str_starts_with($path, 'social-crops/'));
     expect($crops)->toHaveCount(2);
 
     $manager = new ImageManager(Driver::class);
@@ -883,7 +905,10 @@ test('carousel applies aspect ratio crop to every image', function () {
         $tempFile = tempnam(sys_get_temp_dir(), 'verify_');
         file_put_contents($tempFile, Storage::get($cropPath));
         $image = $manager->decodePath($tempFile);
-        expect($image->width())->toBe($image->height());
+        expect(abs($image->width() / $image->height() - $expected))->toBeLessThan(0.01);
         @unlink($tempFile);
     }
-});
+})->with([
+    '1:1' => ['1:1', 1.0],
+    '4:5' => ['4:5', 4 / 5],
+]);

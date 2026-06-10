@@ -7,17 +7,16 @@ namespace App\Services\Social;
 use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
+use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
-use App\Services\Media\MediaOptimizer;
+use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class InstagramPublisher
 {
+    use CropsImageForAspectRatio;
     use HasSocialHttpClient;
 
     private string $baseUrl;
@@ -80,7 +79,7 @@ class InstagramPublisher
 
     private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
-        $imageUrl = $this->cropForFeed($media->url, $aspectRatio);
+        $imageUrl = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
         // Step 1: Create container
         $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
@@ -206,7 +205,7 @@ class InstagramPublisher
                 $params['video_url'] = $media->url;
                 $params['media_type'] = 'VIDEO';
             } else {
-                $params['image_url'] = $this->cropForFeed($media->url, $aspectRatio);
+                $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
@@ -311,52 +310,12 @@ class InstagramPublisher
         ];
     }
 
-    /**
-     * Crop the image to the user-selected aspect ratio and return a public URL
-     * Instagram can fetch. Returns the original URL untouched when no ratio is
-     * set or 'original' is selected (caller has already validated the original
-     * fits IG's 4:5 to 1.91:1 range).
-     */
-    private function cropForFeed(string $imageUrl, ?string $aspectRatio): string
+    protected function cropFailureException(string $message): SocialPublishException
     {
-        if (! $aspectRatio || $aspectRatio === 'original') {
-            return $imageUrl;
-        }
-
-        $ratio = $this->aspectRatioToFloat($aspectRatio);
-
-        $tempInput = tempnam(sys_get_temp_dir(), 'ig_crop_in_');
-
-        try {
-            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
-
-            if ($download->failed()) {
-                throw new InstagramPublishException(
-                    userMessage: 'Failed to download image for cropping',
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
-
-            $path = 'instagram-crops/'.Str::uuid()->toString().'.jpg';
-            Storage::put($path, file_get_contents($cropped));
-
-            @unlink($cropped);
-
-            return Storage::url($path);
-        } finally {
-            @unlink($tempInput);
-        }
-    }
-
-    private function aspectRatioToFloat(string $ratio): float
-    {
-        return match ($ratio) {
-            '4:5' => 4 / 5,
-            '16:9' => 16 / 9,
-            default => 1.0,
-        };
+        return new InstagramPublishException(
+            userMessage: $message,
+            category: ErrorCategory::ServerError,
+        );
     }
 
     private function waitForMediaProcessing(string $containerId, string $accessToken, int $maxAttempts = 30): void

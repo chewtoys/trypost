@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Social\Concerns;
+
+use App\Exceptions\Social\SocialPublishException;
+use App\Services\Media\MediaOptimizer;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+trait CropsImageForAspectRatio
+{
+    private const CROP_DIRECTORY = 'social-crops';
+
+    /**
+     * Crop the image to the user-selected aspect ratio and return a public URL
+     * the platform can fetch. Returns the original URL untouched when no ratio
+     * is set or 'original' is selected.
+     */
+    protected function cropImageForAspectRatio(string $imageUrl, ?string $aspectRatio): string
+    {
+        if (! $aspectRatio || $aspectRatio === 'original') {
+            return $imageUrl;
+        }
+
+        $ratio = $this->aspectRatioToFloat($aspectRatio);
+
+        $tempInput = tempnam(sys_get_temp_dir(), 'crop_in_');
+
+        try {
+            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
+
+            if ($download->failed()) {
+                throw $this->cropFailureException('Failed to download image for cropping');
+            }
+
+            $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
+
+            $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            Storage::put($path, file_get_contents($cropped));
+
+            @unlink($cropped);
+
+            return Storage::url($path);
+        } finally {
+            @unlink($tempInput);
+        }
+    }
+
+    protected function aspectRatioToFloat(string $ratio): float
+    {
+        return match ($ratio) {
+            '4:5' => 4 / 5,
+            '16:9' => 16 / 9,
+            default => 1.0,
+        };
+    }
+
+    /**
+     * The platform-specific exception thrown when the source image cannot be
+     * downloaded for cropping.
+     */
+    abstract protected function cropFailureException(string $message): SocialPublishException;
+}

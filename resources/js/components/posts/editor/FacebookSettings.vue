@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import { Avatar } from '@/components/ui/avatar';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { ContentType } from '@/enums/content-type';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -19,28 +20,46 @@ interface Props {
     socialAccount: SocialAccount | null;
     contentType: string;
     media: MediaItem[];
+    meta?: Record<string, any>;
     disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
+    meta: () => ({}),
 });
 
 const emit = defineEmits<{
     'update:contentType': [value: string];
+    'update:meta': [meta: Record<string, any>];
 }>();
 
 const open = ref(false);
 
 const variants = [
-    { value: 'facebook_post', labelKey: 'posts.form.facebook.variant.post' },
-    { value: 'facebook_reel', labelKey: 'posts.form.facebook.variant.reel' },
-    { value: 'facebook_story', labelKey: 'posts.form.facebook.variant.story' },
+    { value: ContentType.FacebookPost, labelKey: 'posts.form.facebook.variant.post' },
+    { value: ContentType.FacebookReel, labelKey: 'posts.form.facebook.variant.reel' },
+    { value: ContentType.FacebookStory, labelKey: 'posts.form.facebook.variant.story' },
 ];
+
+const aspectRatios = [
+    { value: '1:1', labelKey: 'posts.form.facebook.aspect.square' },
+    { value: '4:5', labelKey: 'posts.form.facebook.aspect.portrait' },
+    { value: '16:9', labelKey: 'posts.form.facebook.aspect.landscape' },
+    { value: 'original', labelKey: 'posts.form.facebook.aspect.original' },
+];
+
+const isFeed = computed(() => props.contentType === ContentType.FacebookPost);
+const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
     emit('update:contentType', value);
+};
+
+const pickAspectRatio = (value: string) => {
+    if (props.disabled) return;
+    emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
@@ -95,6 +114,25 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         @click="pickVariant(variant.value)"
                     >
                         {{ $t(variant.labelKey) }}
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="isFeed" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.facebook.aspect_label') }}</p>
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        v-for="ratio in aspectRatios"
+                        :key="ratio.value"
+                        type="button"
+                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="selectedAspectRatio === ratio.value
+                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
+                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
+                        :disabled="disabled"
+                        @click="pickAspectRatio(ratio.value)"
+                    >
+                        {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
             </div>

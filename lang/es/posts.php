@@ -127,6 +127,13 @@ return [
                 'reel' => 'Reel',
                 'story' => 'Historia',
             ],
+            'aspect_label' => 'Proporción',
+            'aspect' => [
+                'square' => 'Cuadrado (1:1)',
+                'portrait' => 'Vertical (4:5)',
+                'landscape' => 'Horizontal (16:9)',
+                'original' => 'Original',
+            ],
         ],
         'linkedin' => [
             'settings' => 'Configuración de LinkedIn',

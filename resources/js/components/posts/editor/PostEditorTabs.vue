@@ -107,7 +107,7 @@ defineExpose({
             />
         </TabsContent>
 
-        <TabsContent value="schedule" class="flex-1 overflow-y-auto p-4">
+        <TabsContent value="schedule" force-mount :class="['flex-1 overflow-y-auto p-4', { hidden: activeTab !== 'schedule' }]">
             <ScheduleTab
                 :post-platforms="post.post_platforms"
                 :selected-platform-ids="selectedPlatformIds"
