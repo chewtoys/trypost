@@ -23,6 +23,99 @@ return [
         'test' => 'Probar',
     ],
 
+    'nav' => [
+        'workflow' => 'Workflow',
+        'invocations' => 'Invocaciones',
+        'metrics' => 'Métricas',
+        'settings' => 'Configuración',
+    ],
+
+    'settings' => [
+        'general' => 'General',
+        'general_description' => 'Renombra esta automatización.',
+        'name_label' => 'Nombre',
+        'name_saved' => 'Automatización renombrada.',
+        'status_title' => 'Estado',
+        'status_description' => 'Actívala para que empiece a ejecutarse, o pausa para detenerla.',
+        'activated_at' => 'Activada el :date',
+        'paused_at' => 'Pausada el :date',
+        'created_at' => 'Creada el :date',
+        'danger_title' => 'Zona de peligro',
+        'danger_description' => 'Acciones irreversibles.',
+        'delete_title' => 'Eliminar esta automatización',
+        'delete_description' => 'Elimina permanentemente la automatización y su historial de ejecuciones.',
+    ],
+
+    'status_run' => [
+        'pending' => 'Pendiente',
+        'running' => 'Ejecutando',
+        'waiting' => 'Esperando',
+        'completed' => 'Completado',
+        'failed' => 'Fallido',
+        'cancelled' => 'Cancelado',
+    ],
+
+    'node_type' => [
+        'trigger' => 'Disparador',
+        'generate' => 'Generar contenido',
+        'delay' => 'Espera',
+        'condition' => 'Condición',
+        'publish' => 'Publicar',
+        'webhook' => 'Webhook',
+        'end' => 'Fin',
+        'fetch_rss' => 'Obtener RSS',
+        'http_request' => 'Petición HTTP',
+    ],
+
+    'invocations' => [
+        'empty' => 'Aún no hay invocaciones.',
+        'refresh' => 'Actualizar',
+        'search_placeholder' => 'Buscar por ID de ejecución…',
+        'copied' => 'ID de ejecución copiado.',
+        'loading' => 'Cargando pasos…',
+        'no_steps' => 'Sin pasos registrados.',
+        'load_error' => 'No se pudieron cargar los pasos.',
+        'steps' => '{0}Sin pasos|{1}:count paso|[2,*]:count pasos',
+        'filter' => [
+            'all' => 'Todos los estados',
+        ],
+        'columns' => [
+            'timestamp' => 'Fecha',
+            'run' => 'Ejecución',
+            'status' => 'Estado',
+            'message' => 'Último mensaje',
+            'duration' => 'Duración',
+        ],
+        'summary' => [
+            'completed' => 'Workflow completado',
+            'failed' => 'Workflow fallido',
+            'running' => 'Workflow en ejecución',
+            'cancelled' => 'Workflow cancelado',
+            'pending' => 'Workflow pendiente',
+        ],
+    ],
+
+    'metrics' => [
+        'overview' => 'Resumen',
+        'runs_over_time' => 'Ejecuciones a lo largo del tiempo',
+        'posts_by_platform' => 'Posts por plataforma',
+        'no_posts' => 'No se publicaron posts en este período.',
+        'cards' => [
+            'runs' => 'Total de ejecuciones',
+            'completed' => 'Completadas',
+            'failed' => 'Fallidas',
+            'in_progress' => 'En progreso',
+            'success_rate' => 'Tasa de éxito',
+            'avg_duration' => 'Duración media',
+            'posts_created' => 'Posts creados',
+        ],
+        'legend' => [
+            'started' => 'Iniciadas',
+            'completed' => 'Completadas',
+            'failed' => 'Fallidas',
+        ],
+    ],
+
     'categories' => [
         'sources' => 'Fuentes',
         'content' => 'Contenido',
@@ -42,19 +135,26 @@ return [
     ],
 
     'guide' => [
-        'title' => 'Cómo usar automatizaciones',
-        'subtitle' => 'Una referencia rápida para construir tu flujo.',
-        'flow_title' => 'Cómo funciona',
-        'flow_text' => 'Un disparador (una programación, o un post publicado/programado) inicia el flujo. Las acciones intermedias obtienen datos, generan contenido o se ramifican por condiciones. Los nodos de salida publican posts o llaman webhooks.',
-        'data_title' => 'Pasar datos entre nodos',
-        'data_text' => 'Referencia datos de nodos anteriores en cualquier campo. Escribe el nombre entre llaves dobles, por ejemplo:',
-        'refs' => [
-            'trigger_post' => 'El post que disparó un disparador de post',
-            'fetched_title' => 'Elemento actual del RSS / respuesta HTTP',
-            'fetched_link' => 'Su enlace',
-            'generated' => 'El post generado por IA',
-            'now' => 'Fecha y hora actuales',
+        'title' => 'Cómo funcionan las automatizaciones',
+        'subtitle' => 'Construye un flujo y conecta los datos entre nodos.',
+        'tabs' => [
+            'overview' => 'Resumen',
+            'expressions' => 'Expresiones',
         ],
+        'flow_title' => 'El flujo',
+        'flow_text' => 'Un disparador (una programación, o un post publicado/programado) inicia el flujo. Las acciones intermedias obtienen datos, generan contenido o se ramifican por condiciones. Los nodos de salida publican posts o llaman webhooks.',
+        'scope_title' => 'Qué datos están disponibles',
+        'scope_text' => 'Un nodo solo puede usar datos de nodos conectados antes de él (upstream). En cualquier campo de texto, escribe {{ para autocompletar lo disponible — las referencias desconocidas se señalan.',
+        'data_text' => 'Envuelve la ruta en llaves dobles. Qué rutas existen depende de los nodos que se ejecutan antes:',
+        'groups' => [
+            'trigger_schedule' => 'Disparador programado',
+            'trigger_post' => 'Disparador de post',
+            'fetch_rss' => 'Obtener RSS',
+            'http' => 'Petición HTTP',
+            'generate' => 'Generar contenido',
+            'always' => 'Siempre disponible',
+        ],
+        'http_note' => 'Añade cualquier campo de la respuesta JSON, ej: {{ fetched.data.0.title }}.',
         'vars_title' => 'Variables',
         'vars_text' => 'Define valores reutilizables (API keys, URLs base) en la pestaña Variables y referéncialos por clave. Los secretos se almacenan cifrados.',
         'tip_text' => 'Ejecuta una Prueba para ver exactamente qué produce cada nodo.',
@@ -114,20 +214,6 @@ return [
             'status' => 'Estado',
             'created' => 'Creada',
         ],
-    ],
-
-    'show' => [
-        'activated' => 'Activada',
-        'tabs' => [
-            'overview' => 'Resumen',
-            'runs' => 'Ejecuciones',
-            'trigger_items' => 'Elementos del disparador',
-        ],
-        'canvas_placeholder' => 'Vista previa del canvas (solo lectura)',
-        'empty_runs' => 'Aún no hay ejecuciones.',
-        'empty_trigger_items' => 'Aún no hay elementos del disparador.',
-        'started' => 'Iniciada',
-        'run_label' => 'Ejecución',
     ],
 
     'form' => [

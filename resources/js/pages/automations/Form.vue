@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { IconBolt, IconHelp } from '@tabler/icons-vue';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -23,6 +23,7 @@ import '@vue-flow/controls/dist/style.css';
 
 
 import AutomationConnectionLine from '@/components/automations/AutomationConnectionLine.vue';
+import AutomationHeader from '@/components/automations/AutomationHeader.vue';
 import ConditionNodeConfig from '@/components/automations/config/ConditionNodeConfig.vue';
 import DelayNodeConfig from '@/components/automations/config/DelayNodeConfig.vue';
 import EndNodeConfig from '@/components/automations/config/EndNodeConfig.vue';
@@ -51,14 +52,11 @@ import { RemoveEdgeCommand } from '@/composables/history/commands/RemoveEdgeComm
 import { RemoveNodeCommand } from '@/composables/history/commands/RemoveNodeCommand';
 import { UpdateNodeDataCommand } from '@/composables/history/commands/UpdateNodeDataCommand';
 import { useHistory } from '@/composables/history/useHistory';
+import { buildExpressionCatalog } from '@/composables/useExpressionCompletions';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { useShortcut } from '@/composables/useShortcut';
-import { buildExpressionCatalog } from '@/composables/useExpressionCompletions';
 import AppLayout from '@/layouts/AppLayout.vue';
-import {
-    show as showAutomation,
-    update as updateAutomation,
-} from '@/routes/app/automations';
+import { update as updateAutomation } from '@/routes/app/automations';
 import type { Automation, AutomationVariable } from '@/types/automation/automation';
 import { NodeType } from '@/types/automation/node-type';
 import type { RawConnection } from '@/types/automation/raw-connection';
@@ -104,7 +102,6 @@ const nodes = ref<Node[]>(props.automation.nodes ?? []);
 const edges = ref<Edge[]>(hydrateEdges(props.automation.connections ?? []));
 const selectedNodeId = ref<string | null>(null);
 const selectedEdgeId = ref<string | null>(null);
-const name = ref(props.automation.name);
 const variables = ref<AutomationVariable[]>(props.automation.variables ?? []);
 
 watch(
@@ -118,10 +115,6 @@ watch(
         history.clear();
     },
 );
-
-watch(() => props.automation.name, (newName) => {
-    name.value = newName;
-});
 
 watch(() => props.automation.variables, (newVariables) => {
     variables.value = newVariables ?? [];
@@ -373,7 +366,6 @@ const save = (): Promise<boolean> =>
         router.put(
             updateAutomation.url(props.automation.id),
             {
-                name: name.value.trim() || props.automation.name,
                 nodes: sanitizeNodes(nodes.value),
                 connections: sanitizeEdges(edges.value),
                 variables: variables.value.filter((variable) => variable.key.trim() !== ''),
@@ -445,26 +437,15 @@ const defaultEdgeOptions = {
 
     <AppLayout full-width>
         <div class="flex min-h-0 flex-1 flex-col bg-background">
-            <header class="grid flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b-2 border-foreground/10 bg-card px-4 py-2">
-                <div class="flex items-center">
-                    <Link :href="showAutomation.url(automation.id)">
-                        <Button variant="outline" size="sm">← {{ $t('common.back') }}</Button>
-                    </Link>
-                </div>
-                <input
-                    v-model="name"
-                    type="text"
-                    :placeholder="$t('automations.form.name_placeholder')"
-                    class="w-72 rounded-md border-2 border-transparent bg-transparent px-3 py-1 text-center text-sm font-semibold text-foreground transition-colors hover:border-foreground/15 focus:border-foreground focus:bg-background focus:outline-none"
-                />
-                <div class="flex items-center justify-end gap-2">
+            <AutomationHeader :automation="automation" current="workflow">
+                <template #actions>
                     <Button variant="outline" size="sm" @click="isGuideOpen = true">
                         <IconHelp class="size-4" />
                         {{ $t('automations.actions.guide') }}
                     </Button>
                     <Button size="sm" @click="save" :disabled="isSaving">{{ $t('automations.actions.save') }}</Button>
-                </div>
-            </header>
+                </template>
+            </AutomationHeader>
 
             <div class="flex flex-1 overflow-hidden">
                 <main

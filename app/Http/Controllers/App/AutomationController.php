@@ -7,8 +7,9 @@ namespace App\Http\Controllers\App;
 use App\Actions\Automation\Automation\ActivateAutomation;
 use App\Actions\Automation\Automation\CreateAutomation;
 use App\Actions\Automation\Automation\DeleteAutomation;
-use App\Actions\Automation\Automation\GetAutomationDetails;
 use App\Actions\Automation\Automation\GetAutomationEditorData;
+use App\Actions\Automation\Automation\GetAutomationInvocations;
+use App\Actions\Automation\Automation\GetAutomationMetrics;
 use App\Actions\Automation\Automation\ListAutomations;
 use App\Actions\Automation\Automation\PauseAutomation;
 use App\Actions\Automation\Automation\UpdateAutomation;
@@ -23,10 +24,10 @@ use App\Http\Requests\App\Automations\TestAutomationRequest;
 use App\Http\Requests\App\Automations\UpdateAutomationRequest;
 use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Http\Resources\AutomationInvocationResource;
 use App\Http\Resources\AutomationNodeRunResource;
 use App\Http\Resources\AutomationResource;
 use App\Http\Resources\AutomationRunResource;
-use App\Http\Resources\AutomationTriggerItemResource;
 use App\Models\Automation;
 use App\Models\AutomationNodeRun;
 use App\Models\AutomationRun;
@@ -57,10 +58,15 @@ class AutomationController extends Controller
             $request->user(),
         );
 
-        return redirect()->route('app.automations.edit', $automation->id);
+        return redirect()->route('app.automations.workflow', $automation->id);
     }
 
-    public function edit(Automation $automation, GetAutomationEditorData $editorData): Response
+    public function show(Automation $automation): RedirectResponse
+    {
+        return redirect()->route('app.automations.workflow', $automation->id);
+    }
+
+    public function workflow(Automation $automation, GetAutomationEditorData $editorData): Response
     {
         $this->authorize('update', $automation);
 
@@ -79,16 +85,58 @@ class AutomationController extends Controller
         ]);
     }
 
-    public function show(Automation $automation, GetAutomationDetails $details): Response
+    public function invocations(Automation $automation, GetAutomationInvocations $invocations): Response
     {
         $this->authorize('view', $automation);
 
-        ['runs' => $runs, 'triggerItems' => $triggerItems] = $details($automation);
+        $status = request()->string('status')->toString() ?: null;
+        $search = request()->string('search')->toString() ?: null;
 
-        return Inertia::render('automations/Show', [
+        return Inertia::render('automations/Invocations', [
             'automation' => AutomationResource::make($automation),
-            'runs' => AutomationRunResource::collection($runs),
-            'triggerItems' => AutomationTriggerItemResource::collection($triggerItems),
+            'invocations' => Inertia::scroll(fn () => AutomationInvocationResource::collection(
+                $invocations($automation, $status, $search)
+            )),
+            'filters' => [
+                'status' => $status,
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    public function settings(Automation $automation): Response
+    {
+        $this->authorize('view', $automation);
+
+        return Inertia::render('automations/Settings', [
+            'automation' => AutomationResource::make($automation),
+        ]);
+    }
+
+    public function metrics(Automation $automation, GetAutomationMetrics $metrics): Response
+    {
+        $this->authorize('view', $automation);
+
+        $end = (request()->date('end') ?? now())->startOfDay();
+        $start = (request()->date('start') ?? now()->subDays(6))->startOfDay();
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        // Cap the window so a hand-edited URL can't request a multi-year, daily
+        // bucketed series.
+        if ($start->diffInDays($end) > 366) {
+            $start = $end->copy()->subDays(366);
+        }
+
+        return Inertia::render('automations/Metrics', [
+            'automation' => AutomationResource::make($automation),
+            'metrics' => $metrics($automation, $start, $end),
+            'filters' => [
+                'start' => $start->toDateString(),
+                'end' => $end->toDateString(),
+            ],
         ]);
     }
 

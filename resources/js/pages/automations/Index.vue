@@ -4,10 +4,10 @@ import { IconBolt, IconCircleCheck, IconCircleDot, IconCircleX, IconPlus } from 
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
-import PageHeader from '@/components/PageHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import { Button } from '@/components/ui/button';
+import PageHeader from '@/components/PageHeader.vue';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -20,8 +20,8 @@ import {
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
-    show as showAutomation,
     store as storeAutomation,
+    workflow as workflowAutomation,
 } from '@/routes/app/automations';
 import type { Automation } from '@/types/automation/automation';
 
@@ -101,7 +101,7 @@ const handleCreate = () => {
                                 v-for="automation in automations.data"
                                 :key="automation.id"
                                 class="cursor-pointer"
-                                @click="router.visit(showAutomation.url(automation.id))"
+                                @click="router.visit(workflowAutomation.url(automation.id))"
                             >
                                 <TableCell class="font-medium">{{ automation.name }}</TableCell>
                                 <TableCell>

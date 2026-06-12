@@ -211,7 +211,10 @@ Route::middleware(['auth', EnsureAccountReady::class])->group(function () {
     Route::get('automations', [AutomationController::class, 'index'])->name('app.automations.index');
     Route::post('automations', [AutomationController::class, 'store'])->name('app.automations.store');
     Route::get('automations/{automation}', [AutomationController::class, 'show'])->name('app.automations.show');
-    Route::get('automations/{automation}/edit', [AutomationController::class, 'edit'])->name('app.automations.edit');
+    Route::get('automations/{automation}/workflow', [AutomationController::class, 'workflow'])->name('app.automations.workflow');
+    Route::get('automations/{automation}/invocations', [AutomationController::class, 'invocations'])->name('app.automations.invocations');
+    Route::get('automations/{automation}/metrics', [AutomationController::class, 'metrics'])->name('app.automations.metrics');
+    Route::get('automations/{automation}/settings', [AutomationController::class, 'settings'])->name('app.automations.settings');
     Route::put('automations/{automation}', [AutomationController::class, 'update'])->name('app.automations.update');
     Route::delete('automations/{automation}', [AutomationController::class, 'destroy'])->name('app.automations.destroy');
     Route::post('automations/{automation}/activate', [AutomationController::class, 'activate'])->name('app.automations.activate');

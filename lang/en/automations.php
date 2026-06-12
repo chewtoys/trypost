@@ -23,6 +23,99 @@ return [
         'test' => 'Test',
     ],
 
+    'nav' => [
+        'workflow' => 'Workflow',
+        'invocations' => 'Invocations',
+        'metrics' => 'Metrics',
+        'settings' => 'Settings',
+    ],
+
+    'settings' => [
+        'general' => 'General',
+        'general_description' => 'Rename this automation.',
+        'name_label' => 'Name',
+        'name_saved' => 'Automation renamed.',
+        'status_title' => 'Status',
+        'status_description' => 'Activate to start running it, or pause to stop.',
+        'activated_at' => 'Activated :date',
+        'paused_at' => 'Paused :date',
+        'created_at' => 'Created :date',
+        'danger_title' => 'Danger zone',
+        'danger_description' => 'Irreversible actions.',
+        'delete_title' => 'Delete this automation',
+        'delete_description' => 'Permanently removes the automation and its run history.',
+    ],
+
+    'status_run' => [
+        'pending' => 'Pending',
+        'running' => 'Running',
+        'waiting' => 'Waiting',
+        'completed' => 'Completed',
+        'failed' => 'Failed',
+        'cancelled' => 'Cancelled',
+    ],
+
+    'node_type' => [
+        'trigger' => 'Trigger',
+        'generate' => 'Generate content',
+        'delay' => 'Delay',
+        'condition' => 'Condition',
+        'publish' => 'Publish',
+        'webhook' => 'Webhook',
+        'end' => 'End',
+        'fetch_rss' => 'Fetch RSS',
+        'http_request' => 'HTTP request',
+    ],
+
+    'invocations' => [
+        'empty' => 'No invocations yet.',
+        'refresh' => 'Refresh',
+        'search_placeholder' => 'Search by run ID…',
+        'copied' => 'Run ID copied.',
+        'loading' => 'Loading steps…',
+        'no_steps' => 'No steps recorded.',
+        'load_error' => 'Could not load steps.',
+        'steps' => '{0}No steps|{1}:count step|[2,*]:count steps',
+        'filter' => [
+            'all' => 'All statuses',
+        ],
+        'columns' => [
+            'timestamp' => 'Timestamp',
+            'run' => 'Run',
+            'status' => 'Status',
+            'message' => 'Last message',
+            'duration' => 'Duration',
+        ],
+        'summary' => [
+            'completed' => 'Workflow completed',
+            'failed' => 'Workflow failed',
+            'running' => 'Workflow running',
+            'cancelled' => 'Workflow cancelled',
+            'pending' => 'Workflow pending',
+        ],
+    ],
+
+    'metrics' => [
+        'overview' => 'Overview',
+        'runs_over_time' => 'Runs over time',
+        'posts_by_platform' => 'Posts by platform',
+        'no_posts' => 'No posts published in this period.',
+        'cards' => [
+            'runs' => 'Total runs',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+            'in_progress' => 'In progress',
+            'success_rate' => 'Success rate',
+            'avg_duration' => 'Avg duration',
+            'posts_created' => 'Posts created',
+        ],
+        'legend' => [
+            'started' => 'Started',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+        ],
+    ],
+
     'categories' => [
         'sources' => 'Sources',
         'content' => 'Content',
@@ -42,19 +135,26 @@ return [
     ],
 
     'guide' => [
-        'title' => 'How to use automations',
-        'subtitle' => 'A quick reference for building your flow.',
-        'flow_title' => 'How it works',
-        'flow_text' => 'A trigger (a schedule, or a published/scheduled post) starts the flow. Actions in between fetch data, generate content, or branch on conditions. Output nodes publish posts or call webhooks.',
-        'data_title' => 'Passing data between nodes',
-        'data_text' => 'Reference data from earlier nodes in any field. Type the name in double braces, for example:',
-        'refs' => [
-            'trigger_post' => 'The post that fired a post trigger',
-            'fetched_title' => 'Current RSS item / HTTP response',
-            'fetched_link' => 'Its link',
-            'generated' => 'The AI-generated post',
-            'now' => 'Current date & time',
+        'title' => 'How automations work',
+        'subtitle' => 'Build a flow, then wire data between nodes.',
+        'tabs' => [
+            'overview' => 'Overview',
+            'expressions' => 'Expressions',
         ],
+        'flow_title' => 'The flow',
+        'flow_text' => 'A trigger (a schedule, or a published/scheduled post) starts the flow. Actions in between fetch data, generate content, or branch on conditions. Output nodes publish posts or call webhooks.',
+        'scope_title' => 'What data is in scope',
+        'scope_text' => 'A node can only use data from nodes connected before it (upstream). In any text field, type {{ to autocomplete what is available — unknown references are flagged.',
+        'data_text' => 'Wrap a path in double braces. Which paths exist depends on the nodes running upstream:',
+        'groups' => [
+            'trigger_schedule' => 'Schedule trigger',
+            'trigger_post' => 'Post trigger',
+            'fetch_rss' => 'Fetch RSS',
+            'http' => 'HTTP request',
+            'generate' => 'Generate content',
+            'always' => 'Always available',
+        ],
+        'http_note' => 'Append any field from the JSON response, e.g. {{ fetched.data.0.title }}.',
         'vars_title' => 'Variables',
         'vars_text' => 'Define reusable values (API keys, base URLs) in the Variables tab, then reference them by key. Secrets are stored encrypted.',
         'tip_text' => 'Run a Test to see exactly what data each node outputs.',
@@ -114,20 +214,6 @@ return [
             'status' => 'Status',
             'created' => 'Created',
         ],
-    ],
-
-    'show' => [
-        'activated' => 'Activated',
-        'tabs' => [
-            'overview' => 'Overview',
-            'runs' => 'Runs',
-            'trigger_items' => 'Trigger items',
-        ],
-        'canvas_placeholder' => 'Canvas preview (read-only)',
-        'empty_runs' => 'No runs yet.',
-        'empty_trigger_items' => 'No trigger items yet.',
-        'started' => 'Started',
-        'run_label' => 'Run',
     ],
 
     'form' => [

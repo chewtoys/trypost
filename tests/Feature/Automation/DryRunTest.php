@@ -218,26 +218,27 @@ it('does not advance rss watermark or spawn siblings in dry mode', function () {
     Bus::assertNotDispatched(ProcessAutomationNode::class);
 });
 
-it('excludingDryRuns scope filters out dry rows', function () {
+it('productionRuns scope filters out dry runs and manual test runs', function () {
     $automation = Automation::factory()->for($this->workspace)->create();
-    AutomationRun::factory()->for($automation)->count(2)->create(['is_dry_run' => false]);
+    AutomationRun::factory()->for($automation)->count(2)->create(['is_manual' => false, 'is_dry_run' => false]);
     AutomationRun::factory()->for($automation)->count(3)->create(['is_dry_run' => true]);
+    AutomationRun::factory()->for($automation)->create(['is_manual' => true, 'is_dry_run' => false]);
 
-    expect(AutomationRun::query()->count())->toBe(5);
-    expect(AutomationRun::query()->excludingDryRuns()->count())->toBe(2);
+    expect(AutomationRun::query()->count())->toBe(6);
+    expect(AutomationRun::query()->productionRuns()->count())->toBe(2);
 });
 
-it('does not show dry runs in the Show controller history', function () {
+it('does not show dry runs in the invocations history', function () {
     $automation = Automation::factory()->for($this->workspace)->create();
     $real = AutomationRun::factory()->for($automation)->create(['is_dry_run' => false]);
     AutomationRun::factory()->for($automation)->create(['is_dry_run' => true]);
 
     $this->actingAs($this->user)
-        ->get(route('app.automations.show', $automation->id))
+        ->get(route('app.automations.invocations', $automation->id))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('runs', 1)
-            ->where('runs.0.id', $real->id)
+            ->has('invocations.data', 1)
+            ->where('invocations.data.0.id', $real->id)
         );
 });
 

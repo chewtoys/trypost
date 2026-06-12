@@ -23,6 +23,99 @@ return [
         'test' => 'Testar',
     ],
 
+    'nav' => [
+        'workflow' => 'Workflow',
+        'invocations' => 'Invocações',
+        'metrics' => 'Métricas',
+        'settings' => 'Configurações',
+    ],
+
+    'settings' => [
+        'general' => 'Geral',
+        'general_description' => 'Renomeie esta automação.',
+        'name_label' => 'Nome',
+        'name_saved' => 'Automação renomeada.',
+        'status_title' => 'Status',
+        'status_description' => 'Ative para começar a rodar, ou pause para parar.',
+        'activated_at' => 'Ativada em :date',
+        'paused_at' => 'Pausada em :date',
+        'created_at' => 'Criada em :date',
+        'danger_title' => 'Zona de perigo',
+        'danger_description' => 'Ações irreversíveis.',
+        'delete_title' => 'Excluir esta automação',
+        'delete_description' => 'Remove permanentemente a automação e o histórico de execuções.',
+    ],
+
+    'status_run' => [
+        'pending' => 'Pendente',
+        'running' => 'Executando',
+        'waiting' => 'Aguardando',
+        'completed' => 'Concluído',
+        'failed' => 'Falhou',
+        'cancelled' => 'Cancelado',
+    ],
+
+    'node_type' => [
+        'trigger' => 'Gatilho',
+        'generate' => 'Gerar conteúdo',
+        'delay' => 'Espera',
+        'condition' => 'Condição',
+        'publish' => 'Publicar',
+        'webhook' => 'Webhook',
+        'end' => 'Fim',
+        'fetch_rss' => 'Buscar RSS',
+        'http_request' => 'Requisição HTTP',
+    ],
+
+    'invocations' => [
+        'empty' => 'Nenhuma invocação ainda.',
+        'refresh' => 'Atualizar',
+        'search_placeholder' => 'Buscar por ID do run…',
+        'copied' => 'ID do run copiado.',
+        'loading' => 'Carregando passos…',
+        'no_steps' => 'Nenhum passo registrado.',
+        'load_error' => 'Não foi possível carregar os passos.',
+        'steps' => '{0}Nenhum passo|{1}:count passo|[2,*]:count passos',
+        'filter' => [
+            'all' => 'Todos os status',
+        ],
+        'columns' => [
+            'timestamp' => 'Data',
+            'run' => 'Run',
+            'status' => 'Status',
+            'message' => 'Última mensagem',
+            'duration' => 'Duração',
+        ],
+        'summary' => [
+            'completed' => 'Workflow concluído',
+            'failed' => 'Workflow falhou',
+            'running' => 'Workflow em execução',
+            'cancelled' => 'Workflow cancelado',
+            'pending' => 'Workflow pendente',
+        ],
+    ],
+
+    'metrics' => [
+        'overview' => 'Visão geral',
+        'runs_over_time' => 'Execuções ao longo do tempo',
+        'posts_by_platform' => 'Posts por plataforma',
+        'no_posts' => 'Nenhum post publicado neste período.',
+        'cards' => [
+            'runs' => 'Total de execuções',
+            'completed' => 'Concluídas',
+            'failed' => 'Falhas',
+            'in_progress' => 'Em progresso',
+            'success_rate' => 'Taxa de sucesso',
+            'avg_duration' => 'Duração média',
+            'posts_created' => 'Posts criados',
+        ],
+        'legend' => [
+            'started' => 'Iniciadas',
+            'completed' => 'Concluídas',
+            'failed' => 'Falhas',
+        ],
+    ],
+
     'categories' => [
         'sources' => 'Fontes',
         'content' => 'Conteúdo',
@@ -42,19 +135,26 @@ return [
     ],
 
     'guide' => [
-        'title' => 'Como usar automações',
-        'subtitle' => 'Uma referência rápida pra montar seu fluxo.',
-        'flow_title' => 'Como funciona',
-        'flow_text' => 'Um trigger (um agendamento, ou um post publicado/agendado) inicia o fluxo. As ações no meio buscam dados, geram conteúdo ou ramificam por condições. Os nós de saída publicam posts ou chamam webhooks.',
-        'data_title' => 'Passando dados entre nós',
-        'data_text' => 'Referencie dados de nós anteriores em qualquer campo. Escreva o nome entre chaves duplas, por exemplo:',
-        'refs' => [
-            'trigger_post' => 'O post que disparou um trigger de post',
-            'fetched_title' => 'Item atual do RSS / resposta HTTP',
-            'fetched_link' => 'O link dele',
-            'generated' => 'O post gerado pela IA',
-            'now' => 'Data e hora atuais',
+        'title' => 'Como as automações funcionam',
+        'subtitle' => 'Monte um fluxo e conecte os dados entre os nós.',
+        'tabs' => [
+            'overview' => 'Visão geral',
+            'expressions' => 'Expressões',
         ],
+        'flow_title' => 'O fluxo',
+        'flow_text' => 'Um trigger (um agendamento, ou um post publicado/agendado) inicia o fluxo. As ações no meio buscam dados, geram conteúdo ou ramificam por condições. Os nós de saída publicam posts ou chamam webhooks.',
+        'scope_title' => 'Quais dados estão disponíveis',
+        'scope_text' => 'Um nó só pode usar dados de nós conectados antes dele (upstream). Em qualquer campo de texto, digite {{ pra autocompletar o que está disponível — referências desconhecidas são sinalizadas.',
+        'data_text' => 'Envolva o caminho em chaves duplas. Quais caminhos existem depende dos nós que rodam antes:',
+        'groups' => [
+            'trigger_schedule' => 'Trigger agendado',
+            'trigger_post' => 'Trigger de post',
+            'fetch_rss' => 'Buscar RSS',
+            'http' => 'Requisição HTTP',
+            'generate' => 'Gerar conteúdo',
+            'always' => 'Sempre disponível',
+        ],
+        'http_note' => 'Adicione qualquer campo da resposta JSON, ex: {{ fetched.data.0.title }}.',
         'vars_title' => 'Variáveis',
         'vars_text' => 'Defina valores reutilizáveis (API keys, base URLs) na aba Variáveis e referencie pela chave. Segredos são armazenados encriptados.',
         'tip_text' => 'Rode um Teste pra ver exatamente o que cada nó produz.',
@@ -114,20 +214,6 @@ return [
             'status' => 'Status',
             'created' => 'Criada em',
         ],
-    ],
-
-    'show' => [
-        'activated' => 'Ativada',
-        'tabs' => [
-            'overview' => 'Visão geral',
-            'runs' => 'Execuções',
-            'trigger_items' => 'Itens do trigger',
-        ],
-        'canvas_placeholder' => 'Pré-visualização do canvas (somente leitura)',
-        'empty_runs' => 'Nenhuma execução ainda.',
-        'empty_trigger_items' => 'Nenhum item de trigger ainda.',
-        'started' => 'Iniciada',
-        'run_label' => 'Execução',
     ],
 
     'form' => [

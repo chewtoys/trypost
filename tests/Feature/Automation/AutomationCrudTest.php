@@ -188,11 +188,19 @@ it('forbids access to automations from another workspace', function () {
     $otherAutomation = Automation::factory()->for($otherWorkspace)->create();
 
     $this->actingAs($this->user)
-        ->get(route('app.automations.show', $otherAutomation->id))
+        ->get(route('app.automations.workflow', $otherAutomation->id))
         ->assertForbidden();
 
     $this->actingAs($this->user)
-        ->get(route('app.automations.edit', $otherAutomation->id))
+        ->get(route('app.automations.invocations', $otherAutomation->id))
+        ->assertForbidden();
+
+    $this->actingAs($this->user)
+        ->get(route('app.automations.metrics', $otherAutomation->id))
+        ->assertForbidden();
+
+    $this->actingAs($this->user)
+        ->get(route('app.automations.settings', $otherAutomation->id))
         ->assertForbidden();
 
     $this->actingAs($this->user)

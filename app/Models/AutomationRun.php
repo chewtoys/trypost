@@ -81,11 +81,13 @@ class AutomationRun extends Model
     }
 
     /**
-     * Hides dry-run rows from user-facing history queries. Internal/analytics
-     * queries can ignore the scope to see every row.
+     * Real, production executions only — excludes manual test runs (both dry
+     * runs and "with real data" tests are flagged is_manual). The Invocations
+     * and Metrics tabs report on these, not on runs the user triggered to test
+     * the editor.
      */
-    public function scopeExcludingDryRuns(Builder $query): Builder
+    public function scopeProductionRuns(Builder $query): Builder
     {
-        return $query->where('is_dry_run', false);
+        return $query->where('is_manual', false)->where('is_dry_run', false);
     }
 }
