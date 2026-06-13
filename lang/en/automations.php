@@ -279,6 +279,11 @@ return [
             'use_brand_voice_hint' => 'Apply your brand description and voice. Turn off for faithful curation of third-party sources (news, RSS).',
             'use_brand_visuals' => 'Use brand visuals',
             'use_brand_visuals_hint' => 'Steer AI images with your brand colors and identity. Turn off for neutral imagery driven only by the post topic.',
+            'account_summary' => ':count account · :format|:count accounts · :format',
+            'formats' => [
+                'single' => 'single',
+                'carousel' => 'carousel',
+            ],
         ],
         'delay' => [
             'duration' => 'Duration',
@@ -311,6 +316,7 @@ return [
                 'draft' => 'Save as draft',
             ],
             'scheduled_offset' => 'Offset from trigger (minutes)',
+            'offset_summary' => ':mode · +:offset min',
         ],
         'webhook' => [
             'url' => 'URL',

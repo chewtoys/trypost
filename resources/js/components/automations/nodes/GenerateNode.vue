@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { IconSparkles } from '@tabler/icons-vue';
 import { Handle, Position } from '@vue-flow/core';
+import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -14,9 +15,8 @@ const props = defineProps<{
 
 const summary = computed(() => {
     const count = props.data.accounts?.length ?? props.data.social_account_ids?.length ?? 0;
-    const format = props.data.format ?? 'single';
-    const accountLabel = count === 1 ? 'account' : 'accounts';
-    return `${count} ${accountLabel} · ${format}`;
+    const format = trans(`automations.config.generate.formats.${props.data.format ?? 'single'}`);
+    return transChoice('automations.config.generate.account_summary', count, { count: String(count), format });
 });
 </script>
 

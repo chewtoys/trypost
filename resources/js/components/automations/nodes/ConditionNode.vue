@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { IconGitBranch } from '@tabler/icons-vue';
 import { Handle, Position } from '@vue-flow/core';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { ConditionHandle } from '@/types/automation/condition-handle';
-import { ConditionOperator } from '@/types/automation/condition-operator';
 
 const props = defineProps<{
     data: {
         field?: string;
-        operator?: string;
+        operator: string;
         value?: string;
     };
     selected?: boolean;
@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const summary = computed(() => {
     const field = props.data.field || '…';
-    const operator = props.data.operator || ConditionOperator.Contains;
+    const operator = trans(`automations.config.condition.operators.${props.data.operator}`);
     const value = props.data.value || '…';
     return `${field} ${operator} ${value}`;
 });

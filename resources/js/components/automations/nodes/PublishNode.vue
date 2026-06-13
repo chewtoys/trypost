@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { IconSend } from '@tabler/icons-vue';
 import { Handle, Position } from '@vue-flow/core';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { PublishMode } from '@/types/automation/publish-mode';
 
 const props = defineProps<{
     data: {
-        mode?: string;
+        mode: string;
         scheduled_offset?: number;
     };
     selected?: boolean;
 }>();
 
 const summary = computed(() => {
-    const mode = props.data.mode ?? PublishMode.Now;
-    if (mode === PublishMode.Scheduled && props.data.scheduled_offset != null) {
-        return `scheduled · +${props.data.scheduled_offset} min`;
+    const mode = trans(`automations.config.publish.modes.${props.data.mode}`);
+    if (props.data.mode === PublishMode.Scheduled && props.data.scheduled_offset != null) {
+        return trans('automations.config.publish.offset_summary', { mode, offset: String(props.data.scheduled_offset) });
     }
     return mode;
 });

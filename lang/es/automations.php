@@ -279,6 +279,11 @@ return [
             'use_brand_voice_hint' => 'Aplica la descripción y la voz de tu marca. Desactiva para curaduría fiel de fuentes de terceros (noticias, RSS).',
             'use_brand_visuals' => 'Usar visual de marca',
             'use_brand_visuals_hint' => 'Guía las imágenes de IA con los colores e identidad de tu marca. Desactiva para imágenes neutrales, guiadas solo por el tema del post.',
+            'account_summary' => ':count cuenta · :format|:count cuentas · :format',
+            'formats' => [
+                'single' => 'único',
+                'carousel' => 'carrusel',
+            ],
         ],
         'delay' => [
             'duration' => 'Duración',
@@ -311,6 +316,7 @@ return [
                 'draft' => 'Guardar como borrador',
             ],
             'scheduled_offset' => 'Diferencia desde el disparador (minutos)',
+            'offset_summary' => ':mode · +:offset min',
         ],
         'webhook' => [
             'url' => 'URL',

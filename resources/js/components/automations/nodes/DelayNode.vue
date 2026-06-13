@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import { IconClock } from '@tabler/icons-vue';
 import { Handle, Position } from '@vue-flow/core';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
-
-import { DelayUnit } from '@/types/automation/delay-unit';
 
 const props = defineProps<{
     data: {
-        duration?: number;
-        unit?: string;
+        duration: number;
+        unit: string;
     };
     selected?: boolean;
 }>();
 
 const summary = computed(() => {
-    const duration = props.data.duration ?? 1;
-    const unit = props.data.unit ?? DelayUnit.Hours;
-    return `${duration} ${unit}`;
+    const unit = trans(`automations.config.delay.units.${props.data.unit}`);
+    return `${props.data.duration} ${unit}`;
 });
 </script>
 
