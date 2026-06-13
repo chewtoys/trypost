@@ -285,8 +285,7 @@ test('bluesky publisher resolves a repeated handle only once', function () {
     });
 });
 
-test('bluesky publisher uploads images', function () {
-    // Create a media item through the PostPlatform's media() relation
+test('bluesky publisher attaches an uploaded image as an embed', function () {
     $this->post->update([
         'media' => [
             [
@@ -299,27 +298,40 @@ test('bluesky publisher uploads images', function () {
         ],
     ]);
 
-    Http::fake([
-        'https://bsky.social/xrpc/com.atproto.repo.uploadBlob' => Http::response([
-            'blob' => [
-                '$type' => 'blob',
-                'ref' => ['$link' => 'bafkreiabc123'],
-                'mimeType' => 'image/jpeg',
-                'size' => 12345,
-            ],
-        ], 200),
-        'https://bsky.social/xrpc/com.atproto.repo.createRecord' => Http::response([
-            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
-            'cid' => 'bafyreiabc123',
-        ], 200),
-    ]);
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
 
-    // We need to mock file_get_contents since we don't have actual media files
-    // For now, let's skip the upload part and test the post creation
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
     $this->publisher->publish($this->postPlatform);
 
     Http::assertSent(function ($request) {
-        return str_contains($request->url(), 'createRecord');
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.images'
+            && count($embed['images']) === 1
+            && data_get($embed, 'images.0.image.ref.$link') === 'bafkreiabc123';
     });
 });
 
@@ -482,26 +494,35 @@ test('bluesky publisher limits images to 4', function () {
     }
     $this->post->update(['media' => $mediaItems]);
 
-    Http::fake([
-        'https://bsky.social/xrpc/com.atproto.repo.uploadBlob' => Http::response([
-            'blob' => [
-                '$type' => 'blob',
-                'ref' => ['$link' => 'bafkreiabc123'],
-                'mimeType' => 'image/jpeg',
-                'size' => 12345,
-            ],
-        ], 200),
-        'https://bsky.social/xrpc/com.atproto.repo.createRecord' => Http::response([
-            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
-            'cid' => 'bafyreiabc123',
-        ], 200),
-    ]);
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
 
     $this->publisher->publish($this->postPlatform);
 
-    // Bluesky only allows 4 images, so uploadBlob should be called at most 4 times
-    // (In practice it depends on file_get_contents succeeding, but the logic is there)
+    // Six images provided, but Bluesky caps at 4: only 4 blobs upload and the embed carries 4.
+    $uploads = Http::recorded(fn ($request) => str_contains($request->url(), 'uploadBlob'))->count();
+    expect($uploads)->toBe(4);
+
     Http::assertSent(function ($request) {
-        return str_contains($request->url(), 'createRecord');
+        return str_contains($request->url(), 'createRecord')
+            && count($request['record']['embed']['images'] ?? []) === 4;
     });
 });
