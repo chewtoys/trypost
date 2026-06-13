@@ -3,10 +3,12 @@ import { IconWorld } from '@tabler/icons-vue';
 import { Handle, Position } from '@vue-flow/core';
 import { computed } from 'vue';
 
+import type { HttpMethodValue } from '@/types/automation/http-method';
+
 const props = defineProps<{
     data: {
         url?: string;
-        method: string;
+        method: HttpMethodValue;
     };
     selected?: boolean;
 }>();

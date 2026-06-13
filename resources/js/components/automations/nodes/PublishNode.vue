@@ -4,11 +4,11 @@ import { Handle, Position } from '@vue-flow/core';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
-import { PublishMode } from '@/types/automation/publish-mode';
+import { PublishMode, type PublishModeValue } from '@/types/automation/publish-mode';
 
 const props = defineProps<{
     data: {
-        mode: string;
+        mode: PublishModeValue;
         scheduled_offset?: number;
     };
     selected?: boolean;

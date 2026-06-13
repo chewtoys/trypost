@@ -5,11 +5,12 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { ConditionHandle } from '@/types/automation/condition-handle';
+import type { ConditionOperatorValue } from '@/types/automation/condition-operator';
 
 const props = defineProps<{
     data: {
         field?: string;
-        operator: string;
+        operator: ConditionOperatorValue;
         value?: string;
     };
     selected?: boolean;
