@@ -101,6 +101,52 @@ test('bluesky publisher parses hashtags as facets', function () {
     });
 });
 
+test('bluesky publisher strips trailing punctuation from URL facets', function () {
+    $this->post->update(['content' => 'see https://example.com).']);
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $link = collect($request['record']['facets'] ?? [])
+            ->first(fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#link');
+
+        return $link
+            && $link['features'][0]['uri'] === 'https://example.com'
+            && $link['index']['byteEnd'] === $link['index']['byteStart'] + strlen('https://example.com');
+    });
+});
+
+test('bluesky publisher computes byte offsets after multibyte characters', function () {
+    $this->post->update(['content' => 'Olá 🎉 #café']);
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $text = $request['record']['text'];
+        $tag = collect($request['record']['facets'] ?? [])
+            ->first(fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#tag');
+
+        // byteStart must be the UTF-8 byte position of '#café', not its character index.
+        return $tag
+            && $tag['index']['byteStart'] === strpos($text, '#café')
+            && $tag['index']['byteEnd'] === strpos($text, '#café') + strlen('#café');
+    });
+});
+
 test('bluesky publisher resolves mentions to DIDs as facets', function () {
     $this->post->update(['content' => 'Shout out to @friend.bsky.social']);
 

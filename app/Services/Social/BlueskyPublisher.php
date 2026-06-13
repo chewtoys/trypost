@@ -180,7 +180,7 @@ class BlueskyPublisher
         );
 
         foreach ($urlMatches[0] as $match) {
-            $url = $match[0];
+            $url = $this->trimTrailingUrlPunctuation($match[0]);
             $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
             $end = $start + strlen($url);
 
@@ -297,6 +297,24 @@ class BlueskyPublisher
     private function getUtf8ByteOffset(string $text, int $charOffset): int
     {
         return strlen(substr($text, 0, $charOffset));
+    }
+
+    /**
+     * Trailing sentence punctuation and an unmatched closing paren are almost
+     * never part of a URL (e.g. "see https://x.com)."). Mirrors the official
+     * atproto link tokenizer so the link facet doesn't over-extend past the URL.
+     */
+    private function trimTrailingUrlPunctuation(string $url): string
+    {
+        if (preg_match('/[.,;:!?]$/', $url)) {
+            $url = substr($url, 0, -1);
+        }
+
+        if (str_ends_with($url, ')') && ! str_contains($url, '(')) {
+            $url = substr($url, 0, -1);
+        }
+
+        return $url;
     }
 
     private function buildPostUrl(string $handle, string $postId): string
