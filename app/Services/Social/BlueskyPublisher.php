@@ -61,7 +61,7 @@ class BlueskyPublisher
 
         // Parse facets (links, mentions, hashtags) from text
         $text = $content ?? '';
-        $facets = $this->parseFacets($text, $service, $account);
+        $facets = $this->parseFacets($text);
 
         // Create post record
         $record = [
@@ -167,7 +167,7 @@ class BlueskyPublisher
         }
     }
 
-    private function parseFacets(string $text, ?string $service = null, ?SocialAccount $account = null): array
+    private function parseFacets(string $text): array
     {
         $facets = [];
 
@@ -214,7 +214,7 @@ class BlueskyPublisher
             // A mention facet needs the target's DID, not the handle; skip it if unresolvable.
             // Cache by key (not ??) so an unresolvable handle is resolved once, not per occurrence.
             if (! array_key_exists($handle, $didCache)) {
-                $didCache[$handle] = $this->resolveHandleToDid($handle, $service, $account);
+                $didCache[$handle] = $this->resolveHandleToDid($handle);
             }
             $did = $didCache[$handle];
             if ($did === null) {
@@ -272,48 +272,26 @@ class BlueskyPublisher
     /**
      * Resolve a Bluesky handle to its DID via com.atproto.identity.resolveHandle.
      *
-     * Tries the account's own PDS first (authenticated), then falls back to the
-     * public AppView and the configured default service. Returns null on failure
-     * so the caller can skip the mention facet instead of sending an invalid record.
+     * resolveHandle is a public read served by the AppView (no auth). Returns
+     * null on any failure so the caller can skip the mention facet and publish
+     * the @handle as plain text instead of an invalid record.
      */
-    private function resolveHandleToDid(string $handle, ?string $service = null, ?SocialAccount $account = null): ?string
+    private function resolveHandleToDid(string $handle): ?string
     {
-        // Normalize so a trailing slash neither produces a double-slash URL nor
-        // breaks the `=== $service` check below (which decides authentication).
-        $service = $service !== null ? rtrim($service, '/') : null;
+        $appView = (string) config('trypost.platforms.bluesky.public_appview');
 
-        $endpoints = array_values(array_unique(array_filter([
-            $service,
-            config('trypost.platforms.bluesky.public_appview'),
-            config('trypost.platforms.bluesky.default_service'),
-        ])));
+        try {
+            $response = $this->socialHttp()->get(
+                "{$appView}/xrpc/com.atproto.identity.resolveHandle",
+                ['handle' => $handle],
+            );
 
-        foreach ($endpoints as $endpoint) {
-            try {
-                $request = $this->socialHttp();
-                if ($account && $endpoint === $service) {
-                    $request = $request->withToken($account->access_token);
-                }
+            $did = $response->successful() ? data_get($response->json(), 'did') : null;
 
-                $response = $request->get(
-                    "{$endpoint}/xrpc/com.atproto.identity.resolveHandle",
-                    ['handle' => $handle],
-                );
-
-                $did = $response->successful() ? data_get($response->json(), 'did') : null;
-                if (is_string($did) && str_starts_with($did, 'did:')) {
-                    return $did;
-                }
-            } catch (Throwable $e) {
-                Log::debug('Bluesky handle resolution attempt failed', [
-                    'handle' => $handle,
-                    'endpoint' => $endpoint,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            return is_string($did) && str_starts_with($did, 'did:') ? $did : null;
+        } catch (Throwable) {
+            return null;
         }
-
-        return null;
     }
 
     private function getUtf8ByteOffset(string $text, int $charOffset): int

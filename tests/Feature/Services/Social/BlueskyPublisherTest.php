@@ -169,43 +169,6 @@ test('bluesky publisher skips mention facet when handle cannot be resolved', fun
     });
 });
 
-test('bluesky publisher falls back to the public AppView when the PDS cannot resolve', function () {
-    $this->post->update(['content' => 'Shout out to @friend.bsky.social']);
-
-    $service = config('trypost.platforms.bluesky.default_service');
-    $appView = config('trypost.platforms.bluesky.public_appview');
-
-    Http::fake([
-        // The account's PDS fails to resolve; resolution must fall back to the
-        // public AppView rather than giving up after the first endpoint.
-        $service.'/xrpc/com.atproto.identity.resolveHandle*' => Http::response(['error' => 'InvalidRequest'], 400),
-        $appView.'/xrpc/com.atproto.identity.resolveHandle*' => Http::response(['did' => 'did:plc:friend456'], 200),
-        $service.'/xrpc/com.atproto.repo.createRecord' => Http::response([
-            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
-            'cid' => 'bafyreiabc123',
-        ], 200),
-    ]);
-
-    $this->publisher->publish($this->postPlatform);
-
-    Http::assertSent(function ($request) {
-        $record = $request->data()['record'] ?? null;
-
-        if (! $record) {
-            return false;
-        }
-
-        foreach ($record['facets'] ?? [] as $facet) {
-            $feature = $facet['features'][0];
-            if ($feature['$type'] === 'app.bsky.richtext.facet#mention') {
-                return $feature['did'] === 'did:plc:friend456';
-            }
-        }
-
-        return false;
-    });
-});
-
 test('bluesky publisher resolves some mentions and skips the unresolvable ones', function () {
     $this->post->update(['content' => 'cc @good.bsky.social and @bad.bsky.social']);
 
