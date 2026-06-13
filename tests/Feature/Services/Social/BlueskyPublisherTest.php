@@ -101,6 +101,144 @@ test('bluesky publisher parses hashtags as facets', function () {
     });
 });
 
+test('bluesky publisher resolves mentions to DIDs as facets', function () {
+    $this->post->update(['content' => 'Shout out to @friend.bsky.social']);
+
+    Http::fake([
+        // Wildcard so the fake matches whichever endpoint resolveHandleToDid()
+        // tries first (the account PDS, public AppView, or bsky.social) and the
+        // test stays isolated from the configured service URL.
+        '*/xrpc/com.atproto.identity.resolveHandle*' => Http::response([
+            'did' => 'did:plc:friend456',
+        ], 200),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $record = $request->data()['record'] ?? null;
+
+        if (! $record || ! isset($record['facets'])) {
+            return false;
+        }
+
+        foreach ($record['facets'] as $facet) {
+            $feature = $facet['features'][0];
+            if ($feature['$type'] === 'app.bsky.richtext.facet#mention') {
+                // The facet must carry the resolved DID, not the raw handle.
+                return $feature['did'] === 'did:plc:friend456';
+            }
+        }
+
+        return false;
+    });
+});
+
+test('bluesky publisher skips mention facet when handle cannot be resolved', function () {
+    $this->post->update(['content' => 'Shout out to @ghost.bsky.social']);
+
+    Http::fake([
+        '*/xrpc/com.atproto.identity.resolveHandle*' => Http::response(['error' => 'InvalidRequest'], 400),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    // Post still publishes; the unresolved @handle stays as plain text.
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('3abc123xyz');
+
+    Http::assertSent(function ($request) {
+        $record = $request->data()['record'] ?? null;
+
+        if (! $record) {
+            return false;
+        }
+
+        $hasMentionFacet = collect($record['facets'] ?? [])->contains(
+            fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#mention'
+        );
+
+        return str_contains($record['text'], '@ghost.bsky.social') && ! $hasMentionFacet;
+    });
+});
+
+test('bluesky publisher resolves some mentions and skips the unresolvable ones', function () {
+    $this->post->update(['content' => 'cc @good.bsky.social and @bad.bsky.social']);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'resolveHandle')) {
+            // `good` resolves; `bad` answers 200 without a DID — treated as
+            // unresolvable, exercising the str_starts_with('did:') guard.
+            return str_contains($request->url(), 'good.bsky.social')
+                ? Http::response(['did' => 'did:plc:good999'], 200)
+                : Http::response([], 200);
+        }
+
+        return Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $record = $request->data()['record'] ?? null;
+
+        if (! $record) {
+            return false;
+        }
+
+        $mentions = collect($record['facets'] ?? [])
+            ->filter(fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#mention');
+
+        // Only the resolvable handle becomes a facet; the other stays plain text.
+        return $mentions->count() === 1
+            && $mentions->first()['features'][0]['did'] === 'did:plc:good999'
+            && str_contains($record['text'], '@bad.bsky.social');
+    });
+});
+
+test('bluesky publisher resolves a repeated handle only once', function () {
+    $this->post->update(['content' => 'thanks @dup.bsky.social, really @dup.bsky.social']);
+
+    Http::fake([
+        '*/xrpc/com.atproto.identity.resolveHandle*' => Http::response(['did' => 'did:plc:dup789'], 200),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    // The same handle appears twice but the per-post cache resolves it once.
+    $resolveCalls = Http::recorded(fn ($request) => str_contains($request->url(), 'resolveHandle'))->count();
+    expect($resolveCalls)->toBe(1);
+
+    // Both occurrences still become mention facets carrying the DID.
+    Http::assertSent(function ($request) {
+        $record = $request->data()['record'] ?? null;
+
+        if (! $record) {
+            return false;
+        }
+
+        $mentions = collect($record['facets'] ?? [])
+            ->filter(fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#mention');
+
+        return $mentions->count() === 2
+            && $mentions->every(fn ($facet) => $facet['features'][0]['did'] === 'did:plc:dup789');
+    });
+});
+
 test('bluesky publisher uploads images', function () {
     // Create a media item through the PostPlatform's media() relation
     $this->post->update([

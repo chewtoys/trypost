@@ -13,6 +13,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BlueskyPublisher
 {
@@ -180,7 +181,7 @@ class BlueskyPublisher
 
         foreach ($urlMatches[0] as $match) {
             $url = $match[0];
-            $start = $this->getUtf8ByteOffset($text, $match[1]);
+            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
             $end = $start + strlen($url);
 
             $facets[] = [
@@ -205,10 +206,22 @@ class BlueskyPublisher
             PREG_OFFSET_CAPTURE
         );
 
+        $didCache = [];
         foreach ($mentionMatches[0] as $match) {
             $mention = $match[0];
             $handle = substr($mention, 1); // Remove @
-            $start = $this->getUtf8ByteOffset($text, $match[1]);
+
+            // A mention facet needs the target's DID, not the handle; skip it if unresolvable.
+            // Cache by key (not ??) so an unresolvable handle is resolved once, not per occurrence.
+            if (! array_key_exists($handle, $didCache)) {
+                $didCache[$handle] = $this->resolveHandleToDid($handle);
+            }
+            $did = $didCache[$handle];
+            if ($did === null) {
+                continue;
+            }
+
+            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
             $end = $start + strlen($mention);
 
             $facets[] = [
@@ -219,7 +232,7 @@ class BlueskyPublisher
                 'features' => [
                     [
                         '$type' => 'app.bsky.richtext.facet#mention',
-                        'did' => $handle, // Will be resolved by Bluesky
+                        'did' => $did,
                     ],
                 ],
             ];
@@ -236,7 +249,7 @@ class BlueskyPublisher
         foreach ($hashtagMatches[0] as $match) {
             $hashtag = $match[0];
             $tag = substr($hashtag, 1); // Remove #
-            $start = $this->getUtf8ByteOffset($text, $match[1]);
+            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
             $end = $start + strlen($hashtag);
 
             $facets[] = [
@@ -254,6 +267,31 @@ class BlueskyPublisher
         }
 
         return $facets;
+    }
+
+    /**
+     * Resolve a Bluesky handle to its DID via com.atproto.identity.resolveHandle.
+     *
+     * resolveHandle is a public read served by the AppView (no auth). Returns
+     * null on any failure so the caller can skip the mention facet and publish
+     * the @handle as plain text instead of an invalid record.
+     */
+    private function resolveHandleToDid(string $handle): ?string
+    {
+        $appView = (string) config('trypost.platforms.bluesky.public_appview');
+
+        try {
+            $response = $this->socialHttp()->get(
+                "{$appView}/xrpc/com.atproto.identity.resolveHandle",
+                ['handle' => $handle],
+            );
+
+            $did = $response->successful() ? data_get($response->json(), 'did') : null;
+
+            return is_string($did) && str_starts_with($did, 'did:') ? $did : null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function getUtf8ByteOffset(string $text, int $charOffset): int
