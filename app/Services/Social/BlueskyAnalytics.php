@@ -21,7 +21,7 @@ class BlueskyAnalytics
         }
 
         $did = $account->platform_user_id;
-        $atUri = "at://{$did}/app.bsky.feed.post/{$postPlatform->platform_post_id}";
+        $atUri = "at://{$did}/".BlueskyLexicon::FEED_POST."/{$postPlatform->platform_post_id}";
 
         // Read counts (likes, reposts, replies, quotes) live on the AT
         // Protocol AppView, not the PDS. The user's PDS requires Bearer auth
@@ -29,7 +29,7 @@ class BlueskyAnalytics
         $appView = (string) config('trypost.platforms.bluesky.public_appview');
 
         $response = $this->socialHttp()
-            ->get("{$appView}/xrpc/app.bsky.feed.getPosts", [
+            ->get("{$appView}/xrpc/".BlueskyLexicon::GET_POSTS, [
                 'uris' => [$atUri],
             ]);
 

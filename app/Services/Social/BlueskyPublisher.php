@@ -54,7 +54,7 @@ class BlueskyPublisher
 
             if (count($images) > 0) {
                 $embed = [
-                    '$type' => 'app.bsky.embed.images',
+                    '$type' => BlueskyLexicon::EMBED_IMAGES,
                     'images' => $images,
                 ];
             }
@@ -66,7 +66,7 @@ class BlueskyPublisher
 
         // Create post record
         $record = [
-            '$type' => 'app.bsky.feed.post',
+            '$type' => BlueskyLexicon::FEED_POST,
             'text' => $text,
             'createdAt' => now()->toIso8601ZuluString(),
         ];
@@ -80,9 +80,9 @@ class BlueskyPublisher
         }
 
         $response = $this->socialHttp()->withToken($account->access_token)
-            ->post("{$service}/xrpc/com.atproto.repo.createRecord", [
+            ->post("{$service}/xrpc/".BlueskyLexicon::CREATE_RECORD, [
                 'repo' => $account->platform_user_id,
-                'collection' => 'app.bsky.feed.post',
+                'collection' => BlueskyLexicon::FEED_POST,
                 'record' => $record,
             ]);
 
@@ -140,7 +140,7 @@ class BlueskyPublisher
             $response = $this->socialHttp()->withToken($account->access_token)
                 ->withHeaders(['Content-Type' => $mimeType])
                 ->withBody($stream, $mimeType)
-                ->post("{$service}/xrpc/com.atproto.repo.uploadBlob");
+                ->post("{$service}/xrpc/".BlueskyLexicon::UPLOAD_BLOB);
 
             if (is_resource($stream)) {
                 fclose($stream);
@@ -192,7 +192,7 @@ class BlueskyPublisher
                 ],
                 'features' => [
                     [
-                        '$type' => 'app.bsky.richtext.facet#link',
+                        '$type' => BlueskyLexicon::FACET_LINK,
                         'uri' => $url,
                     ],
                 ],
@@ -232,7 +232,7 @@ class BlueskyPublisher
                 ],
                 'features' => [
                     [
-                        '$type' => 'app.bsky.richtext.facet#mention',
+                        '$type' => BlueskyLexicon::FACET_MENTION,
                         'did' => $did,
                     ],
                 ],
@@ -260,7 +260,7 @@ class BlueskyPublisher
                 ],
                 'features' => [
                     [
-                        '$type' => 'app.bsky.richtext.facet#tag',
+                        '$type' => BlueskyLexicon::FACET_TAG,
                         'tag' => $tag,
                     ],
                 ],
@@ -283,7 +283,7 @@ class BlueskyPublisher
 
         try {
             $response = $this->socialHttp()->get(
-                "{$appView}/xrpc/com.atproto.identity.resolveHandle",
+                "{$appView}/xrpc/".BlueskyLexicon::RESOLVE_HANDLE,
                 ['handle' => $handle],
             );
 

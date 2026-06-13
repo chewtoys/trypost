@@ -167,7 +167,7 @@ class ConnectionVerifier
 
         try {
             $response = $client->send(fn () => Http::withToken($account->refresh_token)
-                ->post("{$service}/xrpc/com.atproto.server.refreshSession"));
+                ->post("{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
 
             $data = $response->json();
             $account->update([
@@ -185,7 +185,7 @@ class ConnectionVerifier
 
         if (isset($account->meta['password'])) {
             try {
-                $reauth = $client->send(fn () => Http::post("{$service}/xrpc/com.atproto.server.createSession", [
+                $reauth = $client->send(fn () => Http::post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
                     'identifier' => $account->meta['identifier'],
                     'password' => decrypt($account->meta['password']),
                 ]));
@@ -490,7 +490,7 @@ class ConnectionVerifier
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         $response = Http::withToken($account->access_token)
-            ->get("{$service}/xrpc/app.bsky.actor.getProfile", [
+            ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
                 'actor' => $account->platform_user_id,
             ]);
 

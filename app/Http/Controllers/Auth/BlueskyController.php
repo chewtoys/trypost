@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Services\Social\BlueskyLexicon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -57,7 +58,7 @@ class BlueskyController extends SocialController
 
         try {
             // Authenticate with Bluesky
-            $response = Http::post("{$service}/xrpc/com.atproto.server.createSession", [
+            $response = Http::post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
                 'identifier' => $request->identifier,
                 'password' => $request->password,
             ]);
@@ -81,7 +82,7 @@ class BlueskyController extends SocialController
 
             // Get profile
             $profileResponse = Http::withToken(data_get($data, 'accessJwt'))
-                ->get("{$service}/xrpc/app.bsky.actor.getProfile", [
+                ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
                     'actor' => data_get($data, 'did'),
                 ]);
 
