@@ -33,7 +33,7 @@ interface Run {
     is_dry_run: boolean;
 }
 
-const props = defineProps<{ automationId: string; beforeRun?: () => Promise<boolean> | boolean }>();
+const props = defineProps<{ automationId: string; beforeRun?: () => Promise<boolean> | boolean; configIssue?: string | null }>();
 
 const isStarting = ref(false);
 const realData = ref(false);
@@ -88,20 +88,22 @@ const start = async () => {
             body: JSON.stringify({ with_real_data: realData.value }),
         });
         if (!response.ok) {
-            throw new Error('start failed');
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.message ?? '');
         }
         const { run_id: runId } = await response.json();
         activeRunId.value = runId;
         await fetchRun(runId);
-    } catch {
-        toast.error(trans('automations.test.error_starting'));
+    } catch (error) {
+        const message = error instanceof Error && error.message ? error.message : trans('automations.test.error_starting');
+        toast.error(message);
     } finally {
         isStarting.value = false;
     }
 };
 
 const runTest = async () => {
-    if (isStarting.value) return;
+    if (isStarting.value || props.configIssue) return;
     const proceed = await (props.beforeRun?.() ?? true);
     if (proceed === false) return;
     await start();
@@ -154,12 +156,17 @@ const isZeroFetchResult = (nodeRun: NodeRun): boolean => {
                 <Checkbox v-model="realData" :disabled="isStarting" />
                 {{ $t('automations.test.with_real_data') }}
             </label>
-            <Button size="sm" :disabled="isStarting" @click="runTest">
+            <Button size="sm" :disabled="isStarting || !!configIssue" @click="runTest">
                 <IconLoader2 v-if="isStarting" class="size-4 animate-spin" />
                 <IconPlayerPlay v-else class="size-4" />
                 {{ $t('automations.test.run') }}
             </Button>
         </div>
+
+        <p v-if="configIssue" class="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-500">
+            <IconAlertCircle class="size-4 flex-shrink-0" />
+            {{ configIssue }}
+        </p>
 
         <div
             v-if="run === null && !isStarting"

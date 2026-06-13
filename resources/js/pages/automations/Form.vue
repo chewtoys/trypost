@@ -33,6 +33,7 @@ import HttpRequestNodeConfig from '@/components/automations/config/HttpRequestNo
 import PublishNodeConfig from '@/components/automations/config/PublishNodeConfig.vue';
 import TriggerNodeConfig from '@/components/automations/config/TriggerNodeConfig.vue';
 import WebhookNodeConfig from '@/components/automations/config/WebhookNodeConfig.vue';
+import { firstConfigIssue } from '@/components/automations/config-validation';
 import EditorSidebar from '@/components/automations/EditorSidebar.vue';
 import ConditionNode from '@/components/automations/nodes/ConditionNode.vue';
 import DelayNode from '@/components/automations/nodes/DelayNode.vue';
@@ -108,6 +109,8 @@ const edges = ref<Edge[]>(hydrateEdges(props.automation.connections ?? []));
 const selectedNodeId = ref<string | null>(null);
 const selectedEdgeId = ref<string | null>(null);
 const variables = ref<AutomationVariable[]>(props.automation.variables ?? []);
+
+const configIssue = computed(() => firstConfigIssue(nodes.value));
 
 watch(
     () => [props.automation.nodes, props.automation.connections] as const,
@@ -512,6 +515,7 @@ const defaultEdgeOptions = {
                     v-model:variables="variables"
                     :automation-id="automation.id"
                     :before-run="save"
+                    :config-issue="configIssue"
                     :editing="!!selectedNode"
                     :node-title="selectedNode ? $t(`automations.nodes.${selectedNode.type}`) : ''"
                     :deletable="selectedNode?.type !== NodeType.Trigger"

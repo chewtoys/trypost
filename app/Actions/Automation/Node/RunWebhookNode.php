@@ -49,7 +49,7 @@ class RunWebhookNode
         // Parse the template as JSON FIRST, then resolve placeholders in its
         // string leaves — so a value containing `"`/`&`/newlines can't corrupt
         // the JSON (the final json_encode escapes it).
-        $template = $config['payload_template'] ?? '{}';
+        $template = (string) data_get($config, 'payload_template', '{}');
         $trimmedTemplate = trim($template);
 
         if ($trimmedTemplate === '' || $trimmedTemplate === 'null') {

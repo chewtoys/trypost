@@ -7,12 +7,12 @@ namespace App\Actions\Automation\Automation;
 use App\Enums\Automation\Node\Type as NodeType;
 use App\Enums\Automation\Status;
 use App\Models\Automation;
-use App\Services\Automation\GenerateNodeValidator;
+use App\Services\Automation\AutomationConfigValidator;
 use DomainException;
 
 class ActivateAutomation
 {
-    public function __construct(private GenerateNodeValidator $generateValidator) {}
+    public function __construct(private AutomationConfigValidator $configValidator) {}
 
     public function __invoke(Automation $automation): Automation
     {
@@ -32,7 +32,7 @@ class ActivateAutomation
         $nodes = $automation->nodes ?? [];
         $connections = $automation->connections ?? [];
 
-        $triggers = collect($nodes)->where('type', 'trigger');
+        $triggers = collect($nodes)->where('type', NodeType::Trigger->value);
         if ($triggers->count() !== 1) {
             throw new DomainException(__('automations.errors.must_have_one_trigger'));
         }
@@ -43,16 +43,10 @@ class ActivateAutomation
             throw new DomainException(__('automations.errors.trigger_must_be_connected'));
         }
 
-        foreach ($nodes as $node) {
-            if (data_get($node, 'type') !== NodeType::Generate->value) {
-                continue;
-            }
+        $issue = $this->configValidator->firstMessage($nodes);
 
-            $issue = $this->generateValidator->issueFor((array) data_get($node, 'data', []));
-
-            if ($issue !== null) {
-                throw new DomainException($issue);
-            }
+        if ($issue !== null) {
+            throw new DomainException($issue);
         }
     }
 }

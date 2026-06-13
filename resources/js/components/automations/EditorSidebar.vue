@@ -11,6 +11,7 @@ import type { AutomationVariable } from '@/types/automation/automation';
 defineProps<{
     automationId: string;
     beforeRun?: () => Promise<boolean> | boolean;
+    configIssue?: string | null;
     editing?: boolean;
     nodeTitle?: string;
     deletable?: boolean;
@@ -63,7 +64,7 @@ const variables = defineModel<AutomationVariable[]>('variables', { default: () =
                 </TabsContent>
 
                 <TabsContent value="test" class="min-h-0 overflow-y-auto">
-                    <TestRunPanel :automation-id="automationId" :before-run="beforeRun" />
+                    <TestRunPanel :automation-id="automationId" :before-run="beforeRun" :config-issue="configIssue" />
                 </TabsContent>
             </Tabs>
         </div>

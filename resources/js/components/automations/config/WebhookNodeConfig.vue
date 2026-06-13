@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
+import { isPayloadTemplateValid } from '@/components/automations/config-validation';
 import CodeEditor from '@/components/CodeEditor.vue';
 import InputError from '@/components/InputError.vue';
 import { Input } from '@/components/ui/input';
@@ -38,18 +39,7 @@ const local = ref<WebhookConfig>({
 
 watch(local, (val) => emit('update', val), { deep: true });
 
-const isPayloadJsonInvalid = computed(() => {
-    const value = local.value.payload_template.trim();
-    if (value === '') {
-        return false;
-    }
-    try {
-        JSON.parse(value);
-        return false;
-    } catch {
-        return true;
-    }
-});
+const isPayloadJsonInvalid = computed(() => !isPayloadTemplateValid(local.value.payload_template));
 </script>
 
 <template>

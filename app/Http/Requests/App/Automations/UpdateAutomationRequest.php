@@ -12,6 +12,7 @@ use App\Enums\Automation\Node\Type as NodeType;
 use App\Enums\Automation\Publish\Mode as PublishMode;
 use App\Enums\Automation\ScheduleField;
 use App\Enums\Automation\Trigger\Type as TriggerType;
+use App\Services\Automation\AutomationConfigValidator;
 use App\Services\Automation\GenerateNodeValidator;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -66,9 +67,10 @@ class UpdateAutomationRequest extends FormRequest
     }
 
     /**
-     * Block saving a Generate node whose intended image count doesn't fit a
-     * selected account's content-type (mirrors the inline frontend validation),
-     * keyed so the frontend surfaces it under that node's accounts field.
+     * Block saving a node whose config can't run: a Generate node whose image
+     * count doesn't fit a selected account's content-type, or a Webhook node
+     * whose payload template isn't valid JSON. Each issue is keyed to the field
+     * the frontend surfaces it under (mirrors the inline frontend validation).
      */
     public function withValidator(Validator $validator): void
     {
@@ -79,18 +81,8 @@ class UpdateAutomationRequest extends FormRequest
                 return;
             }
 
-            $generateValidator = app(GenerateNodeValidator::class);
-
-            foreach ($nodes as $i => $node) {
-                if (data_get($node, 'type') !== NodeType::Generate->value) {
-                    continue;
-                }
-
-                $issue = $generateValidator->issueFor((array) data_get($node, 'data', []));
-
-                if ($issue !== null) {
-                    $validator->errors()->add("nodes.{$i}.data.accounts", $issue);
-                }
+            foreach (app(AutomationConfigValidator::class)->issues($nodes) as $issue) {
+                $validator->errors()->add("nodes.{$issue['node_index']}.data.{$issue['field']}", $issue['message']);
             }
         });
     }

@@ -9,6 +9,8 @@ use App\Enums\Automation\Trigger\Type as TriggerType;
 use App\Models\Automation;
 use App\Models\AutomationRun;
 use App\Models\Post;
+use App\Services\Automation\AutomationConfigValidator;
+use DomainException;
 
 /**
  * Kicks off a manual run from the editor without waiting for the real trigger
@@ -25,10 +27,19 @@ use App\Models\Post;
  */
 class TestAutomation
 {
-    public function __construct(private AdvanceAutomationRun $advance) {}
+    public function __construct(
+        private AdvanceAutomationRun $advance,
+        private AutomationConfigValidator $configValidator,
+    ) {}
 
     public function __invoke(Automation $automation, bool $withRealData = false): AutomationRun
     {
+        $issue = $this->configValidator->firstMessage($automation->nodes ?? []);
+
+        if ($issue !== null) {
+            throw new DomainException($issue);
+        }
+
         $triggerNode = collect($automation->nodes ?? [])->firstWhere('type', 'trigger');
         $context = ['trigger' => $this->synthesizePayload($automation, $triggerNode ?? [])];
 
