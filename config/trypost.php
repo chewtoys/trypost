@@ -145,6 +145,8 @@ return [
             'public_appview' => env('BLUESKY_PUBLIC_APPVIEW', 'https://public.api.bsky.app'),
             // Default PDS used when the account has no `meta.service` override.
             'default_service' => env('BLUESKY_DEFAULT_SERVICE', 'https://bsky.social'),
+            // Web client where published posts are viewed (profile/post URLs).
+            'web_app' => env('BLUESKY_WEB_APP', 'https://bsky.app'),
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),

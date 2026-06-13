@@ -10,6 +10,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use Exception;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -114,7 +115,7 @@ class BlueskyPublisher
             $downloadResponse = Http::withOptions(['sink' => $tempFile])->timeout(600)->get($url);
 
             if ($downloadResponse->failed()) {
-                throw new \Exception('Failed to download media: HTTP '.$downloadResponse->status());
+                throw new Exception('Failed to download media: HTTP '.$downloadResponse->status());
             }
 
             $fileSize = filesize($tempFile);
@@ -154,8 +155,8 @@ class BlueskyPublisher
                 return null;
             }
 
-            return $response->json()['blob'];
-        } catch (\Exception $e) {
+            return data_get($response->json(), 'blob');
+        } catch (Exception $e) {
             Log::error('Bluesky blob upload exception', [
                 'error' => $e->getMessage(),
                 'url' => $url,
@@ -181,7 +182,7 @@ class BlueskyPublisher
 
         foreach ($urlMatches[0] as $match) {
             $url = $this->trimTrailingUrlPunctuation($match[0]);
-            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
+            $start = (int) $match[1];
             $end = $start + strlen($url);
 
             $facets[] = [
@@ -221,7 +222,7 @@ class BlueskyPublisher
                 continue;
             }
 
-            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
+            $start = (int) $match[1];
             $end = $start + strlen($mention);
 
             $facets[] = [
@@ -249,7 +250,7 @@ class BlueskyPublisher
         foreach ($hashtagMatches[0] as $match) {
             $hashtag = $match[0];
             $tag = substr($hashtag, 1); // Remove #
-            $start = $this->getUtf8ByteOffset($text, (int) $match[1]);
+            $start = (int) $match[1];
             $end = $start + strlen($hashtag);
 
             $facets[] = [
@@ -294,11 +295,6 @@ class BlueskyPublisher
         }
     }
 
-    private function getUtf8ByteOffset(string $text, int $charOffset): int
-    {
-        return strlen(substr($text, 0, $charOffset));
-    }
-
     /**
      * Trailing sentence punctuation and an unmatched closing paren are almost
      * never part of a URL (e.g. "see https://x.com)."). Mirrors the official
@@ -319,7 +315,9 @@ class BlueskyPublisher
 
     private function buildPostUrl(string $handle, string $postId): string
     {
-        return "https://bsky.app/profile/{$handle}/post/{$postId}";
+        $webApp = (string) config('trypost.platforms.bluesky.web_app');
+
+        return "{$webApp}/profile/{$handle}/post/{$postId}";
     }
 
     private function handleApiError(Response $response): never
