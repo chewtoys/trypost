@@ -50,3 +50,17 @@ it('handles non-string values by casting', function () {
 it('passes through templates with no variables', function () {
     expect($this->resolver->resolve('plain text', []))->toBe('plain text');
 });
+
+it('json-encodes array values', function () {
+    $context = ['fetched' => ['tags' => ['a', 'b']]];
+
+    expect($this->resolver->resolve('{{ fetched.tags }}', $context))->toBe('["a","b"]');
+});
+
+it('does not throw when an array value contains malformed UTF-8', function () {
+    // Scraped feed/HTTP payloads can carry invalid UTF-8; json_encode returns
+    // false for it, but the resolver must still yield a string.
+    $context = ['fetched' => ['body' => ["bad\xB1utf8"]]];
+
+    expect($this->resolver->resolve('{{ fetched.body }}', $context))->toBeString();
+});

@@ -58,6 +58,8 @@ class ExpressionResolver
             return (string) $value;
         }
 
-        return json_encode($value);
+        // json_encode returns false on malformed UTF-8 (plausible for scraped
+        // feed/HTTP payloads); the method must still return a string.
+        return json_encode($value, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '';
     }
 }
