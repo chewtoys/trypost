@@ -49,3 +49,17 @@ it('dispatches PublishPost when mode is now', function () {
     expect($post->fresh()->status)->toBe(PostStatus::Publishing);
     Queue::assertPushed(PublishPost::class);
 });
+
+it('does not publish or change the post on a dry run', function () {
+    Queue::fake();
+
+    $post = Post::factory()->create(['status' => PostStatus::Draft]);
+    $run = AutomationRun::factory()->create(['generated_post_id' => $post->id, 'is_dry_run' => true]);
+
+    $result = app(RunPublishNode::class)($run, ['mode' => 'now']);
+
+    expect($result->status->value)->toBe('completed');
+    expect($result->output['publish']['dry_run'])->toBeTrue();
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+    Queue::assertNotPushed(PublishPost::class);
+});

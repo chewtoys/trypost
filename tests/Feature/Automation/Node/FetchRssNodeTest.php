@@ -267,3 +267,75 @@ it('fails when feed_url is missing', function () {
 
     expect($result->status)->toBe(NodeRunStatus::Failed);
 });
+
+it('fails when the feed request returns a non-2xx status', function () {
+    Http::fake(['1.1.1.1/*' => Http::response('upstream down', 500)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://1.1.1.1/feed.xml']);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+    expect($result->error['status'])->toBe(500);
+});
+
+it('fails on a malformed RSS feed', function () {
+    Http::fake(['1.1.1.1/*' => Http::response('this is not xml at all', 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://1.1.1.1/feed.xml']);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+});
+
+it('skips items without a publish date', function () {
+    Carbon::setTestNow('2026-01-15 10:00:00');
+    $feed = <<<'XML'
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel>
+      <item><title>Dated</title><link>https://1.1.1.1/d</link><guid>d</guid><pubDate>Sun, 01 Jun 2025 12:00:00 +0000</pubDate></item>
+      <item><title>NoDate</title><link>https://1.1.1.1/n</link><guid>n</guid></item>
+    </channel></rss>
+    XML;
+    Http::fake(['1.1.1.1/*' => Http::response($feed, 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    AutomationNodeState::create([
+        'automation_id' => $automation->id,
+        'node_id' => 'fetch_1',
+        'data' => ['last_item_date' => '2025-02-01T12:00:00+00:00'],
+    ]);
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://1.1.1.1/feed']);
+
+    // Only the dated item passes; the dateless one is ignored.
+    expect($result->output['fetch']['count'])->toBe(1);
+    expect($result->output['fetched']['key'])->toBe('d');
+});
+
+it('falls back to the link as the dedup key when an item has no guid', function () {
+    Carbon::setTestNow('2026-01-15 10:00:00');
+    $feed = <<<'XML'
+    <?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0"><channel>
+      <item><title>LinkKey</title><link>https://1.1.1.1/only-link</link><pubDate>Sun, 01 Jun 2025 12:00:00 +0000</pubDate></item>
+    </channel></rss>
+    XML;
+    Http::fake(['1.1.1.1/*' => Http::response($feed, 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    AutomationNodeState::create([
+        'automation_id' => $automation->id,
+        'node_id' => 'fetch_1',
+        'data' => ['last_item_date' => '2025-02-01T12:00:00+00:00'],
+    ]);
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://1.1.1.1/feed']);
+
+    expect($result->output['fetched']['key'])->toBe('https://1.1.1.1/only-link');
+});

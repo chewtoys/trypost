@@ -379,6 +379,7 @@ return [
         'only_failed_can_retry' => 'Solo se pueden reintentar ejecuciones fallidas.',
         'no_generated_post' => 'No se encontró un post generado en la ejecución.',
         'webhook_server_error' => 'Error del servidor del webhook.',
+        'webhook_request_failed' => 'No se pudo completar la solicitud del webhook.',
         'webhook_invalid_payload_json' => 'La plantilla de payload no es un JSON válido.',
         'url_not_allowed' => 'La URL de la petición apunta a una dirección privada o inaccesible y fue bloqueada.',
         'node_no_longer_exists' => 'El nodo :node_id ya no existe en la automatización.',

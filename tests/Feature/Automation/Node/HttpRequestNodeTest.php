@@ -8,6 +8,7 @@ use App\Jobs\Automation\ProcessAutomationNode;
 use App\Models\Automation;
 use App\Models\AutomationNodeState;
 use App\Models\AutomationRun;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Crypt;
@@ -161,6 +162,87 @@ it('sends api_key header with custom header name', function () {
     ]);
 
     Http::assertSent(fn ($request) => $request->hasHeader('X-Custom-Key', 'plain-text-key'));
+});
+
+it('sends basic auth with a decrypted password', function () {
+    Http::fake(['1.1.1.1/*' => Http::response(['ok' => true], 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://1.1.1.1/me',
+        'method' => 'GET',
+        'auth_type' => 'basic',
+        'auth_username' => 'user',
+        'auth_password' => Crypt::encryptString('pass'),
+    ]);
+
+    Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Basic '.base64_encode('user:pass')));
+});
+
+it('supports PUT, PATCH and DELETE methods', function (string $method) {
+    Http::fake(['1.1.1.1/*' => Http::response(['ok' => true], 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://1.1.1.1/resource',
+        'method' => $method,
+        'auth_type' => 'none',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Completed);
+    Http::assertSent(fn ($request) => $request->method() === $method);
+})->with(['PUT', 'PATCH', 'DELETE']);
+
+it('fails on a non-2xx response', function (int $status) {
+    Http::fake(['1.1.1.1/*' => Http::response('nope', $status)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://1.1.1.1/resource',
+        'method' => 'GET',
+        'auth_type' => 'none',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+    expect($result->error['status'])->toBe($status);
+})->with([404, 500]);
+
+it('fails when the request throws a connection exception', function () {
+    Http::fake(fn () => throw new ConnectionException('connection timed out'));
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://1.1.1.1/resource',
+        'method' => 'GET',
+        'auth_type' => 'none',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+    expect($result->error['message'])->toContain('connection timed out');
+});
+
+it('fails when items_path does not resolve to an array', function () {
+    Http::fake(['1.1.1.1/*' => Http::response(['data' => 'not-a-list'], 200)]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://1.1.1.1/resource',
+        'method' => 'GET',
+        'auth_type' => 'none',
+        'items_path' => 'data',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
 });
 
 it('posts a body rendered from the template with run context', function () {

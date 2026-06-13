@@ -10,6 +10,7 @@ use App\Services\Automation\ExpressionResolver;
 use App\Services\Brand\SafeHttpFetcher;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 class RunWebhookNode
 {
@@ -64,9 +65,16 @@ class RunWebhookNode
             ]);
         }
 
-        $response = Http::withHeaders($headers)
-            ->withUserAgent(config('trypost.user_agent'))
-            ->send($method, $url, ['json' => $payload]);
+        try {
+            $response = Http::withHeaders($headers)
+                ->withUserAgent(config('trypost.user_agent'))
+                ->send($method, $url, ['json' => $payload]);
+        } catch (Throwable $e) {
+            return NodeRunResult::failed(__('automations.errors.webhook_request_failed'), [
+                'reason' => 'request_failed',
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         if ($response->serverError()) {
             return NodeRunResult::failed(__('automations.errors.webhook_server_error'), [

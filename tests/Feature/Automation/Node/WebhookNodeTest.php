@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Automation\Node\RunWebhookNode;
 use App\Enums\Automation\NodeRun\Status;
 use App\Models\AutomationRun;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 it('posts interpolated payload to the configured url', function () {
@@ -152,4 +153,50 @@ it('treats 4xx responses as completed (only 5xx fails)', function () {
 
     expect($result->status->value)->toBe('completed');
     expect($result->output['webhook']['status'])->toBe(404);
+});
+
+it('sends the configured HTTP method', function (string $method) {
+    Http::fake(['1.1.1.1/*' => Http::response(['ok' => true], 200)]);
+
+    $run = AutomationRun::factory()->create();
+
+    $result = app(RunWebhookNode::class)($run, [
+        'url' => 'https://1.1.1.1/hook',
+        'method' => $method,
+        'payload_template' => '{}',
+    ]);
+
+    expect($result->status)->toBe(Status::Completed);
+    Http::assertSent(fn ($request) => $request->method() === $method);
+})->with(['PUT', 'PATCH', 'DELETE', 'GET']);
+
+it('resolves expressions in custom header values', function () {
+    Http::fake(['1.1.1.1/*' => Http::response(['ok' => true], 200)]);
+
+    $run = AutomationRun::factory()->create(['context' => ['trigger' => ['title' => 'tok-123']]]);
+
+    app(RunWebhookNode::class)($run, [
+        'url' => 'https://1.1.1.1/hook',
+        'method' => 'POST',
+        'headers' => ['X-Token' => '{{ trigger.title }}'],
+        'payload_template' => '{}',
+    ]);
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Token', 'tok-123'));
+});
+
+it('fails cleanly when the request throws a connection exception', function () {
+    Http::fake(fn () => throw new ConnectionException('connection timed out'));
+
+    $run = AutomationRun::factory()->create();
+
+    $result = app(RunWebhookNode::class)($run, [
+        'url' => 'https://1.1.1.1/hook',
+        'method' => 'POST',
+        'payload_template' => '{}',
+    ]);
+
+    expect($result->status)->toBe(Status::Failed);
+    expect($result->error['reason'])->toBe('request_failed');
+    expect($result->error['message'])->toContain('connection timed out');
 });

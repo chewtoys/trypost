@@ -26,3 +26,10 @@ it('supports minutes and days units', function () {
     expect(now()->diffInHours($handler($run, ['duration' => 1, 'unit' => 'days'])->sleepUntil))
         ->toBeGreaterThanOrEqual(23);
 });
+
+it('throws on an unknown delay unit', function () {
+    $run = AutomationRun::factory()->create();
+
+    expect(fn () => app(RunDelayNode::class)($run, ['duration' => 5, 'unit' => 'weeks']))
+        ->toThrow(InvalidArgumentException::class);
+});
