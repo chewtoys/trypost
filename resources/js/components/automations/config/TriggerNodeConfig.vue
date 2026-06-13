@@ -70,7 +70,11 @@ const weekdays = [
 
 const toggleWeekday = (value: number) => {
     const set = new Set(local.value.schedule_weekdays ?? []);
-    set.has(value) ? set.delete(value) : set.add(value);
+    if (set.has(value)) {
+        set.delete(value);
+    } else {
+        set.add(value);
+    }
     local.value.schedule_weekdays = Array.from(set);
 };
 
