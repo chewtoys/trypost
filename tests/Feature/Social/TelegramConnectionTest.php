@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
+use App\Events\TelegramChannelConnected;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\TelegramConnectCode;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -48,11 +50,13 @@ it('issues a signed connect code carrying the workspace', function () {
     $response = $this->actingAs($this->user)
         ->postJson(route('app.social.telegram.connect'))
         ->assertOk()
-        ->assertJsonStructure(['code', 'bot_username', 'expires_at']);
+        ->assertJsonStructure(['code', 'nonce', 'bot_username', 'expires_at']);
 
     expect($response->json('bot_username'))->toBe('TryPostBot');
     expect(data_get(TelegramConnectCode::decode($response->json('code')), 'workspace_id'))
         ->toBe($this->workspace->id);
+    expect($response->json('nonce'))
+        ->toBe(data_get(TelegramConnectCode::decode($response->json('code')), 'nonce'));
 });
 
 it('links the channel when the webhook receives a matching /connect', function () {
@@ -189,36 +193,32 @@ it('ignores the webhook for a tampered or expired code', function () {
     expect(SocialAccount::where('platform', Platform::Telegram)->count())->toBe(0);
 });
 
-it('reports the connection status for a code while pending and once connected', function () {
+it('broadcasts to the workspace with the nonce when a channel connects', function () {
+    Event::fake([TelegramChannelConnected::class]);
+    Http::fake();
+
     $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
     $nonce = data_get(TelegramConnectCode::decode($code), 'nonce');
 
-    $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status', ['code' => $code]))
-        ->assertOk()
-        ->assertJson(['status' => 'pending']);
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
 
-    SocialAccount::factory()->telegram()->create([
-        'workspace_id' => $this->workspace->id,
-        'meta' => ['chat_id' => '-1001234567890', 'username' => 'mychannel', 'type' => 'channel', 'connect_nonce' => $nonce],
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status', ['code' => $code]))
-        ->assertOk()
-        ->assertJson(['status' => 'connected']);
+    Event::assertDispatched(
+        TelegramChannelConnected::class,
+        fn (TelegramChannelConnected $event) => $event->workspaceId === $this->workspace->id
+            && $event->nonce === $nonce,
+    );
 });
 
-it('reports unknown status without a valid code', function () {
-    $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status'))
-        ->assertOk()
-        ->assertJson(['status' => 'unknown']);
+it('does not broadcast when the code is tampered or already used', function () {
+    Event::fake([TelegramChannelConnected::class]);
 
-    $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status', ['code' => 'tampered']))
-        ->assertOk()
-        ->assertJson(['status' => 'unknown']);
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate('not-a-valid-code'))
+        ->assertNoContent();
+
+    Event::assertNotDispatched(TelegramChannelConnected::class);
 });
 
 it('verifies a connected telegram account via getChat', function () {

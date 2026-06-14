@@ -20,15 +20,10 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
+import dayjs from '@/dayjs';
 import { copyToClipboard } from '@/lib/utils';
-import {
-    connect as connectTelegram,
-    status as telegramStatus,
-} from '@/routes/app/social/telegram';
-import {
-    TelegramConnectStatus,
-    type TelegramConnectStatusValue,
-} from '@/types/telegram-connect-status';
+import { connect as connectTelegram } from '@/routes/app/social/telegram';
 
 const open = defineModel<boolean>('open', { required: true });
 
@@ -36,64 +31,47 @@ type Phase = 'loading' | 'ready' | 'connected' | 'expired' | 'error';
 
 interface ConnectResponse {
     code: string;
+    nonce: string;
     bot_username: string;
     expires_at: string;
 }
 
-const POLL_INTERVAL_MS = 3000;
 const SUCCESS_CLOSE_DELAY_MS = 1200;
 
 const phase = ref<Phase>('loading');
 const code = ref('');
+const nonce = ref('');
 const botUsername = ref('');
 const errorMessage = ref('');
 
 const httpConnect = useHttp<Record<string, never>, ConnectResponse>({});
-const httpStatus = useHttp<
-    Record<string, never>,
-    { status: TelegramConnectStatusValue }
->({});
 
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 
-const stopPolling = () => {
-    if (pollTimer !== null) {
-        clearTimeout(pollTimer);
-        pollTimer = null;
+const clearExpiry = () => {
+    if (expiryTimer !== null) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
     }
 };
 
-const poll = async () => {
-    if (phase.value !== 'ready') return;
-
-    try {
-        const response = await httpStatus.get(
-            telegramStatus.url({ query: { code: code.value } }),
-        );
-
-        if (response?.status === TelegramConnectStatus.Connected) {
-            phase.value = 'connected';
-            stopPolling();
-            toast.success(trans('accounts.telegram.connected_toast'));
-            setTimeout(() => {
-                open.value = false;
-                router.reload();
-            }, SUCCESS_CLOSE_DELAY_MS);
+// The channel is linked server-side by the webhook; Reverb pushes the result here.
+useWorkspaceEcho<{ nonce: string }>(
+    '.telegram.channel.connected',
+    (payload) => {
+        if (phase.value !== 'ready' || payload.nonce !== nonce.value) {
             return;
         }
 
-        // The signed code expired (or the session was lost): prompt a fresh one.
-        if (response?.status === TelegramConnectStatus.Unknown) {
-            phase.value = 'expired';
-            stopPolling();
-            return;
-        }
-    } catch {
-        // Transient polling failures are ignored; the next tick retries.
-    }
-
-    pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
-};
+        phase.value = 'connected';
+        clearExpiry();
+        toast.success(trans('accounts.telegram.connected_toast'));
+        setTimeout(() => {
+            open.value = false;
+            router.reload();
+        }, SUCCESS_CLOSE_DELAY_MS);
+    },
+);
 
 const start = async () => {
     phase.value = 'loading';
@@ -102,9 +80,19 @@ const start = async () => {
     try {
         const response = await httpConnect.post(connectTelegram.url());
         code.value = response.code;
+        nonce.value = response.nonce;
         botUsername.value = response.bot_username;
         phase.value = 'ready';
-        poll();
+
+        clearExpiry();
+        expiryTimer = setTimeout(
+            () => {
+                if (phase.value === 'ready') {
+                    phase.value = 'expired';
+                }
+            },
+            Math.max(0, dayjs(response.expires_at).diff(dayjs())),
+        );
     } catch (error) {
         phase.value = 'error';
         errorMessage.value =
@@ -124,11 +112,11 @@ watch(open, (isOpen) => {
     if (isOpen) {
         start();
     } else {
-        stopPolling();
+        clearExpiry();
     }
 });
 
-onUnmounted(stopPolling);
+onUnmounted(clearExpiry);
 </script>
 
 <template>

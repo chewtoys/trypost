@@ -120,7 +120,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/mastodon/callback', [MastodonController::class, 'callback'])->name('app.social.mastodon.callback');
 
     Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');
-    Route::get('connect/telegram/status', [TelegramController::class, 'status'])->name('app.social.telegram.status');
 });
 
 // Routes that require active subscription and completed onboarding

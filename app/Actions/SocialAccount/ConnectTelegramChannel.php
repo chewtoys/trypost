@@ -6,6 +6,7 @@ namespace App\Actions\SocialAccount;
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Events\TelegramChannelConnected;
 use App\Features\SocialAccountLimit;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -43,7 +44,7 @@ class ConnectTelegramChannel
             return null;
         }
 
-        return $workspace->socialAccounts()->updateOrCreate(
+        $account = $workspace->socialAccounts()->updateOrCreate(
             [
                 'platform' => Platform::Telegram->value,
                 'platform_user_id' => $chatId,
@@ -67,6 +68,10 @@ class ConnectTelegramChannel
                 ],
             ],
         );
+
+        TelegramChannelConnected::dispatch($workspace->id, $nonce);
+
+        return $account;
     }
 
     /**
