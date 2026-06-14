@@ -37,6 +37,7 @@ use App\Http\Controllers\Auth\LinkedInPageController;
 use App\Http\Controllers\Auth\MastodonController;
 use App\Http\Controllers\Auth\PinterestController;
 use App\Http\Controllers\Auth\SocialController;
+use App\Http\Controllers\Auth\TelegramController;
 use App\Http\Controllers\Auth\ThreadsController;
 use App\Http\Controllers\Auth\TikTokController;
 use App\Http\Controllers\Auth\XController;
@@ -117,6 +118,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('connect/mastodon', [MastodonController::class, 'connect'])->name('app.social.mastodon.connect');
     Route::post('connect/mastodon', [MastodonController::class, 'authorizeInstance'])->name('app.social.mastodon.authorize');
     Route::get('accounts/mastodon/callback', [MastodonController::class, 'callback'])->name('app.social.mastodon.callback');
+
+    Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');
+    Route::get('connect/telegram/status', [TelegramController::class, 'status'])->name('app.social.telegram.status');
 });
 
 // Routes that require active subscription and completed onboarding

@@ -66,6 +66,7 @@ class ConnectionVerifier
             Platform::Pinterest => $this->verifyPinterest($account),
             Platform::Bluesky => $this->verifyBluesky($account),
             Platform::Mastodon => $this->verifyMastodon($account),
+            Platform::Telegram => $this->verifyTelegram($account),
         };
     }
 
@@ -502,6 +503,19 @@ class ConnectionVerifier
         }
 
         return $response->successful();
+    }
+
+    private function verifyTelegram(SocialAccount $account): bool
+    {
+        $token = (string) config('trypost.platforms.telegram.bot_token');
+        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
+
+        // getChat succeeds only while the bot can still reach the chat.
+        $response = Http::get("{$api}/bot{$token}/getChat", [
+            'chat_id' => data_get($account->meta, 'chat_id'),
+        ]);
+
+        return $response->successful() && data_get($response->json(), 'ok') === true;
     }
 
     private function verifyMastodon(SocialAccount $account): bool
