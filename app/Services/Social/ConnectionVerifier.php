@@ -507,11 +507,8 @@ class ConnectionVerifier
 
     private function verifyTelegram(SocialAccount $account): bool
     {
-        $token = (string) config('trypost.platforms.telegram.bot_token');
-        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
-
         // getChat succeeds only while the bot can still reach the chat.
-        $response = Http::get("{$api}/bot{$token}/getChat", [
+        $response = Http::get(TelegramApi::endpoint('getChat'), [
             'chat_id' => data_get($account->meta, 'chat_id'),
         ]);
 

@@ -141,10 +141,7 @@ class TelegramPublisher
 
     private function call(string $method, array $payload): Response
     {
-        $token = (string) config('trypost.platforms.telegram.bot_token');
-        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
-
-        $response = $this->socialHttp()->post("{$api}/bot{$token}/{$method}", $payload);
+        $response = $this->socialHttp()->post(TelegramApi::endpoint($method), $payload);
 
         if ($response->failed() || data_get($response->json(), 'ok') !== true) {
             $this->handleApiError($response);

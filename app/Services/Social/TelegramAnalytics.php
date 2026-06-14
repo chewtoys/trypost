@@ -18,17 +18,15 @@ class TelegramAnalytics
      */
     public function getMetrics(SocialAccount $account): array
     {
-        $token = (string) config('trypost.platforms.telegram.bot_token');
-        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
         $chatId = data_get($account->meta, 'chat_id');
 
-        if ($token === '' || $chatId === null) {
+        if (TelegramApi::token() === '' || $chatId === null) {
             return [];
         }
 
         try {
             $count = data_get(
-                Http::get("{$api}/bot{$token}/getChatMemberCount", ['chat_id' => $chatId])->json(),
+                Http::get(TelegramApi::endpoint('getChatMemberCount'), ['chat_id' => $chatId])->json(),
                 'result',
             );
         } catch (Throwable) {

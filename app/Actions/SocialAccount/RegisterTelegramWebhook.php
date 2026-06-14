@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\SocialAccount;
 
+use App\Services\Social\TelegramApi;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use RuntimeException;
@@ -20,17 +21,15 @@ class RegisterTelegramWebhook
      */
     public static function execute(): string
     {
-        $token = (string) config('trypost.platforms.telegram.bot_token');
-        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
         $secret = (string) config('trypost.platforms.telegram.webhook_secret');
 
-        if ($token === '' || $secret === '') {
+        if (TelegramApi::token() === '' || $secret === '') {
             throw new InvalidArgumentException('TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET must both be set.');
         }
 
         $url = route('telegram.webhook');
 
-        $response = Http::post("{$api}/bot{$token}/setWebhook", [
+        $response = Http::post(TelegramApi::endpoint('setWebhook'), [
             'url' => $url,
             'secret_token' => $secret,
             'allowed_updates' => ['message', 'channel_post', 'message_reaction_count'],

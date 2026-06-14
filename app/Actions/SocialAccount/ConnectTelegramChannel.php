@@ -10,6 +10,7 @@ use App\Events\TelegramChannelConnected;
 use App\Features\SocialAccountLimit;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\Social\TelegramApi;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Pennant\Feature;
@@ -79,27 +80,24 @@ class ConnectTelegramChannel
      */
     private static function fetchChannelAvatar(string $chatId): ?string
     {
-        $token = (string) config('trypost.platforms.telegram.bot_token');
-        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
-
-        if ($token === '') {
+        if (TelegramApi::token() === '') {
             return null;
         }
 
         try {
-            $fileId = data_get(Http::get("{$api}/bot{$token}/getChat", ['chat_id' => $chatId])->json(), 'result.photo.big_file_id');
+            $fileId = data_get(Http::get(TelegramApi::endpoint('getChat'), ['chat_id' => $chatId])->json(), 'result.photo.big_file_id');
 
             if (! is_string($fileId)) {
                 return null;
             }
 
-            $filePath = data_get(Http::get("{$api}/bot{$token}/getFile", ['file_id' => $fileId])->json(), 'result.file_path');
+            $filePath = data_get(Http::get(TelegramApi::endpoint('getFile'), ['file_id' => $fileId])->json(), 'result.file_path');
 
             if (! is_string($filePath)) {
                 return null;
             }
 
-            return uploadFromUrl("{$api}/file/bot{$token}/{$filePath}");
+            return uploadFromUrl(TelegramApi::fileUrl($filePath));
         } catch (Throwable) {
             return null;
         }
