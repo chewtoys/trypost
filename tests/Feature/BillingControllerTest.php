@@ -183,8 +183,26 @@ test('billing processing shows processing page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
+        ->where('fromCheckout', false)
         ->where('conversion', null)
     );
+});
+
+test('billing processing exposes fromCheckout=true only the first time a session_id is seen', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $sessionId = 'cs_test_'.fake()->uuid();
+
+    $first = $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
+    $first->assertOk();
+    $first->assertInertia(fn ($page) => $page->where('fromCheckout', true));
+
+    // A back-button / refresh to the same success URL must not re-fire the event.
+    $second = $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['session_id' => $sessionId]));
+    $second->assertOk();
+    $second->assertInertia(fn ($page) => $page->where('fromCheckout', false));
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {

@@ -8,6 +8,11 @@ use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\AiUsageLog;
+use App\Models\Automation;
+use App\Models\AutomationNodeRun;
+use App\Models\AutomationNodeState;
+use App\Models\AutomationRun;
+use App\Models\AutomationTriggerItem;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -88,6 +93,7 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useCustomerModel(Account::class);
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
+        Cashier::keepPastDueSubscriptionsActive();
 
         Feature::resolveScopeUsing(fn () => auth()->user()?->account);
         Feature::useMorphMap();
@@ -113,6 +119,11 @@ class AppServiceProvider extends ServiceProvider
             'accessToken' => AccessToken::class,
             'account' => Account::class,
             'aiUsageLog' => AiUsageLog::class,
+            'automation' => Automation::class,
+            'automationNodeRun' => AutomationNodeRun::class,
+            'automationNodeState' => AutomationNodeState::class,
+            'automationRun' => AutomationRun::class,
+            'automationTriggerItem' => AutomationTriggerItem::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,

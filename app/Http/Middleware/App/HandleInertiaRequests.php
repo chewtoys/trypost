@@ -44,6 +44,7 @@ class HandleInertiaRequests extends Middleware
                 'account' => $account ? AuthAccountResource::make($account) : null,
                 'plan' => $account && $account->plan ? AuthPlanResource::make($account, $account->plan) : null,
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
+                'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,

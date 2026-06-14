@@ -2,6 +2,7 @@
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
+    IconAlertTriangle,
     IconBolt,
     IconCalendar,
     IconChartBar,
@@ -45,6 +46,7 @@ import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useFeatureAccess } from '@/composables/useFeatureAccess';
 import { useUpgradeDialog } from '@/composables/useUpgradeDialog';
 import { accounts, analytics, calendar, settings as settingsHub } from '@/routes/app';
+import { portal } from '@/routes/app/billing';
 import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
 import { index as labels } from '@/routes/app/labels';
@@ -61,6 +63,7 @@ interface Workspace {
 const page = usePage();
 const currentWorkspace = computed<Workspace | null>(() => page.props.auth.currentWorkspace as Workspace | null);
 const workspaces = computed<Workspace[]>(() => page.props.auth.workspaces as Workspace[]);
+const subscriptionPastDue = computed<boolean>(() => Boolean(page.props.auth.subscriptionPastDue));
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -208,6 +211,29 @@ const handleCreateWorkspace = () => {
         </SidebarContent>
 
         <SidebarFooter>
+            <div
+                v-if="subscriptionPastDue"
+                dusk="past-due-notice"
+                class="mx-1 mb-1 rounded-md border-2 border-destructive bg-destructive/10 p-3"
+            >
+                <div class="flex items-center gap-2 text-destructive">
+                    <IconAlertTriangle class="size-4 shrink-0" />
+                    <span class="text-sm font-semibold">{{ $t('billing.past_due_notice.title') }}</span>
+                </div>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    {{ $t('billing.past_due_notice.description') }}
+                </p>
+                <Button
+                    as="a"
+                    :href="portal.url()"
+                    variant="destructive"
+                    size="sm"
+                    class="mt-2 w-full"
+                    dusk="past-due-cta"
+                >
+                    {{ $t('billing.past_due_notice.cta') }}
+                </Button>
+            </div>
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton

@@ -3,6 +3,12 @@
 return [
     'title' => 'Billing',
 
+    'past_due_notice' => [
+        'title' => 'Payment past due',
+        'description' => 'Update your payment method to keep your subscription active.',
+        'cta' => 'Update payment',
+    ],
+
     'upgrade_dialog' => [
         'title' => 'Upgrade your plan',
         'description' => 'Pick a plan that fits your needs.',

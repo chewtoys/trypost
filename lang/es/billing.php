@@ -3,6 +3,12 @@
 return [
     'title' => 'Facturación',
 
+    'past_due_notice' => [
+        'title' => 'Pago vencido',
+        'description' => 'Actualiza tu método de pago para mantener tu suscripción activa.',
+        'cta' => 'Actualizar pago',
+    ],
+
     'upgrade_dialog' => [
         'title' => 'Actualiza tu plan',
         'description' => 'Elige un plan que se adapte a tus necesidades.',

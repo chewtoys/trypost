@@ -3,6 +3,12 @@
 return [
     'title' => 'Faturamento',
 
+    'past_due_notice' => [
+        'title' => 'Pagamento em atraso',
+        'description' => 'Atualize sua forma de pagamento para manter sua assinatura ativa.',
+        'cta' => 'Atualizar pagamento',
+    ],
+
     'upgrade_dialog' => [
         'title' => 'Faça upgrade do seu plano',
         'description' => 'Escolha um plano que se encaixe nas suas necessidades.',

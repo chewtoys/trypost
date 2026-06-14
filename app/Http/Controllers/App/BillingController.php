@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -88,9 +89,17 @@ class BillingController extends Controller
         $account = $request->user()->account;
         $sessionId = $request->query('session_id');
 
+        // Consume the checkout session once: `fromCheckout` is true only the first
+        // time this session_id is seen, so a back-button/refresh to the success URL
+        // can't re-fire `checkout.completed`. `Cache::add` is atomic — it returns
+        // true only when the key didn't exist yet.
+        $fromCheckout = is_string($sessionId) && $sessionId !== ''
+            && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
+
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
-            'conversion' => is_string($sessionId) && $sessionId !== '' && $account?->stripe_id
+            'fromCheckout' => $fromCheckout,
+            'conversion' => $fromCheckout && $account?->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)
                 : null,
         ]);

@@ -14,6 +14,65 @@ beforeEach(function () {
     Carbon::setTestNow('2026-05-14 12:00:00');
 });
 
+test('isPastDue returns false without a subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+
+    expect($account->isPastDue())->toBeFalse();
+});
+
+test('isPastDue returns true for a past_due subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->isPastDue())->toBeTrue();
+});
+
+test('isPastDue returns false for an active subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->isPastDue())->toBeFalse();
+});
+
+test('isPastDue returns false when self-hosted', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->isPastDue())->toBeFalse();
+});
+
 test('isOnTrial ignores generic trial when there is no subscription', function () {
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
 

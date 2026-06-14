@@ -91,6 +91,15 @@ class Account extends Model
         return $this->subscribed(self::SUBSCRIPTION_NAME);
     }
 
+    public function isPastDue(): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return false;
+        }
+
+        return (bool) $this->subscription(self::SUBSCRIPTION_NAME)?->pastDue();
+    }
+
     public function isOnTrial(): bool
     {
         if (! (bool) config('trypost.billing.require_card_for_trial', true) && $this->onGenericTrial()) {

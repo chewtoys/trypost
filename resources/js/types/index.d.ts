@@ -32,6 +32,7 @@ export interface Auth {
     account: AuthAccount | null;
     plan: AuthPlan | null;
     hasActiveSubscription: boolean;
+    subscriptionPastDue: boolean;
 }
 
 export interface Usage {

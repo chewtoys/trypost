@@ -297,6 +297,12 @@ Vue components must have a single root element.
     - Example: `data_get($data, 'name')` instead of `$data['name']`.
     - Use the third parameter for fallback values: `data_get($data, 'username', $sender->username)` instead of `$data['username'] ?? $sender->username`.
 
+## Eloquent Models & Morph Map
+
+- EVERY Eloquent model in `app/Models` MUST be registered in `Relation::enforceMorphMap([...])` inside `AppServiceProvider::configureMorphMap()`, keyed by a camelCase alias (e.g. `'postPlatform' => PostPlatform::class`).
+- When you add a new model, add it to the morph map in the same change. `tests/Unit/MorphMapTest.php` fails if any model is missing.
+- The alias is persisted in polymorphic columns, so never rename or remove an existing alias for a model that has stored rows.
+
 ## Imports
 
 - NEVER use inline class references (e.g., `\DB::listen`, `\Str::uuid()`). ALWAYS import classes at the top of the file with a `use` statement.

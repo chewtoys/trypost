@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
-import { onMounted, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { useTracking } from '@/composables/useTracking';
 import { home } from '@/routes/app';
@@ -9,6 +9,7 @@ import type { Auth } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
+    fromCheckout: boolean;
     conversion?: { value: number; currency: string; transaction_id: string } | null;
 }>();
 
@@ -24,20 +25,21 @@ const { stop } = usePoll(2000, {
 
 const { trackPurchase } = useTracking();
 
+const tracked = ref(false);
+
 const goHome = () => router.visit(home.url());
 
-// `watch` (without `immediate`) only fires on transition false → true, which
-// is exactly the purchase moment. The `onMounted` fallback covers the case
-// where the user lands here with an already-active subscription (back button,
-// refresh after the redirect) — we just bounce them home, no extra event.
-watch(
-    () => props.subscriptionActive,
-    (active) => {
-        if (! active) {
-            return;
-        }
+// Fires `checkout.completed` exactly once for a real checkout. A trial-with-card
+// subscription is already `subscribed()` (status `trialing`) by the time the
+// webhook lands, so the user frequently reaches this page already active — the
+// false → true poll transition never happens. We therefore complete the purchase
+// from whichever path runs first (immediate active state or poll transition),
+// gated on `fromCheckout` so back-button/refresh visits don't over-count.
+const completePurchase = () => {
+    stop();
 
-        stop();
+    if (! tracked.value && props.fromCheckout) {
+        tracked.value = true;
 
         const plan = (page.props.auth as Auth | undefined)?.plan;
         if (plan) {
@@ -49,14 +51,23 @@ watch(
                 props.conversion ?? null,
             );
         }
+    }
 
-        goHome();
+    goHome();
+};
+
+watch(
+    () => props.subscriptionActive,
+    (active) => {
+        if (active) {
+            completePurchase();
+        }
     },
 );
 
 onMounted(() => {
     if (props.subscriptionActive) {
-        goHome();
+        completePurchase();
     }
 });
 </script>
