@@ -18,6 +18,13 @@ interface Props {
 }
 
 defineProps<Props>();
+
+// Mock reactions so the preview mirrors how a real Telegram channel post looks.
+const sampleReactions = [
+    { emoji: '❤️', count: 12, reacted: true },
+    { emoji: '🔥', count: 7, reacted: false },
+    { emoji: '👍', count: 4, reacted: false },
+];
 </script>
 
 <template>
@@ -55,7 +62,7 @@ defineProps<Props>();
         <!-- Chat area -->
         <div class="flex-1 overflow-y-auto px-3 py-4">
             <div
-                class="max-w-[85%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm dark:bg-[#182533]"
+                class="max-w-[90%] overflow-hidden rounded-2xl rounded-bl-sm bg-white shadow-sm dark:bg-[#182533]"
             >
                 <!-- Media -->
                 <div v-if="media.length > 0">
@@ -97,7 +104,7 @@ defineProps<Props>();
                     </div>
                 </div>
 
-                <!-- Text + meta -->
+                <!-- Body -->
                 <div class="px-3 py-2">
                     <div
                         v-if="content"
@@ -105,8 +112,31 @@ defineProps<Props>();
                     >
                         {{ content }}
                     </div>
+
+                    <!-- Reactions -->
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                        <span
+                            v-for="reaction in sampleReactions"
+                            :key="reaction.emoji"
+                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-medium"
+                            :class="
+                                reaction.reacted
+                                    ? 'bg-[#3390ec]/15 text-[#3390ec]'
+                                    : 'bg-black/[0.06] text-[#5a6570] dark:bg-white/10 dark:text-[#aeb9c4]'
+                            "
+                        >
+                            <span class="text-sm leading-none">{{
+                                reaction.emoji
+                            }}</span>
+                            <span class="tabular-nums">{{
+                                reaction.count
+                            }}</span>
+                        </span>
+                    </div>
+
+                    <!-- Meta -->
                     <div
-                        class="mt-1 flex items-center justify-end gap-1 text-[12px] text-[#707991] dark:text-[#708499]"
+                        class="mt-1.5 flex items-center justify-end gap-1 text-[12px] text-[#707991] dark:text-[#708499]"
                     >
                         <svg
                             class="h-3.5 w-3.5"
@@ -120,7 +150,7 @@ defineProps<Props>();
                             />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
-                        <span>0</span>
+                        <span>1.2K</span>
                         <span class="ml-1">4:30 PM</span>
                     </div>
                 </div>
