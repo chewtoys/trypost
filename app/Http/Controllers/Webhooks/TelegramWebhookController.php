@@ -6,10 +6,13 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Features\SocialAccountLimit;
 use App\Http\Controllers\Controller;
 use App\Models\TelegramConnectRequest;
+use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class TelegramWebhookController extends Controller
@@ -49,7 +52,19 @@ class TelegramWebhookController extends Controller
         $chatId = (string) data_get($chat, 'id');
         $username = data_get($chat, 'username');
 
-        $account = $connectRequest->workspace->socialAccounts()->updateOrCreate(
+        $workspace = $connectRequest->workspace;
+
+        // Mirror the controller's limit gate: block only brand-new accounts, never reconnects.
+        $isNewAccount = ! $workspace->socialAccounts()
+            ->where('platform', SocialPlatform::Telegram->value)
+            ->where('platform_user_id', $chatId)
+            ->exists();
+
+        if ($isNewAccount && $this->workspaceAtAccountLimit($workspace)) {
+            return response()->noContent();
+        }
+
+        $account = $workspace->socialAccounts()->updateOrCreate(
             [
                 'platform' => SocialPlatform::Telegram->value,
                 'platform_user_id' => $chatId,
@@ -75,5 +90,16 @@ class TelegramWebhookController extends Controller
         $connectRequest->update(['social_account_id' => $account->id]);
 
         return response()->noContent();
+    }
+
+    private function workspaceAtAccountLimit(Workspace $workspace): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return false;
+        }
+
+        $limit = Feature::for($workspace->account)->value(SocialAccountLimit::class);
+
+        return $workspace->socialAccounts()->count() >= $limit;
     }
 }

@@ -94,3 +94,9 @@ test('it escapes bare ampersands for telegram', function () {
     $result = $sanitizer->sanitize('Tom &amp; Jerry & friends', Platform::Telegram);
     expect($result)->toBe('Tom &amp; Jerry &amp; friends');
 });
+
+test('it drops anchors without an href for telegram', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('<p>see <a>bare</a> and <a href="https://x.com">link</a></p>', Platform::Telegram);
+    expect($result)->toBe('see bare and <a href="https://x.com">link</a>');
+});

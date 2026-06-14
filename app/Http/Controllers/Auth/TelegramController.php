@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\TelegramConnectStatus;
+use App\Http\Requests\App\Auth\TelegramStatusRequest;
 use App\Models\TelegramConnectRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,14 +48,14 @@ class TelegramController extends SocialController
     /**
      * Poll whether the channel has been linked yet.
      */
-    public function status(Request $request): JsonResponse
+    public function status(TelegramStatusRequest $request): JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
         abort_if($workspace === null, SymfonyResponse::HTTP_CONFLICT, 'No active workspace.');
 
         $connectRequest = TelegramConnectRequest::query()
             ->where('workspace_id', $workspace->id)
-            ->where('code', (string) $request->query('code'))
+            ->where('code', $request->validated('code'))
             ->first();
 
         return response()->json([

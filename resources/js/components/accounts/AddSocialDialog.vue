@@ -2,7 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { useOAuthPopup } from '@/composables/useOAuthPopup';
 
 export interface AvailablePlatform {
     value: string;
@@ -109,47 +110,21 @@ const themeFor = (value: string) =>
 
 const telegramOpen = ref(false);
 
+const { openOAuthPopup } = useOAuthPopup(() => {
+    open.value = false;
+    router.reload();
+});
+
 const connectPlatform = (platformValue: string) => {
+    open.value = false;
+
     if (platformValue === 'telegram') {
-        open.value = false;
         telegramOpen.value = true;
         return;
     }
 
     openOAuthPopup(platformValue);
 };
-
-const openOAuthPopup = (platformValue: string) => {
-    const url = `/connect/${platformValue}`;
-    const width = 600;
-    const height = 700;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    open.value = false;
-
-    window.open(
-        url,
-        'oauth-popup',
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
-    );
-};
-
-const handleOAuthMessage = (event: MessageEvent) => {
-    if (event.origin !== window.location.origin) return;
-    if (event.data?.type !== 'social-oauth-callback') return;
-
-    open.value = false;
-    router.reload();
-};
-
-onMounted(() => {
-    window.addEventListener('message', handleOAuthMessage);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('message', handleOAuthMessage);
-});
 </script>
 
 <template>

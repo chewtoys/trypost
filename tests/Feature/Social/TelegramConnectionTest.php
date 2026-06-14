@@ -102,6 +102,60 @@ it('links a private channel that has no username', function () {
     expect(data_get($account->meta, 'username'))->toBeNull();
 });
 
+it('does not create a new telegram account when the workspace is at its limit', function () {
+    config(['trypost.self_hosted' => false]);
+
+    SocialAccount::factory()->count(5)->create(['workspace_id' => $this->workspace->id]);
+
+    TelegramConnectRequest::create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'code' => 'limitcode',
+        'expires_at' => now()->addMinutes(15),
+    ]);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate('limitcode'))
+        ->assertNoContent();
+
+    expect($this->workspace->socialAccounts()->count())->toBe(5);
+    expect(
+        SocialAccount::where('platform', Platform::Telegram)->where('platform_user_id', '-1001234567890')->exists()
+    )->toBeFalse();
+});
+
+it('still reconnects an existing telegram channel even at the account limit', function () {
+    config(['trypost.self_hosted' => false]);
+
+    SocialAccount::factory()->count(4)->create(['workspace_id' => $this->workspace->id]);
+    SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1001234567890',
+    ]);
+
+    TelegramConnectRequest::create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'code' => 'reconnectcode',
+        'expires_at' => now()->addMinutes(15),
+    ]);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate('reconnectcode'))
+        ->assertNoContent();
+
+    expect($this->workspace->socialAccounts()->count())->toBe(5);
+    expect(
+        SocialAccount::where('platform', Platform::Telegram)->where('platform_user_id', '-1001234567890')->count()
+    )->toBe(1);
+});
+
+it('requires a code to check connection status', function () {
+    $this->actingAs($this->user)
+        ->getJson(route('app.social.telegram.status'))
+        ->assertStatus(422);
+});
+
 it('rejects the webhook without the secret token', function () {
     $this->postJson(route('telegram.webhook'), telegramUpdate('whatever'))
         ->assertForbidden();

@@ -35,6 +35,9 @@ class ContentSanitizer
         $content = preg_replace(['/<(\/?)strong>/i', '/<(\/?)em>/i'], ['<$1b>', '<$1i>'], $content);
         $content = strip_tags($content, ['b', 'i', 'u', 's', 'a', 'code', 'pre']);
 
+        // Telegram requires every <a> to carry an href; drop bare anchors so the parser doesn't reject the whole message.
+        $content = preg_replace('/<a(?![^>]*\shref=)[^>]*>(.*?)<\/a>/is', '$1', $content);
+
         // Escape bare ampersands while leaving existing entities intact.
         $content = preg_replace('/&(?!(?:amp|lt|gt|quot|#\d+);)/', '&amp;', $content);
 
