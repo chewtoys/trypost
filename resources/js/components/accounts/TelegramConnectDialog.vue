@@ -197,7 +197,7 @@ onUnmounted(stopPolling);
                             class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-xs font-semibold"
                             >2</span
                         >
-                        <div class="flex-1 space-y-2">
+                        <div class="min-w-0 flex-1 space-y-2">
                             <span>{{
                                 $t('accounts.telegram.step_command')
                             }}</span>
@@ -206,7 +206,9 @@ onUnmounted(stopPolling);
                                 class="group flex w-full items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-muted/70"
                                 @click="copyCommand"
                             >
-                                <span>/connect {{ code }}</span>
+                                <span class="min-w-0 truncate"
+                                    >/connect {{ code }}</span
+                                >
                                 <IconCopy
                                     class="size-4 shrink-0 text-muted-foreground group-hover:text-foreground"
                                 />
