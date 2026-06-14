@@ -5,10 +5,10 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
-use App\Models\TelegramConnectRequest;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use App\Services\Social\TelegramConnectCode;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -43,31 +43,23 @@ function telegramUpdate(string $code, array $chat = []): array
     ];
 }
 
-it('issues a connect code', function () {
+it('issues a signed connect code and stores it in the session', function () {
     $response = $this->actingAs($this->user)
         ->postJson(route('app.social.telegram.connect'))
         ->assertOk()
-        ->assertJsonStructure(['code', 'bot_username', 'expires_at']);
+        ->assertJsonStructure(['code', 'bot_username', 'expires_at'])
+        ->assertSessionHas('telegram_connect_code');
 
     expect($response->json('bot_username'))->toBe('TryPostBot');
-
-    $this->assertDatabaseHas('telegram_connect_requests', [
-        'workspace_id' => $this->workspace->id,
-        'code' => $response->json('code'),
-        'social_account_id' => null,
-    ]);
+    expect(data_get(TelegramConnectCode::decode($response->json('code')), 'workspace_id'))
+        ->toBe($this->workspace->id);
 });
 
 it('links the channel when the webhook receives a matching /connect', function () {
-    $request = TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'abc123code',
-        'expires_at' => now()->addMinutes(15),
-    ]);
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('abc123code'))
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
         ->assertNoContent();
 
     $account = SocialAccount::where('workspace_id', $this->workspace->id)
@@ -79,20 +71,15 @@ it('links the channel when the webhook receives a matching /connect', function (
     expect($account->display_name)->toBe('My Channel');
     expect($account->username)->toBe('mychannel');
     expect(data_get($account->meta, 'chat_id'))->toBe('-1001234567890');
-
-    expect($request->fresh()->social_account_id)->toBe($account->id);
+    expect(data_get($account->meta, 'connect_nonce'))
+        ->toBe(data_get(TelegramConnectCode::decode($code), 'nonce'));
 });
 
 it('links a private channel that has no username', function () {
-    TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'privatecode',
-        'expires_at' => now()->addMinutes(15),
-    ]);
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('privatecode', ['username' => null]))
+        ->postJson(route('telegram.webhook'), telegramUpdate($code, ['username' => null]))
         ->assertNoContent();
 
     $account = SocialAccount::where('platform', Platform::Telegram)->first();
@@ -107,15 +94,10 @@ it('does not create a new telegram account when the workspace is at its limit', 
 
     SocialAccount::factory()->count(5)->create(['workspace_id' => $this->workspace->id]);
 
-    TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'limitcode',
-        'expires_at' => now()->addMinutes(15),
-    ]);
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('limitcode'))
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
         ->assertNoContent();
 
     expect($this->workspace->socialAccounts()->count())->toBe(5);
@@ -133,15 +115,10 @@ it('still reconnects an existing telegram channel even at the account limit', fu
         'platform_user_id' => '-1001234567890',
     ]);
 
-    TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'reconnectcode',
-        'expires_at' => now()->addMinutes(15),
-    ]);
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('reconnectcode'))
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
         ->assertNoContent();
 
     expect($this->workspace->socialAccounts()->count())->toBe(5);
@@ -150,56 +127,54 @@ it('still reconnects an existing telegram channel even at the account limit', fu
     )->toBe(1);
 });
 
-it('requires a code to check connection status', function () {
-    $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status'))
-        ->assertStatus(422);
-});
-
 it('rejects the webhook without the secret token', function () {
-    $this->postJson(route('telegram.webhook'), telegramUpdate('whatever'))
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+
+    $this->postJson(route('telegram.webhook'), telegramUpdate($code))
         ->assertForbidden();
 });
 
-it('ignores the webhook for an unknown or expired code', function () {
-    TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'expiredcode',
-        'expires_at' => now()->subMinute(),
-    ]);
+it('ignores the webhook for a tampered or expired code', function () {
+    $expired = TelegramConnectCode::issue($this->workspace->id, now()->subMinute());
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('expiredcode'))
+        ->postJson(route('telegram.webhook'), telegramUpdate($expired))
         ->assertNoContent();
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate('does-not-exist'))
+        ->postJson(route('telegram.webhook'), telegramUpdate('not-a-valid-code'))
         ->assertNoContent();
 
     expect(SocialAccount::where('platform', Platform::Telegram)->count())->toBe(0);
 });
 
-it('reports connection status while pending and once connected', function () {
-    $request = TelegramConnectRequest::create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'code' => 'statuscode',
-        'expires_at' => now()->addMinutes(15),
-    ]);
+it('reports the session connection status while pending and once connected', function () {
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+    $nonce = data_get(TelegramConnectCode::decode($code), 'nonce');
 
     $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status', ['code' => 'statuscode']))
+        ->withSession(['telegram_connect_code' => $code])
+        ->getJson(route('app.social.telegram.status'))
         ->assertOk()
         ->assertJson(['status' => 'pending']);
 
-    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
-    $request->update(['social_account_id' => $account->id]);
+    SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'meta' => ['chat_id' => '-1001234567890', 'username' => 'mychannel', 'type' => 'channel', 'connect_nonce' => $nonce],
+    ]);
 
     $this->actingAs($this->user)
-        ->getJson(route('app.social.telegram.status', ['code' => 'statuscode']))
+        ->withSession(['telegram_connect_code' => $code])
+        ->getJson(route('app.social.telegram.status'))
         ->assertOk()
         ->assertJson(['status' => 'connected']);
+});
+
+it('reports unknown status without a session code', function () {
+    $this->actingAs($this->user)
+        ->getJson(route('app.social.telegram.status'))
+        ->assertOk()
+        ->assertJson(['status' => 'unknown']);
 });
 
 it('verifies a connected telegram account via getChat', function () {

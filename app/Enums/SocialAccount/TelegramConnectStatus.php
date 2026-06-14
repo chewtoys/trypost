@@ -4,25 +4,19 @@ declare(strict_types=1);
 
 namespace App\Enums\SocialAccount;
 
-use App\Models\TelegramConnectRequest;
+use App\Models\SocialAccount;
 
 enum TelegramConnectStatus: string
 {
     case Unknown = 'unknown';
     case Pending = 'pending';
     case Connected = 'connected';
-    case Expired = 'expired';
 
     /**
-     * Derive the connection status the frontend polls for from a connect request.
+     * Connected once the channel has been linked to an account; otherwise still pending.
      */
-    public static function for(?TelegramConnectRequest $request): self
+    public static function for(?SocialAccount $account): self
     {
-        return match (true) {
-            $request === null => self::Unknown,
-            $request->social_account_id !== null => self::Connected,
-            $request->isExpired() => self::Expired,
-            default => self::Pending,
-        };
+        return $account === null ? self::Pending : self::Connected;
     }
 }

@@ -23,7 +23,7 @@ import {
 const open = defineModel<boolean>('open', { required: true });
 
 type Phase = 'loading' | 'ready' | 'connected' | 'expired' | 'error';
-type ConnectStatus = 'unknown' | 'pending' | 'connected' | 'expired';
+type ConnectStatus = 'unknown' | 'pending' | 'connected';
 
 interface ConnectResponse {
     code: string;
@@ -57,9 +57,7 @@ const poll = async () => {
     if (phase.value !== 'ready') return;
 
     try {
-        const response = await httpStatus.get(
-            telegramStatus.url({ query: { code: code.value } }),
-        );
+        const response = await httpStatus.get(telegramStatus.url());
 
         if (response?.status === 'connected') {
             phase.value = 'connected';
@@ -72,7 +70,8 @@ const poll = async () => {
             return;
         }
 
-        if (response?.status === 'expired' || response?.status === 'unknown') {
+        // The signed code expired (or the session was lost): prompt a fresh one.
+        if (response?.status === 'unknown') {
             phase.value = 'expired';
             stopPolling();
             return;

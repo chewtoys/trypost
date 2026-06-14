@@ -8,8 +8,8 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Features\SocialAccountLimit;
 use App\Http\Controllers\Controller;
-use App\Models\TelegramConnectRequest;
 use App\Models\Workspace;
+use App\Services\Social\TelegramConnectCode;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Laravel\Pennant\Feature;
@@ -19,8 +19,8 @@ class TelegramWebhookController extends Controller
 {
     /**
      * Receives Bot API updates. The only update we act on is a `/connect <code>`
-     * message/channel_post: it ties the originating channel to the workspace that
-     * generated the code. Everything else is acknowledged and ignored.
+     * message/channel_post: the signed code carries the workspace, so we link the
+     * originating channel to it. Everything else is acknowledged and ignored.
      */
     public function handle(Request $request): Response
     {
@@ -39,20 +39,15 @@ class TelegramWebhookController extends Controller
             return response()->noContent();
         }
 
-        $connectRequest = TelegramConnectRequest::query()
-            ->whereNull('social_account_id')
-            ->where('code', $matches[1])
-            ->where('expires_at', '>', now())
-            ->first();
+        $payload = TelegramConnectCode::decode($matches[1]);
+        $workspace = $payload === null ? null : Workspace::find(data_get($payload, 'workspace_id'));
 
-        if ($connectRequest === null) {
+        if ($workspace === null) {
             return response()->noContent();
         }
 
         $chatId = (string) data_get($chat, 'id');
         $username = data_get($chat, 'username');
-
-        $workspace = $connectRequest->workspace;
 
         // Mirror the controller's limit gate: block only brand-new accounts, never reconnects.
         $isNewAccount = ! $workspace->socialAccounts()
@@ -64,7 +59,7 @@ class TelegramWebhookController extends Controller
             return response()->noContent();
         }
 
-        $account = $workspace->socialAccounts()->updateOrCreate(
+        $workspace->socialAccounts()->updateOrCreate(
             [
                 'platform' => SocialPlatform::Telegram->value,
                 'platform_user_id' => $chatId,
@@ -83,11 +78,10 @@ class TelegramWebhookController extends Controller
                     'chat_id' => $chatId,
                     'username' => $username,
                     'type' => data_get($chat, 'type'),
+                    'connect_nonce' => data_get($payload, 'nonce'),
                 ],
             ],
         );
-
-        $connectRequest->update(['social_account_id' => $account->id]);
 
         return response()->noContent();
     }
