@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class TelegramAnalytics
 {
@@ -25,10 +26,14 @@ class TelegramAnalytics
             return [];
         }
 
-        $count = data_get(
-            Http::get("{$api}/bot{$token}/getChatMemberCount", ['chat_id' => $chatId])->json(),
-            'result',
-        );
+        try {
+            $count = data_get(
+                Http::get("{$api}/bot{$token}/getChatMemberCount", ['chat_id' => $chatId])->json(),
+                'result',
+            );
+        } catch (Throwable) {
+            return [];
+        }
 
         if (! is_int($count)) {
             return [];

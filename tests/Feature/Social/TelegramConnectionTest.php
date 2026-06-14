@@ -206,6 +206,78 @@ it('stores reaction counts on the matching post from a reaction update', functio
         ->toBe([['type' => '👍', 'count' => 12], ['type' => '❤️', 'count' => 5]]);
 });
 
+it('does not store reactions on a post from a different channel with the same message id', function () {
+    $otherAccount = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1009999999999',
+        'meta' => ['chat_id' => '-1009999999999', 'username' => 'other', 'type' => 'channel'],
+    ]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $otherAccount->id,
+        'platform' => Platform::Telegram,
+        'platform_post_id' => '42',
+    ]);
+
+    $update = [
+        'message_reaction_count' => [
+            'chat' => ['id' => -1001234567890],
+            'message_id' => 42,
+            'reactions' => [['type' => ['type' => 'emoji', 'emoji' => '👍'], 'total_count' => 9]],
+        ],
+    ];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), $update)
+        ->assertNoContent();
+
+    expect(data_get($postPlatform->fresh()->meta, 'reactions'))->toBeNull();
+});
+
+it('labels custom emoji reactions with a fallback', function () {
+    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Telegram,
+        'platform_post_id' => '77',
+    ]);
+
+    $update = [
+        'message_reaction_count' => [
+            'chat' => ['id' => -1001234567890],
+            'message_id' => 77,
+            'reactions' => [['type' => ['type' => 'custom_emoji', 'custom_emoji_id' => '555'], 'total_count' => 3]],
+        ],
+    ];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), $update)
+        ->assertNoContent();
+
+    expect(data_get($postPlatform->fresh()->meta, 'reactions'))
+        ->toBe([['type' => 'Custom', 'count' => 3]]);
+});
+
+it('connects without an avatar when the channel has no photo', function () {
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => true, 'result' => []], 200),
+    ]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    $account = SocialAccount::where('platform', Platform::Telegram)->first();
+
+    expect($account)->not->toBeNull();
+    expect($account->getRawOriginal('avatar_url'))->toBeNull();
+});
+
 it('rejects the webhook without the secret token', function () {
     $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 

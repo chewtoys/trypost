@@ -35,10 +35,12 @@ class StoreTelegramReactions
             return;
         }
 
+        $rawReactions = data_get($update, 'reactions');
+
         $reactions = array_values(array_map(fn (array $reaction): array => [
             'type' => (string) (data_get($reaction, 'type.emoji') ?? __('analytics.metrics.custom_reaction')),
             'count' => (int) data_get($reaction, 'total_count'),
-        ], data_get($update, 'reactions', [])));
+        ], is_array($rawReactions) ? $rawReactions : []));
 
         $postPlatform->update(['meta' => [...$postPlatform->meta ?? [], 'reactions' => $reactions]]);
 
