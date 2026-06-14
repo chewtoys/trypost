@@ -13,8 +13,37 @@ class ContentSanitizer
         return match ($platform) {
             Platform::LinkedIn, Platform::LinkedInPage => $this->convertBoldAndStrip($content),
             Platform::Mastodon => $this->stripUnsafeHtml($content),
+            Platform::Telegram => $this->toTelegramHtml($content),
             default => $this->stripHtml($content),
         };
+    }
+
+    /**
+     * Telegram's `parse_mode=HTML` accepts a small tag allowlist and rejects
+     * the rest; bare ampersands must be escaped or the parser errors.
+     */
+    private function toTelegramHtml(string $content): string
+    {
+        // Block elements → newlines (Telegram HTML has no <p>/<br>/<li>).
+        $content = preg_replace('/<p[^>]*>/i', '', $content);
+        $content = str_replace('</p>', "\n", $content);
+        $content = preg_replace('/<br\s*\/?>/i', "\n", $content);
+        $content = preg_replace('/<li[^>]*>/i', '- ', $content);
+        $content = str_replace('</li>', "\n", $content);
+
+        // Normalize to Telegram's tag names, then keep only its allowlist.
+        $content = preg_replace(['/<(\/?)strong>/i', '/<(\/?)em>/i'], ['<$1b>', '<$1i>'], $content);
+        $content = strip_tags($content, ['b', 'i', 'u', 's', 'a', 'code', 'pre']);
+
+        // Telegram requires every <a> to carry an href; drop bare anchors so the parser doesn't reject the whole message.
+        $content = preg_replace('/<a(?![^>]*\shref=)[^>]*>(.*?)<\/a>/is', '$1', $content);
+
+        // Escape bare ampersands while leaving existing entities intact.
+        $content = preg_replace('/&(?!(?:amp|lt|gt|quot|#\d+);)/', '&amp;', $content);
+
+        $content = preg_replace("/\n{3,}/", "\n\n", $content);
+
+        return trim($content);
     }
 
     private function stripHtml(string $content): string

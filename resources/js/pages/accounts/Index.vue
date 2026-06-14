@@ -121,7 +121,7 @@ const handleToggle = (accountId: string) => {
 const handleDisconnect = (account: SocialAccount) => {
     deleteModal.value?.open({
         url: disconnectAccount.url(account.id),
-        confirmText: account.username,
+        confirmText: account.username || account.display_name,
     });
 };
 </script>

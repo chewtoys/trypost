@@ -9,6 +9,7 @@ import InstagramPreview from './InstagramPreview.vue';
 import LinkedInPreview from './LinkedInPreview.vue';
 import MastodonPreview from './MastodonPreview.vue';
 import PinterestPreview from './PinterestPreview.vue';
+import TelegramPreview from './TelegramPreview.vue';
 import ThreadsPreview from './ThreadsPreview.vue';
 import TikTokPreview from './TikTokPreview.vue';
 import XPreview from './XPreview.vue';
@@ -65,6 +66,8 @@ const previewComponent = computed(() => {
             return BlueskyPreview;
         case 'mastodon':
             return MastodonPreview;
+        case 'telegram':
+            return TelegramPreview;
         default:
             return LinkedInPreview;
     }

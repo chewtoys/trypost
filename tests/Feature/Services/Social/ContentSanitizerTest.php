@@ -76,3 +76,33 @@ test('it preserves links for mastodon', function () {
     $result = $sanitizer->sanitize('<p>Check <a href="https://example.com">this</a></p>', Platform::Mastodon);
     expect($result)->toContain('<a href="https://example.com">this</a>');
 });
+
+test('it keeps telegram-allowed html and converts strong/em', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('<p>Hello <strong>world</strong> and <em>you</em></p>', Platform::Telegram);
+    expect($result)->toBe('Hello <b>world</b> and <i>you</i>');
+});
+
+test('it strips disallowed tags but keeps links for telegram', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('<div>see <a href="https://example.com">link</a></div><script>x</script>', Platform::Telegram);
+    expect($result)->toBe('see <a href="https://example.com">link</a>x');
+});
+
+test('it escapes bare ampersands for telegram', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('Tom &amp; Jerry & friends', Platform::Telegram);
+    expect($result)->toBe('Tom &amp; Jerry &amp; friends');
+});
+
+test('it drops anchors without an href for telegram', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('<p>see <a>bare</a> and <a href="https://x.com">link</a></p>', Platform::Telegram);
+    expect($result)->toBe('see bare and <a href="https://x.com">link</a>');
+});
+
+test('it preserves @username mentions as plain text for telegram', function () {
+    $sanitizer = new ContentSanitizer;
+    $result = $sanitizer->sanitize('<p>Hey @durov and @TryPostBot</p>', Platform::Telegram);
+    expect($result)->toBe('Hey @durov and @TryPostBot');
+});

@@ -484,6 +484,10 @@ return [
             'label' => 'Post',
             'description' => 'Text post with optional media',
         ],
+        'telegram_post' => [
+            'label' => 'Post',
+            'description' => 'Text post with optional media',
+        ],
     ],
 
     'platforms' => [
@@ -586,6 +590,7 @@ return [
                 'bluesky_post' => 'Bluesky Post',
                 'threads_post' => 'Threads Post',
                 'mastodon_post' => 'Mastodon Post',
+                'telegram_post' => 'Telegram Post',
                 'facebook_post' => 'Facebook Post',
                 'pinterest_pin' => 'Pinterest Pin',
                 'instagram_story' => 'Instagram Story',

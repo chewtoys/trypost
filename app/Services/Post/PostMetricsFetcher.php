@@ -13,6 +13,7 @@ use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\MastodonAnalytics;
 use App\Services\Social\PinterestAnalytics;
+use App\Services\Social\Telegram\TelegramAnalytics;
 use App\Services\Social\ThreadsAnalytics;
 use App\Services\Social\XAnalytics;
 use App\Services\Social\YouTubeAnalytics;
@@ -64,6 +65,7 @@ class PostMetricsFetcher
             Platform::X => app(XAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Bluesky => app(BlueskyAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Mastodon => app(MastodonAnalytics::class)->fetchPostMetrics($postPlatform),
+            Platform::Telegram => app(TelegramAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Facebook => app(FacebookAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Threads => app(ThreadsAnalytics::class)->fetchPostMetrics($postPlatform),

@@ -153,6 +153,15 @@ return [
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => env('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
         ],
+        'telegram' => [
+            'enabled' => env('TELEGRAM_ENABLED', true),
+            // Single shared bot (BotFather). Users add it as admin to their channel.
+            'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+            'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+            'api' => env('TELEGRAM_API', 'https://api.telegram.org'),
+            // Secret-token header Telegram echoes on every webhook call.
+            'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        ],
     ],
 
 ];

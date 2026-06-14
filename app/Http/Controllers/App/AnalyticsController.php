@@ -11,6 +11,7 @@ use App\Services\Social\FacebookAnalytics;
 use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\PinterestAnalytics;
+use App\Services\Social\Telegram\TelegramAnalytics;
 use App\Services\Social\ThreadsAnalytics;
 use App\Services\Social\TikTokAnalytics;
 use App\Services\Social\XAnalytics;
@@ -34,6 +35,7 @@ class AnalyticsController extends Controller
         Platform::LinkedInPage,
         Platform::Pinterest,
         Platform::YouTube,
+        Platform::Telegram,
     ];
 
     public function index(Request $request): Response
@@ -77,6 +79,7 @@ class AnalyticsController extends Controller
             Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
             Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
             Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
+            Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
             default => [],
         };
 

@@ -137,6 +137,23 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function telegram(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::Telegram,
+            'scopes' => Platform::Telegram->requiredPublishScopes(),
+            'token_expires_at' => null, // the shared bot token never expires
+            'access_token' => '',
+            'refresh_token' => '',
+            'username' => 'mychannel',
+            'meta' => [
+                'chat_id' => '-1001234567890',
+                'username' => 'mychannel',
+                'type' => 'channel',
+            ],
+        ]);
+    }
+
     public function disconnected(): static
     {
         return $this->state(fn (array $attributes) => [

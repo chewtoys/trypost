@@ -11,6 +11,7 @@ export const Platform = {
     Pinterest: 'pinterest',
     Bluesky: 'bluesky',
     Mastodon: 'mastodon',
+    Telegram: 'telegram',
 } as const;
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];

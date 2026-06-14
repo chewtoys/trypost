@@ -125,6 +125,7 @@ class SocialAccount extends Model
                     SocialPlatform::Mastodon => ($username && data_get($this->meta, 'instance'))
                         ? rtrim((string) data_get($this->meta, 'instance'), '/')."/@{$username}"
                         : null,
+                    SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
                     default => null,
                 };
             },

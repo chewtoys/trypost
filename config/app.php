@@ -54,7 +54,20 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'https://trypost.it'),
+    'url' => env('APP_URL', 'https://app.trypost.it'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhook URL
+    |--------------------------------------------------------------------------
+    |
+    | Public base URL that inbound provider webhooks (e.g. Telegram) are
+    | registered on. Defaults to the app URL; override it (for example with a
+    | tunnel like ngrok) when the app URL isn't reachable from the internet.
+    |
+    */
+
+    'webhook_url' => env('WEBHOOK_URL', env('APP_URL', 'https://app.trypost.it')),
 
     /*
     |--------------------------------------------------------------------------

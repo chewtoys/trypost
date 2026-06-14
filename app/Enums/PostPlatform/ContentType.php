@@ -50,6 +50,9 @@ enum ContentType: string
     // Mastodon
     case MastodonPost = 'mastodon_post';
 
+    // Telegram
+    case TelegramPost = 'telegram_post';
+
     /**
      * AI generation format for an Instagram carousel. Not a content type —
      * carousel posts are persisted as InstagramFeed.
@@ -77,6 +80,7 @@ enum ContentType: string
             self::PinterestCarousel => 'Carousel',
             self::BlueskyPost => 'Post',
             self::MastodonPost => 'Post',
+            self::TelegramPost => 'Post',
         };
     }
 
@@ -99,6 +103,7 @@ enum ContentType: string
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
             self::BlueskyPost => SocialPlatform::Bluesky,
             self::MastodonPost => SocialPlatform::Mastodon,
+            self::TelegramPost => SocialPlatform::Telegram,
         };
     }
 
@@ -167,6 +172,7 @@ enum ContentType: string
             self::PinterestCarousel => 5,
             self::BlueskyPost => 4,
             self::MastodonPost => 4,
+            self::TelegramPost => 10,
         };
     }
 
@@ -186,6 +192,7 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => false,
             self::BlueskyPost => true,
             self::MastodonPost => true,
+            self::TelegramPost => true,
         };
     }
 
@@ -222,6 +229,7 @@ enum ContentType: string
             self::ThreadsPost => false,
             self::BlueskyPost => false,
             self::MastodonPost => false,
+            self::TelegramPost => false,
             self::FacebookPost => false,
             self::InstagramFeed => false,
             default => true,
@@ -304,6 +312,7 @@ enum ContentType: string
             SocialPlatform::Pinterest => self::PinterestPin,
             SocialPlatform::Bluesky => self::BlueskyPost,
             SocialPlatform::Mastodon => self::MastodonPost,
+            SocialPlatform::Telegram => self::TelegramPost,
         };
     }
 }

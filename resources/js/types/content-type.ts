@@ -19,6 +19,7 @@ export const ContentType = {
     PinterestCarousel: 'pinterest_carousel',
     BlueskyPost: 'bluesky_post',
     MastodonPost: 'mastodon_post',
+    TelegramPost: 'telegram_post',
 } as const;
 
 export type ContentTypeValue = (typeof ContentType)[keyof typeof ContentType];

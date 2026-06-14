@@ -20,6 +20,7 @@ enum Platform: string
     case Pinterest = 'pinterest';
     case Bluesky = 'bluesky';
     case Mastodon = 'mastodon';
+    case Telegram = 'telegram';
 
     public function label(): string
     {
@@ -36,6 +37,7 @@ enum Platform: string
             self::Pinterest => 'Pinterest',
             self::Bluesky => 'Bluesky',
             self::Mastodon => 'Mastodon',
+            self::Telegram => 'Telegram',
         };
     }
 
@@ -53,6 +55,7 @@ enum Platform: string
             self::Pinterest => '#E60023',
             self::Bluesky => '#0085FF',
             self::Mastodon => '#6364FF',
+            self::Telegram => '#26A5E4',
         };
     }
 
@@ -69,6 +72,7 @@ enum Platform: string
             self::Pinterest => [MediaType::Image, MediaType::Video],
             self::Bluesky => [MediaType::Image, MediaType::Video],
             self::Mastodon => [MediaType::Image, MediaType::Video],
+            self::Telegram => [MediaType::Image, MediaType::Video],
         };
     }
 
@@ -85,6 +89,7 @@ enum Platform: string
             self::Pinterest => 5,
             self::Bluesky => 4,
             self::Mastodon => 4,
+            self::Telegram => 10,
         };
     }
 
@@ -107,6 +112,8 @@ enum Platform: string
      *  - Pinterest pin description: 800 (title is 100, not modeled here)
      *  - Bluesky: 300 graphemes
      *  - Mastodon: 500 default; instances may be higher (we stay conservative)
+     *  - Telegram: 4096 for a text message (media captions are capped at 1024,
+     *    handled in the publisher by sending long text as its own message)
      */
     public function maxContentLength(): int
     {
@@ -121,6 +128,7 @@ enum Platform: string
             self::Pinterest => 800,
             self::Bluesky => 300,
             self::Mastodon => 500,
+            self::Telegram => 4096,
         };
     }
 
@@ -162,6 +170,8 @@ enum Platform: string
             // YouTube Shorts — fits within the 100-char title (with " #Shorts"
             // suffix taking 8 chars) so the same string works as title + desc
             self::YouTube => 80,
+            // Telegram channel posts — short announcements read best
+            self::Telegram => 400,
         };
     }
 
@@ -183,6 +193,7 @@ enum Platform: string
             self::Pinterest => ['pins:write'],
             self::Bluesky => [],
             self::Mastodon => ['write:statuses'],
+            self::Telegram => [],
         };
     }
 
@@ -199,6 +210,7 @@ enum Platform: string
             self::Pinterest => false,
             self::Bluesky => true,
             self::Mastodon => true,
+            self::Telegram => true,
         };
     }
 

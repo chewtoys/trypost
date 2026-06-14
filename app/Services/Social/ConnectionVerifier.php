@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
+use App\Services\Social\Telegram\TelegramApi;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -66,6 +67,7 @@ class ConnectionVerifier
             Platform::Pinterest => $this->verifyPinterest($account),
             Platform::Bluesky => $this->verifyBluesky($account),
             Platform::Mastodon => $this->verifyMastodon($account),
+            Platform::Telegram => $this->verifyTelegram($account),
         };
     }
 
@@ -502,6 +504,16 @@ class ConnectionVerifier
         }
 
         return $response->successful();
+    }
+
+    private function verifyTelegram(SocialAccount $account): bool
+    {
+        // getChat succeeds only while the bot can still reach the chat.
+        $response = Http::get(TelegramApi::endpoint('getChat'), [
+            'chat_id' => data_get($account->meta, 'chat_id'),
+        ]);
+
+        return $response->successful() && data_get($response->json(), 'ok') === true;
     }
 
     private function verifyMastodon(SocialAccount $account): bool

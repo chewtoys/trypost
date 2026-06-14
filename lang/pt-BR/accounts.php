@@ -51,6 +51,7 @@ return [
         'pinterest' => 'Conecte sua conta do Pinterest',
         'bluesky' => 'Conecte sua conta do Bluesky',
         'mastodon' => 'Conecte sua conta do Mastodon',
+        'telegram' => 'Conecte um canal ou grupo do Telegram',
     ],
 
     'disconnect_modal' => [
@@ -80,6 +81,22 @@ return [
         'instance_hint' => 'Digite a URL da sua instância Mastodon (ex: mastodon.social, techhub.social)',
         'submit' => 'Continuar com Mastodon',
         'submitting' => 'Conectando...',
+    ],
+
+    'telegram' => [
+        'title' => 'Conectar Telegram',
+        'description' => 'Vincule um canal ou grupo',
+        'step_admin' => 'Adicione :bot como administrador do seu canal ou grupo do Telegram.',
+        'step_command' => 'Publique este comando no canal ou grupo:',
+        'waiting' => 'Aguardando o canal conectar…',
+        'connected' => 'Canal conectado!',
+        'connected_toast' => 'Canal do Telegram conectado com sucesso!',
+        'copied_toast' => 'Comando copiado para a área de transferência',
+        'copy_tooltip' => 'Copiar comando',
+        'expired' => 'Este código expirou. Gere um novo para tentar de novo.',
+        'new_code' => 'Gerar um novo código',
+        'retry' => 'Tentar novamente',
+        'error_generic' => 'Não foi possível iniciar a conexão. Tente novamente.',
     ],
 
     'facebook' => [
