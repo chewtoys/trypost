@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
-use App\Jobs\SyncTelegramAccountAvatar;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\TelegramConnectCode;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Queue::fake();
-
     config([
         'trypost.platforms.telegram.bot_token' => 'TESTTOKEN',
         'trypost.platforms.telegram.bot_username' => 'TryPostBot',
@@ -59,6 +56,7 @@ it('issues a signed connect code carrying the workspace', function () {
 });
 
 it('links the channel when the webhook receives a matching /connect', function () {
+    Http::fake();
     $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
@@ -76,11 +74,30 @@ it('links the channel when the webhook receives a matching /connect', function (
     expect(data_get($account->meta, 'chat_id'))->toBe('-1001234567890');
     expect(data_get($account->meta, 'connect_nonce'))
         ->toBe(data_get(TelegramConnectCode::decode($code), 'nonce'));
+});
 
-    Queue::assertPushed(SyncTelegramAccountAvatar::class);
+it('stores the channel photo as the account avatar on connect', function () {
+    Storage::fake();
+
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => true, 'result' => ['photo' => ['big_file_id' => 'BIGFILE']]], 200),
+        '*/botTESTTOKEN/getFile*' => Http::response(['ok' => true, 'result' => ['file_path' => 'photos/file_1.jpg']], 200),
+        '*/file/botTESTTOKEN/photos/file_1.jpg' => Http::response('image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    $account = SocialAccount::where('platform', Platform::Telegram)->first();
+
+    expect($account->getRawOriginal('avatar_url'))->not->toBeNull();
 });
 
 it('links a private channel that has no username', function () {
+    Http::fake();
     $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
@@ -112,6 +129,7 @@ it('does not create a new telegram account when the workspace is at its limit', 
 });
 
 it('still reconnects an existing telegram channel even at the account limit', function () {
+    Http::fake();
     config(['trypost.self_hosted' => false]);
 
     SocialAccount::factory()->count(4)->create(['workspace_id' => $this->workspace->id]);
@@ -133,6 +151,7 @@ it('still reconnects an existing telegram channel even at the account limit', fu
 });
 
 it('consumes the code once so it cannot be replayed for another chat', function () {
+    Http::fake();
     $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')

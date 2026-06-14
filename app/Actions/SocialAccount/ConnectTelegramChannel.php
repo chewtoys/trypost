@@ -7,11 +7,12 @@ namespace App\Actions\SocialAccount;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Features\SocialAccountLimit;
-use App\Jobs\SyncTelegramAccountAvatar;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Laravel\Pennant\Feature;
+use Throwable;
 
 class ConnectTelegramChannel
 {
@@ -42,7 +43,7 @@ class ConnectTelegramChannel
             return null;
         }
 
-        $account = $workspace->socialAccounts()->updateOrCreate(
+        return $workspace->socialAccounts()->updateOrCreate(
             [
                 'platform' => Platform::Telegram->value,
                 'platform_user_id' => $chatId,
@@ -50,6 +51,7 @@ class ConnectTelegramChannel
             [
                 'username' => $username,
                 'display_name' => data_get($chat, 'title') ?? $username ?? "Telegram {$chatId}",
+                'avatar_url' => self::fetchChannelAvatar($chatId),
                 'access_token' => '',
                 'refresh_token' => '',
                 'token_expires_at' => null,
@@ -65,10 +67,37 @@ class ConnectTelegramChannel
                 ],
             ],
         );
+    }
 
-        SyncTelegramAccountAvatar::dispatch($account);
+    /**
+     * Download the channel's photo via the Bot API and store it, returning the path.
+     */
+    private static function fetchChannelAvatar(string $chatId): ?string
+    {
+        $token = (string) config('trypost.platforms.telegram.bot_token');
+        $api = rtrim((string) config('trypost.platforms.telegram.api'), '/');
 
-        return $account;
+        if ($token === '') {
+            return null;
+        }
+
+        try {
+            $fileId = data_get(Http::get("{$api}/bot{$token}/getChat", ['chat_id' => $chatId])->json(), 'result.photo.big_file_id');
+
+            if (! is_string($fileId)) {
+                return null;
+            }
+
+            $filePath = data_get(Http::get("{$api}/bot{$token}/getFile", ['file_id' => $fileId])->json(), 'result.file_path');
+
+            if (! is_string($filePath)) {
+                return null;
+            }
+
+            return uploadFromUrl("{$api}/file/bot{$token}/{$filePath}");
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private static function workspaceAtAccountLimit(Workspace $workspace): bool
