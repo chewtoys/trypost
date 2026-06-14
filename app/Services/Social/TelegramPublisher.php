@@ -79,19 +79,15 @@ class TelegramPublisher
     }
 
     /**
-     * @param  array{type: string, url: string}  $item
+     * @param  array{type: TelegramMediaType, url: string}  $item
      */
     private function sendSingleMedia(string $chatId, array $item, string $caption): int
     {
-        $method = match ($item['type']) {
-            'photo' => 'sendPhoto',
-            'video' => 'sendVideo',
-            default => 'sendDocument',
-        };
+        $type = $item['type'];
 
-        $response = $this->call($method, [
+        $response = $this->call($type->sendMethod(), [
             'chat_id' => $chatId,
-            $item['type'] => $item['url'],
+            $type->value => $item['url'],
             'caption' => $caption,
             'parse_mode' => 'HTML',
         ]);
@@ -100,14 +96,14 @@ class TelegramPublisher
     }
 
     /**
-     * @param  array<int, array{type: string, url: string}>  $items
+     * @param  array<int, array{type: TelegramMediaType, url: string}>  $items
      */
     private function sendMediaGroup(string $chatId, array $items, string $caption): int
     {
         $group = [];
 
         foreach ($items as $index => $item) {
-            $entry = ['type' => $item['type'], 'media' => $item['url']];
+            $entry = ['type' => $item['type']->value, 'media' => $item['url']];
 
             if ($index === 0 && $caption !== '') {
                 $entry['caption'] = $caption;
@@ -126,17 +122,11 @@ class TelegramPublisher
     }
 
     /**
-     * @return array{type: string, url: string}
+     * @return array{type: TelegramMediaType, url: string}
      */
     private function telegramMedia(MediaItem $media): array
     {
-        $type = match (true) {
-            $media->isImage() => 'photo',
-            $media->isVideo() => 'video',
-            default => 'document',
-        };
-
-        return ['type' => $type, 'url' => $media->url];
+        return ['type' => TelegramMediaType::for($media), 'url' => $media->url];
     }
 
     private function call(string $method, array $payload): Response
