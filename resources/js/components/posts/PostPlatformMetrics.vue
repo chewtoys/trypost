@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
-import { IconChartBar, IconLoader2 } from '@tabler/icons-vue';
+import { IconChartBar, IconLoader2, IconUsers } from '@tabler/icons-vue';
 import { computed, onMounted, ref } from 'vue';
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { metrics as metricsRoute } from '@/routes/app/posts/platforms';
 
 interface Metric {
@@ -23,8 +29,9 @@ const props = defineProps<Props>();
 const loading = ref(true);
 const metrics = ref<Metric[]>([]);
 
-const stats = computed(() =>
-    metrics.value.filter((m) => m.kind !== 'reaction'),
+const stats = computed(() => metrics.value.filter((m) => !m.kind));
+const subscribers = computed(() =>
+    metrics.value.find((m) => m.kind === 'subscribers'),
 );
 const reactions = computed(() =>
     metrics.value.filter((m) => m.kind === 'reaction'),
@@ -97,10 +104,34 @@ onMounted(async () => {
         </div>
 
         <div
-            v-if="reactions.length > 0"
-            class="flex flex-wrap gap-1.5"
+            v-if="subscribers || reactions.length > 0"
+            class="flex flex-wrap items-center gap-1.5"
             :class="{ 'mt-2': stats.length > 0 }"
         >
+            <TooltipProvider v-if="subscribers">
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span
+                            class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs"
+                        >
+                            <IconUsers class="size-3.5 text-muted-foreground" />
+                            <span class="font-semibold tabular-nums">{{
+                                formatNumber(subscribers.value)
+                            }}</span>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{{ subscribers.label }}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+
+            <span
+                v-if="subscribers && reactions.length > 0"
+                class="mx-0.5 h-4 w-px bg-border"
+                aria-hidden="true"
+            />
+
             <span
                 v-for="reaction in reactions"
                 :key="reaction.label"

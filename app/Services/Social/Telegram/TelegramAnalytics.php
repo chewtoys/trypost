@@ -51,7 +51,9 @@ class TelegramAnalytics
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
-        $metrics = $account ? $this->getMetrics($account) : [];
+        $metrics = $account
+            ? array_map(fn (array $metric): array => [...$metric, 'kind' => 'subscribers'], $this->getMetrics($account))
+            : [];
 
         $reactions = data_get($postPlatform->meta, 'reactions', []);
 

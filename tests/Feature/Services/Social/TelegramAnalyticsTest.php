@@ -62,7 +62,7 @@ it('includes the channel subscriber count alongside reactions', function () {
 
     expect(app(TelegramAnalytics::class)->fetchPostMetrics($postPlatform))
         ->toBe([
-            ['label' => 'Subscribers', 'value' => 50],
+            ['label' => 'Subscribers', 'value' => 50, 'kind' => 'subscribers'],
             ['label' => '👍', 'value' => 3, 'kind' => 'reaction'],
         ]);
 });
