@@ -56,7 +56,7 @@ class TelegramWebhookController extends Controller
             ],
             [
                 'username' => $username,
-                'display_name' => data_get($chat, 'title') ?? $username,
+                'display_name' => data_get($chat, 'title') ?? $username ?? "Telegram {$chatId}",
                 'access_token' => '',
                 'refresh_token' => '',
                 'token_expires_at' => null,

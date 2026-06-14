@@ -88,6 +88,55 @@ test('telegram publisher sends a single image with caption', function () {
     });
 });
 
+test('telegram publisher sends a single video', function () {
+    $this->post->update([
+        'content' => 'A clip',
+        'media' => [[
+            'id' => 'm1',
+            'path' => 'media/clip.mp4',
+            'url' => 'https://cdn.test/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        '*/botTESTTOKEN/sendVideo' => Http::response(telegramOk(['message_id' => 8]), 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/sendVideo')
+            && str_contains($request['video'], 'clip.mp4')
+            && $request['caption'] === 'A clip';
+    });
+});
+
+test('telegram publisher sends a non-image, non-video file as a document', function () {
+    $this->post->update([
+        'content' => 'A file',
+        'media' => [[
+            'id' => 'm1',
+            'path' => 'media/report.pdf',
+            'url' => 'https://cdn.test/report.pdf',
+            'mime_type' => 'application/pdf',
+            'original_filename' => 'report.pdf',
+        ]],
+    ]);
+
+    Http::fake([
+        '*/botTESTTOKEN/sendDocument' => Http::response(telegramOk(['message_id' => 9]), 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/sendDocument')
+            && str_contains($request['document'], 'report.pdf');
+    });
+});
+
 test('telegram publisher sends multiple media as an album', function () {
     $this->post->update([
         'content' => 'Album',

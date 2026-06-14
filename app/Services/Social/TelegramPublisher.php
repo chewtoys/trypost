@@ -104,37 +104,25 @@ class TelegramPublisher
      */
     private function sendMediaGroup(string $chatId, array $items, string $caption): int
     {
-        $firstMessageId = 0;
+        $group = [];
 
-        foreach (array_chunk($items, self::ALBUM_CHUNK) as $chunkIndex => $chunk) {
-            $group = [];
+        foreach ($items as $index => $item) {
+            $entry = ['type' => $item['type'], 'media' => $item['url']];
 
-            foreach ($chunk as $itemIndex => $item) {
-                $entry = [
-                    // Documents can't be mixed into an album; send them as photos/videos only.
-                    'type' => $item['type'] === 'document' ? 'document' : $item['type'],
-                    'media' => $item['url'],
-                ];
-
-                if ($chunkIndex === 0 && $itemIndex === 0 && $caption !== '') {
-                    $entry['caption'] = $caption;
-                    $entry['parse_mode'] = 'HTML';
-                }
-
-                $group[] = $entry;
+            if ($index === 0 && $caption !== '') {
+                $entry['caption'] = $caption;
+                $entry['parse_mode'] = 'HTML';
             }
 
-            $response = $this->call('sendMediaGroup', [
-                'chat_id' => $chatId,
-                'media' => json_encode($group),
-            ]);
-
-            if ($chunkIndex === 0) {
-                $firstMessageId = (int) data_get($response->json(), 'result.0.message_id');
-            }
+            $group[] = $entry;
         }
 
-        return $firstMessageId;
+        $response = $this->call('sendMediaGroup', [
+            'chat_id' => $chatId,
+            'media' => json_encode($group),
+        ]);
+
+        return (int) data_get($response->json(), 'result.0.message_id');
     }
 
     /**

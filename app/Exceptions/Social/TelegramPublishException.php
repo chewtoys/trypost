@@ -55,7 +55,7 @@ class TelegramPublishException extends SocialPublishException
 
         return new static(
             userMessage: $description,
-            category: ErrorCategory::ContentPolicy,
+            category: ErrorCategory::Unknown,
             platformErrorCode: (string) $status,
             rawResponse: $rawResponse,
         );

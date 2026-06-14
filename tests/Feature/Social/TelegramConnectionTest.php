@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Models\TelegramConnectRequest;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\ConnectionVerifier;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -82,6 +83,25 @@ it('links the channel when the webhook receives a matching /connect', function (
     expect($request->fresh()->social_account_id)->toBe($account->id);
 });
 
+it('links a private channel that has no username', function () {
+    TelegramConnectRequest::create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'code' => 'privatecode',
+        'expires_at' => now()->addMinutes(15),
+    ]);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate('privatecode', ['username' => null]))
+        ->assertNoContent();
+
+    $account = SocialAccount::where('platform', Platform::Telegram)->first();
+
+    expect($account->username)->toBeNull();
+    expect($account->display_name)->toBe('My Channel');
+    expect(data_get($account->meta, 'username'))->toBeNull();
+});
+
 it('rejects the webhook without the secret token', function () {
     $this->postJson(route('telegram.webhook'), telegramUpdate('whatever'))
         ->assertForbidden();
@@ -126,6 +146,30 @@ it('reports connection status while pending and once connected', function () {
         ->getJson(route('app.social.telegram.status', ['code' => 'statuscode']))
         ->assertOk()
         ->assertJson(['status' => 'connected']);
+});
+
+it('verifies a connected telegram account via getChat', function () {
+    config(['trypost.platforms.telegram.bot_token' => 'TESTTOKEN']);
+
+    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => true, 'result' => ['id' => -1001234567890]], 200),
+    ]);
+
+    expect(app(ConnectionVerifier::class)->verify($account))->toBeTrue();
+});
+
+it('reports a telegram account as invalid when getChat fails', function () {
+    config(['trypost.platforms.telegram.bot_token' => 'TESTTOKEN']);
+
+    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => false, 'description' => 'chat not found'], 400),
+    ]);
+
+    expect(app(ConnectionVerifier::class)->verify($account))->toBeFalse();
 });
 
 it('registers the webhook via the artisan command', function () {

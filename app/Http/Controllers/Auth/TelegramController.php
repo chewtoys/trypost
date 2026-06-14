@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\TelegramConnectStatus;
 use App\Models\TelegramConnectRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,13 +57,8 @@ class TelegramController extends SocialController
             ->where('code', (string) $request->query('code'))
             ->first();
 
-        $status = match (true) {
-            $connectRequest === null => 'unknown',
-            $connectRequest->social_account_id !== null => 'connected',
-            $connectRequest->isExpired() => 'expired',
-            default => 'pending',
-        };
-
-        return response()->json(['status' => $status]);
+        return response()->json([
+            'status' => TelegramConnectStatus::for($connectRequest)->value,
+        ]);
     }
 }

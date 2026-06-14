@@ -23,17 +23,26 @@ import {
 const open = defineModel<boolean>('open', { required: true });
 
 type Phase = 'loading' | 'ready' | 'connected' | 'expired' | 'error';
+type ConnectStatus = 'unknown' | 'pending' | 'connected' | 'expired';
+
+interface ConnectResponse {
+    code: string;
+    bot_username: string;
+    expires_at: string;
+}
+
+const POLL_INTERVAL_MS = 3000;
+const SUCCESS_CLOSE_DELAY_MS = 1200;
 
 const phase = ref<Phase>('loading');
 const code = ref('');
 const botUsername = ref('');
 const errorMessage = ref('');
 
-const httpConnect = useHttp<
-    Record<string, never>,
-    { code: string; bot_username: string; expires_at: string }
->({});
-const httpStatus = useHttp<Record<string, never>, { status: string }>({});
+const httpConnect = useHttp<Record<string, never>, ConnectResponse>({});
+const httpStatus = useHttp<Record<string, never>, { status: ConnectStatus }>(
+    {},
+);
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -59,7 +68,7 @@ const poll = async () => {
             setTimeout(() => {
                 open.value = false;
                 router.reload();
-            }, 1200);
+            }, SUCCESS_CLOSE_DELAY_MS);
             return;
         }
 
@@ -72,7 +81,7 @@ const poll = async () => {
         // Transient polling failures are ignored; the next tick retries.
     }
 
-    pollTimer = setTimeout(poll, 3000);
+    pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
 };
 
 const start = async () => {
@@ -176,13 +185,11 @@ onUnmounted(stopPolling);
                             class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-xs font-semibold"
                             >1</span
                         >
-                        <span
-                            v-html="
-                                trans('accounts.telegram.step_admin', {
-                                    bot: `@${botUsername}`,
-                                })
-                            "
-                        />
+                        <span>{{
+                            trans('accounts.telegram.step_admin', {
+                                bot: `@${botUsername}`,
+                            })
+                        }}</span>
                     </li>
                     <li class="flex gap-3">
                         <span
