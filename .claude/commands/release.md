@@ -89,12 +89,12 @@ Read the commits only as **internal source material**. Translate to user-facing 
 
 ```markdown
 ---
-subject: "Changelog: TryPost <version> — <theme 1>, <theme 2>, <theme 3>..."
+subject: "Changelog <version> — <theme 1>, <theme 2>, <theme 3>..."
 ---
 
-# Changelog: TryPost <version> — <theme 1>, <theme 2>, <theme 3>...
+# Changelog <version> — <theme 1>, <theme 2>, <theme 3>...
 
-By Paulo Castellano • Release <version>
+By TryPost Product Team • [Release <version>](https://github.com/<OWNER>/<REPO>/releases/tag/<version>)
 
 Hello! Welcome to this week's update. Here's what's new in TryPost.
 
@@ -121,8 +121,10 @@ Hello! Welcome to this week's update. Here's what's new in TryPost.
 - <...>
 
 Cheers,
-Paulo Castellano from TryPost.it
+Paulo from TryPost.it
 ```
+
+**Always link the GitHub release from the byline** — make `Release <version>` a link to `https://github.com/<OWNER>/<REPO>/releases/tag/<version>` (as shown above). It gives developer-minded readers the raw PR-level changelog without cluttering the body.
 
 #### Theme grouping (AI clusters by user impact)
 
@@ -159,7 +161,9 @@ If a commit has no user-visible effect, **omit it**. Don't pad the email.
 
 #### Subject line
 
-Pattern: `Changelog: TryPost <version> — <theme 1>, <theme 2>, <theme 3>...`
+Pattern: `Changelog <version> — <theme 1>, <theme 2>, <theme 3>...`
+
+Don't put "TryPost" in the subject — the email already comes from the TryPost sender, so it's redundant.
 
 Cap around 80 chars. If themes don't fit, shorten to the 2 most impactful + "and more...".
 
@@ -167,13 +171,13 @@ Cap around 80 chars. If themes don't fit, shorten to the 2 most impactful + "and
 
 Run the email body through the `humanizer` skill before previewing:
 
-1. Invoke the `Skill` tool with `skill: humanizer` and pass the draft email body plus this context: *"This is a customer-facing changelog email for TryPost (social media scheduler SaaS). Tone: developer founder writing to early users on a Friday — warm, specific, no marketing puffery. Cal.com style. Keep the existing structure (subject frontmatter, section headers, bullets, signature). Do not strip section headers or the 'Cheers, Paulo Castellano from TryPost.it' signature."*
+1. Invoke the `Skill` tool with `skill: humanizer` and pass the draft email body plus this context: *"This is a customer-facing changelog email for TryPost (social media scheduler SaaS). Tone: developer founder writing to early users on a Friday — warm, specific, no marketing puffery. Cal.com style. Keep the existing structure (subject frontmatter, section headers, bullets, signature). Do not strip section headers or the 'Cheers, Paulo from TryPost.it' signature."*
 2. Replace the draft email body with the humanized version.
 
 **Do NOT humanize:**
 - The changelog from Step 3 (flat commit list, no prose).
 - The subject line frontmatter.
-- The literal signature `Cheers,\nPaulo Castellano from TryPost.it` — keep it exact.
+- The literal signature `Cheers,\nPaulo from TryPost.it` — keep it exact.
 
 The humanizer skill itself covers all patterns. Trust it.
 

@@ -103,3 +103,8 @@ function createApiTestToken(array $overrides = []): array
         'user' => $user,
     ];
 }
+
+function feedFixture(string $name): string
+{
+    return file_get_contents(base_path("tests/fixtures/feeds/{$name}.xml"));
+}

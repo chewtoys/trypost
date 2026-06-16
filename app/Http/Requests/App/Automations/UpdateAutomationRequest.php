@@ -12,6 +12,7 @@ use App\Enums\Automation\Node\Type as NodeType;
 use App\Enums\Automation\Publish\Mode as PublishMode;
 use App\Enums\Automation\ScheduleField;
 use App\Enums\Automation\Trigger\Type as TriggerType;
+use App\Rules\ResolvableUrl;
 use App\Services\Automation\AutomationConfigValidator;
 use App\Services\Automation\GenerateNodeValidator;
 use Illuminate\Contracts\Validation\Validator;
@@ -129,10 +130,13 @@ class UpdateAutomationRequest extends FormRequest
                 'schedule_timezone' => ['sometimes', 'string', 'timezone'],
             ],
             NodeType::FetchRss->value => [
-                'feed_url' => ['required', 'url'],
+                'feed_url' => ['required', new ResolvableUrl],
+                'discovered_fields' => ['sometimes', 'array'],
+                'discovered_fields.*.path' => ['required', 'string'],
+                'discovered_fields.*.sample' => ['nullable', 'string'],
             ],
             NodeType::HttpRequest->value => [
-                'url' => ['required', 'url'],
+                'url' => ['required', new ResolvableUrl],
                 'method' => ['required', Rule::in(array_column(HttpMethod::cases(), 'value'))],
                 'auth_type' => ['required', Rule::in(array_column(AuthType::cases(), 'value'))],
                 'auth_token' => ['nullable', 'string'],
@@ -167,7 +171,7 @@ class UpdateAutomationRequest extends FormRequest
                 'scheduled_offset' => ['required_if:nodes.'.$i.'.data.mode,'.PublishMode::Scheduled->value, 'integer', 'min:0'],
             ],
             NodeType::Webhook->value => [
-                'url' => ['required', 'url'],
+                'url' => ['required', new ResolvableUrl],
                 'method' => ['required', Rule::in(array_column(HttpMethod::cases(), 'value'))],
                 'payload_template' => ['nullable', 'string'],
                 'headers' => ['nullable', 'array'],

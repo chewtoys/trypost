@@ -224,6 +224,7 @@ Route::middleware(['auth', EnsureAccountReady::class])->group(function () {
     Route::post('automations/{automation}/pause', [AutomationController::class, 'pause'])->name('app.automations.pause');
     Route::post('automations/{automation}/runs/{run}/retry', [AutomationController::class, 'retryRun'])->name('app.automations.runs.retry');
     Route::post('automations/{automation}/test', [AutomationController::class, 'test'])->name('app.automations.test');
+    Route::post('automations/{automation}/feed/inspect', [AutomationController::class, 'inspectFeed'])->name('app.automations.feed.inspect');
     Route::get('automations/{automation}/runs/{run}', [AutomationController::class, 'showRun'])->name('app.automations.runs.show');
 
     // API Keys

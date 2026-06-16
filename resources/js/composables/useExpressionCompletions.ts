@@ -43,13 +43,29 @@ const providedBy = (node: GraphNode): ExpressionSuggestion[] => {
             }
             return [suggestion('trigger.event', 'trigger_event'), suggestion('trigger.fired_at', 'trigger_fired_at')];
         }
-        case 'fetch_rss':
-            return [
+        case 'fetch_rss': {
+            const aliases = [
                 suggestion('fetched.title', 'fetched_title'),
                 suggestion('fetched.link', 'fetched_link'),
+                suggestion('fetched.date', 'fetched_date'),
+                suggestion('fetched.content', 'fetched_content'),
                 suggestion('fetched.description', 'fetched_description'),
-                suggestion('fetched.pubDate', 'fetched_pubdate'),
+                suggestion('fetched.author', 'fetched_author'),
+                suggestion('fetched.image', 'fetched_image'),
+                suggestion('fetched.categories', 'fetched_categories'),
+                suggestion('fetched.enclosure', 'fetched_enclosure'),
             ];
+            // Fields discovered by inspecting the real feed — the dynamic raw layer
+            // (yt_videoId, media_group.*, dc_creator, …) that aliases can't enumerate.
+            const discovered = Array.isArray(node.data?.discovered_fields)
+                ? (node.data.discovered_fields as Array<{ path: string; sample?: string }>).map(
+                      (field): ExpressionSuggestion => ({ label: field.path, info: field.sample ?? '' }),
+                  )
+                : [];
+            const known = new Set(aliases.map((alias) => alias.label));
+
+            return [...aliases, ...discovered.filter((field) => !known.has(field.label))];
+        }
         case 'http_request':
             return [suggestion('fetched', 'fetched_http')];
         case 'generate':

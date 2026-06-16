@@ -137,6 +137,7 @@ provide(
     'automationExpressionCompletions',
     computed(() => buildExpressionCatalog(selectedNodeId.value, nodes.value, edges.value, variables.value)),
 );
+provide('automationId', props.automation.id);
 
 // Toggled by an expandable CodeEditor (see CodeEditor.vue) to slide out the
 // side-by-side editing panel, pushing the sidebar left to make room.
@@ -205,6 +206,11 @@ onConnect((connection: Connection) => {
 let dragStartPosition: XYPosition | null = null;
 onNodeDragStart(({ node }) => {
     dragStartPosition = { ...node.position };
+    // A click that moves more than Vue Flow's drag threshold (1px) registers as a
+    // drag, not a click, so onNodeClick never fires. Select here too, otherwise
+    // switching between nodes intermittently fails to open the grabbed node's config.
+    selectedNodeId.value = node.id;
+    selectedEdgeId.value = null;
 });
 onNodeDragStop(({ node }) => {
     if (!dragStartPosition) return;
@@ -482,6 +488,7 @@ const defaultEdgeOptions = {
                         :default-edge-options="defaultEdgeOptions"
                         :connection-mode="ConnectionMode.Loose"
                         :delete-key-code="null"
+                        :node-drag-threshold="5"
                         :snap-to-grid="true"
                         :snap-grid="[16, 16]"
                         fit-view-on-init
