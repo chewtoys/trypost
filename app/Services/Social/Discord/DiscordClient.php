@@ -242,7 +242,12 @@ class DiscordClient
 
     public function getGuild(string $guildId): Response
     {
-        return $this->bot()->get("{$this->baseUrl()}/guilds/{$guildId}");
+        return $this->bot()->get("{$this->baseUrl()}/guilds/{$guildId}", ['with_counts' => 'true']);
+    }
+
+    public function getMessage(string $channelId, string $messageId): Response
+    {
+        return $this->bot()->get("{$this->baseUrl()}/channels/{$channelId}/messages/{$messageId}");
     }
 
     private function bot(): PendingRequest
