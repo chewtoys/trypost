@@ -10,6 +10,7 @@ import { toast } from 'vue-sonner';
 
 
 import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCreateController';
+import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -272,31 +273,7 @@ const startGeneration = async () => {
         <!-- Visual style — shown only for single-image formats (not carousel) -->
         <div v-if="selectedFormat && !formatBoundTemplate" class="space-y-2">
             <Label class="text-sm font-bold">{{ $t('posts.create.steps.template_picker_title') }}</Label>
-            <div class="grid gap-3 sm:grid-cols-3">
-                <button
-                    v-for="template in styleTemplates"
-                    :key="template.key"
-                    type="button"
-                    class="relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card text-left shadow-2xs transition-all hover:bg-foreground/5"
-                    :class="{ '!bg-violet-100 shadow-md': selectedStyle === template.key }"
-                    @click="selectedStyle = template.key"
-                >
-                    <div class="aspect-video w-full overflow-hidden bg-muted">
-                        <img
-                            :src="template.preview"
-                            :alt="template.name"
-                            class="size-full object-cover"
-                        />
-                    </div>
-                    <div class="flex items-start gap-2 p-3">
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-bold text-foreground">{{ template.name }}</p>
-                            <p class="mt-0.5 text-xs leading-snug text-foreground/60">{{ template.description }}</p>
-                        </div>
-                        <IconCheck v-if="selectedStyle === template.key" class="mt-0.5 size-4 shrink-0 text-foreground" stroke-width="3" />
-                    </div>
-                </button>
-            </div>
+            <ContentStylePicker v-model="selectedStyle" :styles="styleTemplates" />
         </div>
 
         <!-- Account (when template needs_account OR there's a choice to make) -->

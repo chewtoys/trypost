@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
+import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import CodeEditor from '@/components/CodeEditor.vue';
 import InputError from '@/components/InputError.vue';
@@ -51,11 +53,22 @@ interface GenerateConfig {
     style: string;
 }
 
-const contentStyles = [
-    { key: 'image_card', preview: '/images/ai-templates/image-card.png' },
-    { key: 'tweet_card', preview: '/images/ai-templates/tweet-card.png' },
-    { key: 'tweet_card_image', preview: '/images/ai-templates/tweet-card-image.png' },
-];
+const CONTENT_STYLE_KEYS = ['image_card', 'tweet_card', 'tweet_card_image'] as const;
+
+const CONTENT_STYLE_PREVIEWS: Record<string, string> = {
+    image_card: '/images/ai-templates/image-card.png',
+    tweet_card: '/images/ai-templates/tweet-card.png',
+    tweet_card_image: '/images/ai-templates/tweet-card-image.png',
+};
+
+const contentStyles = computed(() =>
+    CONTENT_STYLE_KEYS.map((key) => ({
+        key,
+        preview: CONTENT_STYLE_PREVIEWS[key],
+        name: trans(`posts.ai.templates.${key}.name`),
+        description: trans(`posts.ai.templates.${key}.description`),
+    })),
+);
 
 const props = defineProps<{
     data: Record<string, unknown>;
@@ -292,30 +305,7 @@ const channels = computed<Channel[]>(() =>
 
         <div class="space-y-2">
             <Label class="text-sm font-bold">{{ $t('automations.config.generate.style') }}</Label>
-            <div class="grid grid-cols-3 gap-2">
-                <button
-                    v-for="s in contentStyles"
-                    :key="s.key"
-                    type="button"
-                    class="flex flex-col items-center gap-1.5 rounded-lg border p-2 text-left transition-colors"
-                    :class="local.style === s.key
-                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30'
-                        : 'border-border hover:border-violet-300 hover:bg-muted/50'"
-                    @click="local.style = s.key"
-                >
-                    <img
-                        :src="s.preview"
-                        :alt="$t('posts.ai.templates.' + s.key + '.name')"
-                        class="w-full rounded object-cover"
-                    />
-                    <span
-                        class="text-center text-[10px] font-medium leading-tight"
-                        :class="local.style === s.key ? 'text-violet-700 dark:text-violet-300' : 'text-foreground/70'"
-                    >
-                        {{ $t('posts.ai.templates.' + s.key + '.name') }}
-                    </span>
-                </button>
-            </div>
+            <ContentStylePicker v-model="local.style" :styles="contentStyles" compact />
         </div>
 
         <div v-if="imageCountCap >= 1" class="space-y-2">
