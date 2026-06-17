@@ -10,6 +10,7 @@ import InstagramPreview from './InstagramPreview.vue';
 import LinkedInPreview from './LinkedInPreview.vue';
 import MastodonPreview from './MastodonPreview.vue';
 import PinterestPreview from './PinterestPreview.vue';
+import RedditPreview from './RedditPreview.vue';
 import TelegramPreview from './TelegramPreview.vue';
 import ThreadsPreview from './ThreadsPreview.vue';
 import TikTokPreview from './TikTokPreview.vue';
@@ -71,6 +72,8 @@ const previewComponent = computed(() => {
             return TelegramPreview;
         case 'discord':
             return DiscordPreview;
+        case 'reddit':
+            return RedditPreview;
         default:
             return LinkedInPreview;
     }
