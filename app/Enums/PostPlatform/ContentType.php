@@ -184,7 +184,7 @@ enum ContentType: string
             self::MastodonPost => 4,
             self::TelegramPost => 10,
             self::DiscordMessage => 10,
-            self::RedditPost => 20,
+            self::RedditPost => 10,
         };
     }
 

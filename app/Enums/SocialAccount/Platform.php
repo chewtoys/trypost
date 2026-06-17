@@ -99,7 +99,7 @@ enum Platform: string
             self::Mastodon => 4,
             self::Telegram => 10,
             self::Discord => 10,
-            self::Reddit => 20,
+            self::Reddit => 10,
         };
     }
 
