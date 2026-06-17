@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { ContentType, type ContentTypeValue } from '@/types/content-type';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
+import { ContentType, type ContentTypeValue } from '@/types/content-type';
 
 interface SocialAccount {
     id: string;
@@ -25,8 +25,18 @@ interface SocialAccount {
     avatar_url: string | null;
 }
 
+interface AiTemplate {
+    key: string;
+    name: string;
+    description: string;
+    preview: string;
+    needs_account: boolean;
+    supported_formats: string[];
+}
+
 interface Props {
     socialAccounts: SocialAccount[];
+    templates: AiTemplate[];
     /** ISO date (YYYY-MM-DD) carried over from the calendar's per-day "+" button. */
     date?: string | null;
 }
@@ -45,7 +55,12 @@ const emit = defineEmits<{
 const CAROUSEL_FORMAT = 'instagram_carousel' as const;
 type AiFormat = ContentTypeValue | typeof CAROUSEL_FORMAT;
 
+// Wizard steps
+type WizardStep = 'template' | 'configure';
+const wizardStep = ref<WizardStep>('template');
+
 // Selections
+const selectedTemplate = ref<string>(props.templates[0]?.key ?? 'image_card');
 const selectedFormat = ref<AiFormat | null>(null);
 const selectedAccountId = ref<string | null>(null);
 const includeImages = ref(true);
@@ -60,7 +75,8 @@ const httpStart = useHttp<{
     image_count: number;
     prompt: string;
     date: string | null;
-}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null });
+    template: string;
+}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card' });
 
 const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
     { value: ContentType.InstagramFeed, platforms: ['instagram', 'instagram-facebook'] },
@@ -76,6 +92,10 @@ const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
     { value: ContentType.PinterestPin, platforms: ['pinterest'] },
 ];
 
+const activeTemplate = computed(() =>
+    props.templates.find((t) => t.key === selectedTemplate.value) ?? null,
+);
+
 const connectedPlatforms = computed(() => {
     const platforms = new Set<string>();
     for (const account of props.socialAccounts) {
@@ -84,9 +104,12 @@ const connectedPlatforms = computed(() => {
     return Array.from(platforms);
 });
 
-// Show ALL formats — disabled when the workspace has no connected account
-// for that platform. Filtering them out hides the catalog from the user.
-const availableFormats = computed(() => AI_FORMATS);
+// When the active template restricts formats, only show those; otherwise show all.
+const availableFormats = computed(() => {
+    const supported = activeTemplate.value?.supported_formats ?? [];
+    if (supported.length === 0) return AI_FORMATS;
+    return AI_FORMATS.filter((f) => supported.includes(f.value));
+});
 
 const isFormatConnected = (format: typeof AI_FORMATS[number]): boolean =>
     format.platforms.some((p) => connectedPlatforms.value.includes(p));
@@ -119,6 +142,10 @@ const maxOptionalImages = computed(() =>
 );
 const showsAccountPicker = computed(() => accountsForFormat.value.length > 1);
 
+// When the template requires an account, we need one even if the format only maps
+// to a single account that gets auto-selected — the gating is purely on needsAccount.
+const templateNeedsAccount = computed(() => activeTemplate.value?.needs_account ?? false);
+
 const submittedImageCount = computed(() => {
     if (isCarousel.value) return imageCount.value;
     if (requiresImage.value) return 1;
@@ -143,6 +170,16 @@ watch(accountsForFormat, (accounts) => {
     }
 });
 
+// When the template changes, reset format/account selections in case the new
+// template's supported_formats set doesn't include the previously-selected one.
+watch(selectedTemplate, () => {
+    const supported = activeTemplate.value?.supported_formats ?? [];
+    if (supported.length > 0 && selectedFormat.value && !supported.includes(selectedFormat.value)) {
+        selectedFormat.value = null;
+        selectedAccountId.value = null;
+    }
+});
+
 const selectFormat = (format: AiFormat) => {
     selectedFormat.value = format;
     // Sensible default per format. Picking a format always pre-selects an
@@ -158,12 +195,30 @@ const selectFormat = (format: AiFormat) => {
     }
 };
 
+const proceedToConfig = () => {
+    wizardStep.value = 'configure';
+    emit('update:stepHeader', {
+        title: trans('posts.create.ai_title'),
+        description: trans('posts.create.ai_configure_description'),
+    });
+};
+
 emit('update:stepHeader', {
     title: trans('posts.create.ai_title'),
-    description: trans('posts.create.ai_configure_description'),
+    description: trans('posts.create.ai_pick_template_description'),
 });
 
-const goBack = () => emit('cancel');
+const goBack = () => {
+    if (wizardStep.value === 'configure') {
+        wizardStep.value = 'template';
+        emit('update:stepHeader', {
+            title: trans('posts.create.ai_title'),
+            description: trans('posts.create.ai_pick_template_description'),
+        });
+    } else {
+        emit('cancel');
+    }
+};
 
 const startGeneration = async () => {
     if (!canSubmit.value || submitting.value) return;
@@ -175,6 +230,7 @@ const startGeneration = async () => {
     httpStart.image_count = submittedImageCount.value;
     httpStart.prompt = promptText.value.trim();
     httpStart.date = props.date;
+    httpStart.template = selectedTemplate.value;
 
     try {
         const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
@@ -210,6 +266,47 @@ const startGeneration = async () => {
             </span>
             {{ $t('posts.create.steps.back') }}
         </button>
+
+        <!-- Step 1: Template picker -->
+        <template v-if="wizardStep === 'template'">
+            <div class="space-y-2">
+                <Label class="text-sm font-bold">{{ $t('posts.create.steps.template_picker_title') }}</Label>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <button
+                        v-for="template in templates"
+                        :key="template.key"
+                        type="button"
+                        class="relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card text-left shadow-2xs transition-all hover:bg-foreground/5"
+                        :class="{ '!bg-violet-100 shadow-md': selectedTemplate === template.key }"
+                        @click="selectedTemplate = template.key"
+                    >
+                        <div class="aspect-video w-full overflow-hidden bg-muted">
+                            <img
+                                :src="template.preview"
+                                :alt="template.name"
+                                class="size-full object-cover"
+                            />
+                        </div>
+                        <div class="flex items-start gap-2 p-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-bold text-foreground">{{ template.name }}</p>
+                                <p class="mt-0.5 text-xs leading-snug text-foreground/60">{{ template.description }}</p>
+                            </div>
+                            <IconCheck v-if="selectedTemplate === template.key" class="mt-0.5 size-4 shrink-0 text-foreground" stroke-width="3" />
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-1">
+                <Button @click="proceedToConfig">
+                    {{ $t('posts.create.steps.next') }}
+                </Button>
+            </div>
+        </template>
+
+        <!-- Step 2: Configure (format / account / images / prompt) -->
+        <template v-else-if="wizardStep === 'configure'">
             <!-- Format -->
             <div class="space-y-2">
                 <Label class="text-sm font-bold">{{ $t('posts.create.steps.format_title') }}</Label>
@@ -237,8 +334,8 @@ const startGeneration = async () => {
                 </div>
             </div>
 
-            <!-- Account (only when there's a choice to make) -->
-            <div v-if="selectedFormat && showsAccountPicker" class="space-y-2">
+            <!-- Account (when template needs_account OR there's a choice to make) -->
+            <div v-if="selectedFormat && (templateNeedsAccount || showsAccountPicker)" class="space-y-2">
                 <Label class="text-sm font-bold">{{ $t('posts.create.steps.account_title') }}</Label>
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     <button
@@ -324,5 +421,6 @@ const startGeneration = async () => {
                     {{ $t('posts.ai.generate.start') }}
                 </Button>
             </div>
+        </template>
     </div>
 </template>

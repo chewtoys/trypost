@@ -9,6 +9,7 @@ use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Actions\Post\UpdatePost;
+use App\Ai\Templates\AiTemplateRegistry;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
@@ -142,11 +143,23 @@ class PostController extends Controller
 
         $this->authorize('createPost', $workspace);
 
+        $registry = app(AiTemplateRegistry::class);
+
+        $templates = array_map(fn ($t) => [
+            'key' => $t->key(),
+            'name' => trans($t->name()),
+            'description' => trans($t->description()),
+            'preview' => $t->previewAsset(),
+            'needs_account' => $t->needsAccount(),
+            'supported_formats' => $t->supportedFormats(),
+        ], $registry->all());
+
         return Inertia::render('posts/Create', [
             'date' => $request->query('date'),
             'socialAccounts' => SocialAccountResource::collection(
                 $workspace->socialAccounts()->active()->get()
             ),
+            'templates' => $templates,
         ]);
     }
 

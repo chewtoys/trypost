@@ -572,6 +572,7 @@ return [
         'ai_title' => 'Gerar com IA',
         'ai_description' => 'Descreva o que quer e a IA gera o conteúdo pra você.',
         'ai_configure_description' => 'Escolha o formato e descreva o post que quer criar.',
+        'ai_pick_template_description' => 'Escolha um estilo para o seu post gerado por IA.',
         'template_title' => 'Usar um template',
         'template_description' => 'Escolha um dos nossos templates e personalize.',
         'coming_soon' => 'Em breve',
@@ -582,6 +583,7 @@ return [
         ],
 
         'steps' => [
+            'template_picker_title' => 'Escolha um estilo',
             'format_title' => 'Escolha um formato',
             'format_description' => 'Selecione o tipo de post que deseja criar.',
             'account_title' => 'Escolha uma conta',

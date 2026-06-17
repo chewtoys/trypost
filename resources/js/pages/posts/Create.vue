@@ -18,11 +18,21 @@ interface SocialAccount {
     avatar_url: string | null;
 }
 
+interface AiTemplate {
+    key: string;
+    name: string;
+    description: string;
+    preview: string;
+    needs_account: boolean;
+    supported_formats: string[];
+}
+
 interface Props {
     /** ISO date (YYYY-MM-DD). When set, the manual "start from scratch" path
      *  pre-schedules the new post on this date. */
     date?: string | null;
     socialAccounts: SocialAccount[];
+    templates: AiTemplate[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -131,6 +141,7 @@ const stepHeader = computed(() => {
                 <AiPostWizard
                     v-else-if="view === 'ai'"
                     :social-accounts="socialAccounts"
+                    :templates="templates"
                     :date="props.date"
                     @update:step-header="aiHeader = $event"
                     @cancel="view = 'choice'; aiHeader = null"
