@@ -183,6 +183,8 @@ return [
         ],
         'reddit' => [
             'settings' => 'Reddit Settings',
+            'posting_to' => 'Posting to',
+            'searching' => 'Searching…',
             'add_subreddit' => 'Add subreddit',
             'remove_subreddit' => 'Remove',
             'subreddit' => 'Subreddit',

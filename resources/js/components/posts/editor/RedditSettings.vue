@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import { IconChevronDown, IconChevronUp, IconPlus, IconTrash } from '@tabler/icons-vue';
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { restrictions as restrictionsRoute, subreddits as subredditsRoute } from '@/actions/App/Http/Controllers/App/RedditController';
 import InputError from '@/components/InputError.vue';
@@ -68,50 +68,96 @@ const updateSubreddits = (rows: SubredditRow[]) => updateMeta({ subreddits: rows
 const updateRow = (index: number, patch: Partial<SubredditRow>) =>
     updateSubreddits(subreddits.value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
-const removeRow = (index: number) =>
-    updateSubreddits(subreddits.value.filter((_, i) => i !== index));
+// --- Stable per-row IDs (Fix 1) ---
+// A parallel array of stable string IDs, one per subreddit row, keyed by row index.
+// These IDs are NOT persisted in meta — they live only in local component state.
+// All per-row dicts (rowFlairs, searchQueries, searchResults, searchLoading) are keyed
+// by these stable IDs so remove + reorder never cross-pollinate row state.
+let idCounter = 0;
+const nextId = () => `r-${++idCounter}`;
 
-const addRow = () =>
+const rowIds = ref<string[]>(subreddits.value.map(() => nextId()));
+
+// Keep rowIds in sync when subreddits grow externally (e.g. initial prop hydration).
+// We only add IDs for rows that don't have one yet; we never shrink rowIds here
+// because removeRow handles that explicitly.
+watch(
+    () => subreddits.value.length,
+    (newLen) => {
+        while (rowIds.value.length < newLen) {
+            rowIds.value.push(nextId());
+        }
+    },
+);
+
+const idFor = (index: number): string => {
+    if (!rowIds.value[index]) {
+        rowIds.value[index] = nextId();
+    }
+    return rowIds.value[index];
+};
+
+const removeRow = (index: number) => {
+    const removedId = rowIds.value[index];
+    rowIds.value = rowIds.value.filter((_, i) => i !== index);
+    // Drop the removed row's state from all per-row dicts.
+    delete rowFlairs.value[removedId];
+    delete searchQueries.value[removedId];
+    delete searchResults.value[removedId];
+    delete searchLoading.value[removedId];
+    updateSubreddits(subreddits.value.filter((_, i) => i !== index));
+};
+
+const addRow = () => {
+    rowIds.value.push(nextId());
     updateSubreddits([
         ...subreddits.value,
         { name: '', title: '', type: 'self', nsfw: false, spoiler: false },
     ]);
+};
 
-// --- Per-row flairs (local state, not persisted in meta) ---
-const rowFlairs = ref<Record<number, Flair[]>>({});
+// --- Per-row flairs (keyed by stable row ID, Fix 1) ---
+const rowFlairs = ref<Record<string, Flair[]>>({});
 
-const getFlairs = (index: number): Flair[] => rowFlairs.value[index] ?? [];
+const getFlairs = (index: number): Flair[] => rowFlairs.value[idFor(index)] ?? [];
 
-// --- Subreddit search (per row) ---
-const searchQueries = ref<Record<number, string>>({});
-const searchResults = ref<Record<number, SubredditResult[]>>({});
-const searchLoading = ref<Record<number, boolean>>({});
+// --- Subreddit search (per row, keyed by stable row ID, Fix 1) ---
+const searchQueries = ref<Record<string, string>>({});
+const searchResults = ref<Record<string, SubredditResult[]>>({});
+const searchLoading = ref<Record<string, boolean>>({});
 
 const subredditsHttp = useHttp<Record<string, never>, { data: SubredditResult[] }>();
 const restrictionsHttp = useHttp<Record<string, never>, { data: { allowed_types: string[]; flair_required: boolean; flairs: Flair[] } }>();
 
-const searchTimers: Record<number, ReturnType<typeof setTimeout>> = {};
+const searchTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 const searchSubreddits = (index: number, query: string) => {
-    searchQueries.value[index] = query;
-    clearTimeout(searchTimers[index]);
+    const id = idFor(index);
+    searchQueries.value[id] = query;
+    clearTimeout(searchTimers[id]);
 
     if (!props.socialAccount || query.trim() === '') {
-        searchResults.value[index] = [];
+        searchResults.value[id] = [];
         return;
     }
 
-    searchTimers[index] = setTimeout(async () => {
-        searchLoading.value[index] = true;
+    searchTimers[id] = setTimeout(async () => {
+        // Fix 2: re-check socialAccount inside the debounce callback to guard against it
+        // being cleared during the 250 ms window.
+        if (!props.socialAccount) {
+            searchLoading.value[id] = false;
+            return;
+        }
+        searchLoading.value[id] = true;
         try {
             const { data } = await subredditsHttp.get(
-                subredditsRoute.url(props.socialAccount!.id, { query: { q: query } }),
+                subredditsRoute.url(props.socialAccount.id, { query: { q: query } }),
             );
-            searchResults.value[index] = data;
+            searchResults.value[id] = data;
         } catch {
-            searchResults.value[index] = [];
+            searchResults.value[id] = [];
         } finally {
-            searchLoading.value[index] = false;
+            searchLoading.value[id] = false;
         }
     }, 250);
 };
@@ -121,12 +167,14 @@ const loadRestrictions = async (index: number, name: string) => {
         return;
     }
 
+    const id = idFor(index);
+
     try {
         const { data } = await restrictionsHttp.get(
             restrictionsRoute.url({ account: props.socialAccount.id, subreddit: name }),
         );
 
-        rowFlairs.value[index] = data.flairs;
+        rowFlairs.value[id] = data.flairs;
 
         const current = subreddits.value[index];
         const allowedTypes = data.allowed_types;
@@ -144,9 +192,23 @@ const loadRestrictions = async (index: number, name: string) => {
     }
 };
 
+// Fix 4: when the panel opens, repopulate flairs for any persisted rows that
+// already have a subreddit name selected (e.g. editing an existing post).
+watch(open, (isOpen) => {
+    if (!isOpen || props.previewOnly || props.disabled) {
+        return;
+    }
+    subreddits.value.forEach((row, index) => {
+        if (row.name) {
+            loadRestrictions(index, row.name);
+        }
+    });
+});
+
 const selectSubreddit = (index: number, result: SubredditResult) => {
-    searchQueries.value[index] = '';
-    searchResults.value[index] = [];
+    const id = idFor(index);
+    searchQueries.value[id] = '';
+    searchResults.value[id] = [];
 
     const current = subreddits.value[index] ?? {};
     const title = current.title && current.title !== '' ? current.title : result.title;
@@ -217,7 +279,8 @@ onUnmounted(() => {
                     class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.discord.posting_to') }}</p>
+                    <!-- Fix 5: use reddit-owned key instead of discord's -->
+                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.reddit.posting_to') }}</p>
                     <p class="truncate text-sm font-bold text-foreground">{{ socialAccount.display_name }}</p>
                 </div>
             </div>
@@ -226,7 +289,7 @@ onUnmounted(() => {
             <div class="space-y-4">
                 <div
                     v-for="(row, index) in subreddits"
-                    :key="index"
+                    :key="idFor(index)"
                     class="space-y-3 rounded-lg border-2 border-foreground/20 p-3"
                 >
                     <div class="flex items-center justify-between">
@@ -248,17 +311,19 @@ onUnmounted(() => {
                         <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.reddit.subreddit') }}</p>
                         <div class="relative">
                             <Input
-                                :model-value="row.name !== '' ? (searchQueries[index] !== undefined ? searchQueries[index] : `r/${row.name}`) : (searchQueries[index] ?? '')"
+                                :model-value="row.name !== '' ? (searchQueries[idFor(index)] !== undefined ? searchQueries[idFor(index)] : `r/${row.name}`) : (searchQueries[idFor(index)] ?? '')"
                                 :disabled="disabled"
                                 :placeholder="$t('posts.form.reddit.search_subreddit')"
                                 @update:model-value="searchSubreddits(index, String($event))"
-                                @focus="searchQueries[index] = ''"
+                                @focus="searchQueries[idFor(index)] = ''"
                             />
+                            <!-- Fix 6: loading indicator while searching -->
+                            <p v-if="searchLoading[idFor(index)]" class="mt-1 text-xs text-foreground/50">{{ $t('posts.form.reddit.searching') }}</p>
                             <ul
-                                v-if="searchResults[index] && searchResults[index].length > 0"
+                                v-if="searchResults[idFor(index)] && searchResults[idFor(index)].length > 0"
                                 class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border-2 border-foreground bg-card shadow-2xs"
                             >
-                                <li v-for="result in searchResults[index]" :key="result.name">
+                                <li v-for="result in searchResults[idFor(index)]" :key="result.name">
                                     <button
                                         type="button"
                                         class="flex w-full cursor-pointer flex-col px-3 py-2 text-left hover:bg-foreground/5"

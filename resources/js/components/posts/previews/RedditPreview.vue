@@ -57,7 +57,14 @@ const flairText = computed<string>(() => firstSubreddit.value?.flair_text ?? '')
 
 const imageMedia = computed<MediaItem[]>(() => props.media.filter((item) => !isVideoMedia(item)));
 const videoMedia = computed<MediaItem | null>(() => props.media.find((item) => isVideoMedia(item)) ?? null);
-const showMedia = computed<boolean>(() => props.media.length > 0);
+
+// Fix 3: only show uploaded media for image-type posts; self/link posts must not render images.
+const showMedia = computed<boolean>(() => firstSubreddit.value?.type === 'image' && props.media.length > 0);
+
+// Fix 3: render the link URL for link-type posts.
+const linkUrl = computed<string | null>(() =>
+    firstSubreddit.value?.type === 'link' && firstSubreddit.value?.url ? firstSubreddit.value.url : null,
+);
 </script>
 
 <template>
@@ -124,7 +131,16 @@ const showMedia = computed<boolean>(() => props.media.length > 0);
                         <!-- Body text -->
                         <p v-if="content" class="whitespace-pre-wrap text-[14px] leading-[1.4] text-[#3c3c3c]">{{ content }}</p>
 
-                        <!-- Media (image type) -->
+                        <!-- Link URL pill (link-type posts only, Fix 3) -->
+                        <a
+                            v-if="linkUrl"
+                            :href="linkUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-2 inline-flex max-w-full items-center truncate rounded border border-[#878a8c]/40 bg-[#f8f9fa] px-2 py-0.5 text-[11px] text-[#0079d3] hover:underline"
+                        >{{ linkUrl }}</a>
+
+                        <!-- Media (image type only, Fix 3) -->
                         <div v-if="showMedia" class="mt-2 overflow-hidden rounded">
                             <div v-if="imageMedia.length > 0">
                                 <div

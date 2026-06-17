@@ -183,6 +183,8 @@ return [
         ],
         'reddit' => [
             'settings' => 'Configurações do Reddit',
+            'posting_to' => 'Publicando em',
+            'searching' => 'Buscando…',
             'add_subreddit' => 'Adicionar subreddit',
             'remove_subreddit' => 'Remover',
             'subreddit' => 'Subreddit',
