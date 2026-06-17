@@ -56,6 +56,9 @@ enum ContentType: string
     // Discord
     case DiscordMessage = 'discord_message';
 
+    // Reddit
+    case RedditPost = 'reddit_post';
+
     /**
      * AI generation format for an Instagram carousel. Not a content type —
      * carousel posts are persisted as InstagramFeed.
@@ -85,6 +88,7 @@ enum ContentType: string
             self::MastodonPost => 'Post',
             self::TelegramPost => 'Post',
             self::DiscordMessage => 'Message',
+            self::RedditPost => 'Post',
         };
     }
 
@@ -109,6 +113,7 @@ enum ContentType: string
             self::MastodonPost => SocialPlatform::Mastodon,
             self::TelegramPost => SocialPlatform::Telegram,
             self::DiscordMessage => SocialPlatform::Discord,
+            self::RedditPost => SocialPlatform::Reddit,
         };
     }
 
@@ -179,6 +184,7 @@ enum ContentType: string
             self::MastodonPost => 4,
             self::TelegramPost => 10,
             self::DiscordMessage => 10,
+            self::RedditPost => 20,
         };
     }
 
@@ -200,6 +206,7 @@ enum ContentType: string
             self::MastodonPost => true,
             self::TelegramPost => true,
             self::DiscordMessage => true,
+            self::RedditPost => true,
         };
     }
 
@@ -322,6 +329,7 @@ enum ContentType: string
             SocialPlatform::Mastodon => self::MastodonPost,
             SocialPlatform::Telegram => self::TelegramPost,
             SocialPlatform::Discord => self::DiscordMessage,
+            SocialPlatform::Reddit => self::RedditPost,
         };
     }
 }

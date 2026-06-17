@@ -142,3 +142,8 @@ test('bluesky and mastodon support video', function () {
     expect(ContentType::BlueskyPost->supportsVideo())->toBeTrue();
     expect(ContentType::MastodonPost->supportsVideo())->toBeTrue();
 });
+
+test('reddit post content type maps to reddit platform', function () {
+    expect(ContentType::RedditPost->value)->toBe('reddit_post')
+        ->and(ContentType::RedditPost->platform())->toBe(Platform::Reddit);
+});
