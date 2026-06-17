@@ -208,6 +208,12 @@ class MediaOptimizer
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],
+            Platform::Reddit => [
+                'max_width' => 2048,
+                'max_size' => 20 * 1024 * 1024,
+                'format' => 'image/jpeg',
+                'quality' => 100,
+            ],
         };
     }
 }
