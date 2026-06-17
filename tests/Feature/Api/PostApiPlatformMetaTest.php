@@ -156,3 +156,42 @@ it('publishes a Discord post when the channel is set', function () {
     expect($platform->fresh()->meta['channel_id'])->toBe('444555666');
     Queue::assertPushed(PublishPost::class);
 });
+
+it('persists Reddit subreddits meta on store', function () {
+    $account = SocialAccount::factory()->reddit()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Hello Reddit',
+            'platforms' => [[
+                'social_account_id' => $account->id,
+                'content_type' => ContentType::RedditPost->value,
+                'meta' => ['subreddits' => [['name' => 'AskReddit', 'title' => 'My title', 'type' => 'self', 'nsfw' => false]]],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $account->id)->sole()->meta;
+
+    expect(data_get($meta, 'subreddits.0.name'))->toBe('AskReddit')
+        ->and(data_get($meta, 'subreddits.0.title'))->toBe('My title');
+});
+
+it('rejects publishing a Reddit post with no subreddit', function () {
+    $account = SocialAccount::factory()->reddit()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->reddit()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['subreddits' => []],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [['id' => $platform->id]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.subreddits']);
+});

@@ -71,6 +71,20 @@ class PostPlatformMetaRules
             'platforms.*.meta.embeds.*.url' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.image' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.color' => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
+
+            // Reddit
+            'platforms.*.meta.subreddits' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.subreddits.*.name' => ['required', 'string'],
+            'platforms.*.meta.subreddits.*.title' => ['required', 'string', 'max:300'],
+            'platforms.*.meta.subreddits.*.type' => ['required', 'string', Rule::in(['self', 'link', 'image'])],
+            'platforms.*.meta.subreddits.*.url' => ['sometimes', 'nullable', 'url', 'required_if:platforms.*.meta.subreddits.*.type,link'],
+            'platforms.*.meta.subreddits.*.flair_id' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.subreddits.*.flair_text' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.subreddits.*.flair_required' => ['sometimes', 'boolean'],
+            'platforms.*.meta.subreddits.*.allowed_types' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.subreddits.*.allowed_types.*' => ['string'],
+            'platforms.*.meta.subreddits.*.nsfw' => ['sometimes', 'boolean'],
+            'platforms.*.meta.subreddits.*.spoiler' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -130,11 +144,42 @@ class PostPlatformMetaRules
      */
     private static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
+        $reddit = $platform === Platform::Reddit ? self::redditMetaViolation($meta) : null;
+
         return match (true) {
+            $reddit !== null => $reddit,
             $platform === Platform::TikTok && blank(data_get($meta, 'privacy_level')) => ['privacy_level', trans('posts.form.tiktok.privacy_required')],
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             default => null,
         };
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private static function redditMetaViolation(mixed $meta): ?array
+    {
+        $subreddits = (array) data_get($meta, 'subreddits', []);
+
+        if ($subreddits === []) {
+            return ['subreddits', trans('posts.form.reddit.subreddit_required')];
+        }
+
+        foreach ($subreddits as $sub) {
+            if (blank(data_get($sub, 'title'))) {
+                return ['subreddits', trans('posts.form.reddit.title_required')];
+            }
+
+            if (data_get($sub, 'type') === 'link' && blank(data_get($sub, 'url'))) {
+                return ['subreddits', trans('posts.form.reddit.url_required')];
+            }
+
+            if (data_get($sub, 'flair_required') && blank(data_get($sub, 'flair_id'))) {
+                return ['subreddits', trans('posts.form.reddit.flair_required')];
+            }
+        }
+
+        return null;
     }
 }

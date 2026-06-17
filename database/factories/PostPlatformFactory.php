@@ -163,6 +163,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function reddit(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::Reddit,
+            'content_type' => ContentType::RedditPost,
+        ]);
+    }
+
     public function facebookReel(): static
     {
         return $this->state(fn (array $attributes) => [

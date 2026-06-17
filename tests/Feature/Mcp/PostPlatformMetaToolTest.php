@@ -178,3 +178,47 @@ test('publish post succeeds for a Discord platform with a channel', function () 
     $response->assertOk();
     Queue::assertPushed(PublishPost::class);
 });
+
+test('create post persists Reddit subreddits meta', function () {
+    $account = SocialAccount::factory()->reddit()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Hello Reddit',
+            'platforms' => [[
+                'social_account_id' => $account->id,
+                'content_type' => ContentType::RedditPost->value,
+                'meta' => [
+                    'subreddits' => [['name' => 'AskReddit', 'title' => 'My title', 'type' => 'self', 'nsfw' => false]],
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $account->id)->sole()->meta;
+
+    expect(data_get($meta, 'subreddits.0.name'))->toBe('AskReddit')
+        ->and(data_get($meta, 'subreddits.0.title'))->toBe('My title');
+});
+
+test('publish post rejects a Reddit platform without a subreddit', function () {
+    $account = SocialAccount::factory()->reddit()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->reddit()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['subreddits' => []],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.reddit.subreddit_required')]);
+});
