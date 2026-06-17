@@ -126,6 +126,7 @@ class SocialAccount extends Model
                         ? rtrim((string) data_get($this->meta, 'instance'), '/')."/@{$username}"
                         : null,
                     SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
+                    SocialPlatform::Reddit => $username ? "https://www.reddit.com/user/{$username}" : null,
                     default => null,
                 };
             },

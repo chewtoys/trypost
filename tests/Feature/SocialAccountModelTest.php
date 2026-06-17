@@ -186,3 +186,23 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     Event::assertDispatched(NotificationCreated::class);
     Mail::assertQueued(AccountDisconnected::class);
 });
+
+// ---- profileUrl ----
+
+test('reddit account profileUrl returns correct reddit user url', function () {
+    $account = SocialAccount::factory()->reddit()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'redditor_one',
+    ]);
+
+    expect($account->profileUrl)->toBe('https://www.reddit.com/user/redditor_one');
+});
+
+test('reddit account profileUrl returns null when username is blank', function () {
+    $account = SocialAccount::factory()->reddit()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => '',
+    ]);
+
+    expect($account->profileUrl)->toBeNull();
+});

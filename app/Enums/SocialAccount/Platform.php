@@ -80,7 +80,7 @@ enum Platform: string
             self::Mastodon => [MediaType::Image, MediaType::Video],
             self::Telegram => [MediaType::Image, MediaType::Video],
             self::Discord => [MediaType::Image, MediaType::Video],
-            self::Reddit => [MediaType::Image, MediaType::Video],
+            self::Reddit => [MediaType::Image],
         };
     }
 

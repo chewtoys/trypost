@@ -77,7 +77,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.subreddits.*.name' => ['required', 'string'],
             'platforms.*.meta.subreddits.*.title' => ['required', 'string', 'max:300'],
             'platforms.*.meta.subreddits.*.type' => ['required', 'string', Rule::in(['self', 'link', 'image'])],
-            'platforms.*.meta.subreddits.*.url' => ['sometimes', 'nullable', 'url', 'required_if:platforms.*.meta.subreddits.*.type,link'],
+            'platforms.*.meta.subreddits.*.url' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.subreddits.*.flair_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.subreddits.*.flair_text' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.subreddits.*.flair_required' => ['sometimes', 'boolean'],

@@ -73,6 +73,7 @@ test('content type supports video correctly', function () {
     expect(ContentType::YouTubeShort->supportsVideo())->toBeTrue();
     expect(ContentType::LinkedInCarousel->supportsVideo())->toBeFalse();
     expect(ContentType::PinterestPin->supportsVideo())->toBeFalse();
+    expect(ContentType::RedditPost->supportsVideo())->toBeFalse();
 });
 
 test('content type supports image correctly', function () {
@@ -97,6 +98,7 @@ test('content type requires media correctly', function () {
     expect(ContentType::ThreadsPost->requiresMedia())->toBeFalse();
     expect(ContentType::BlueskyPost->requiresMedia())->toBeFalse();
     expect(ContentType::MastodonPost->requiresMedia())->toBeFalse();
+    expect(ContentType::RedditPost->requiresMedia())->toBeFalse();
 });
 
 test('can get content types for platform', function () {

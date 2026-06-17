@@ -113,7 +113,7 @@ test('reddit platform exposes its metadata', function () {
     expect(Platform::Reddit->value)->toBe('reddit')
         ->and(Platform::Reddit->label())->toBe('Reddit')
         ->and(Platform::Reddit->color())->toBe('#FF4500')
-        ->and(Platform::Reddit->allowedMediaTypes())->toBe([MediaType::Image, MediaType::Video])
+        ->and(Platform::Reddit->allowedMediaTypes())->toBe([MediaType::Image])
         ->and(Platform::Reddit->maxImages())->toBe(20)
         ->and(Platform::Reddit->maxContentLength())->toBe(40000)
         ->and(Platform::Reddit->recommendedAiContentLength())->toBe(500)

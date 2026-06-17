@@ -206,7 +206,7 @@ enum ContentType: string
             self::MastodonPost => true,
             self::TelegramPost => true,
             self::DiscordMessage => true,
-            self::RedditPost => true,
+            self::RedditPost => false,
         };
     }
 
@@ -247,6 +247,7 @@ enum ContentType: string
             self::FacebookPost => false,
             self::InstagramFeed => false,
             self::DiscordMessage => false,
+            self::RedditPost => false,
             default => true,
         };
     }
