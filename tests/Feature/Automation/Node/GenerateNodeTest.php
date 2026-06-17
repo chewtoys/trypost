@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Automation\Node\RunGenerateNode;
 use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
+use App\Enums\Ai\ContentStyle;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Automation;
@@ -456,4 +457,224 @@ it('does not generate images or persist on a dry run', function () {
 
     $run->refresh();
     expect($run->generated_post_id)->toBeNull();
+});
+
+it('defaults to image_card style when no style is set, behaving identically to before', function () {
+    PostContentGenerator::fake([
+        ['content' => 'Legacy post', 'image_title' => 'Title', 'image_body' => 'Body', 'image_keywords' => ['kw']],
+    ]);
+
+    PostContentHumanizer::fake([
+        ['content' => 'Legacy post', 'image_title' => 'Title', 'image_body' => 'Body'],
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $mediaItem = ['id' => 1, 'path' => 'ai-images/x.webp', 'url' => 'http://x', 'type' => 'image', 'mime_type' => 'image/webp', 'source' => 'ai', 'source_meta' => []];
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldReceive('forSingle')->once()->andReturn([$mediaItem]);
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    $result = app(RunGenerateNode::class)($run, [
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    expect($result->status->value)->toBe('completed');
+
+    $post = Post::find($result->output['generated']['post_id']);
+    expect($post)->not->toBeNull();
+    expect($post->content)->toBe('Legacy post');
+    expect($post->media)->toHaveCount(1);
+});
+
+it('generates a tweet card post when style is tweet_card', function () {
+    PostContentGenerator::fake([
+        ['tweet_text' => 'Hot take on AI agents today.'],
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $mediaItem = ['id' => 2, 'path' => 'ai-images/tweet.webp', 'url' => 'http://tweet', 'type' => 'image', 'mime_type' => 'image/webp', 'source' => 'ai', 'source_meta' => []];
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldReceive('forTweetCard')->once()->andReturn([$mediaItem]);
+    $pipeline->shouldNotReceive('forSingle');
+    $pipeline->shouldNotReceive('forCarousel');
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    $result = app(RunGenerateNode::class)($run, [
+        'style' => ContentStyle::TweetCard->value,
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write a tweet about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    expect($result->status->value)->toBe('completed');
+
+    $post = Post::find($result->output['generated']['post_id']);
+    expect($post)->not->toBeNull();
+    expect($post->content)->toBe('Hot take on AI agents today.');
+    expect($post->media)->toHaveCount(1);
+});
+
+it('skips the humanizer for tweet_card style', function () {
+    PostContentGenerator::fake([
+        ['tweet_text' => 'Raw tweet, no humanizer.'],
+    ]);
+
+    PostContentHumanizer::fake([]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldReceive('forTweetCard')->once()->andReturn([]);
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    app(RunGenerateNode::class)($run, [
+        'style' => ContentStyle::TweetCard->value,
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write a tweet about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    PostContentHumanizer::assertNeverPrompted();
+});
+
+it('generates a tweet card with AI image background when style is tweet_card_image', function () {
+    PostContentGenerator::fake([
+        ['tweet_text' => 'AI is transforming everything.', 'image_keywords' => ['artificial intelligence', 'technology']],
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $mediaItem = ['id' => 3, 'path' => 'ai-images/tweet-img.webp', 'url' => 'http://tweet-img', 'type' => 'image', 'mime_type' => 'image/webp', 'source' => 'ai', 'source_meta' => []];
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldReceive('forTweetCard')
+        ->once()
+        ->withArgs(function ($ws, $acc, $text, $keywords) {
+            return $text === 'AI is transforming everything.'
+                && is_array($keywords)
+                && count($keywords) > 0;
+        })
+        ->andReturn([$mediaItem]);
+    $pipeline->shouldNotReceive('forSingle');
+    $pipeline->shouldNotReceive('forCarousel');
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    $result = app(RunGenerateNode::class)($run, [
+        'style' => ContentStyle::TweetCardImage->value,
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write a tweet about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    expect($result->status->value)->toBe('completed');
+
+    $post = Post::find($result->output['generated']['post_id']);
+    expect($post)->not->toBeNull();
+    expect($post->content)->toBe('AI is transforming everything.');
+    expect($post->media)->toHaveCount(1);
+});
+
+it('skips the humanizer for tweet_card_image style', function () {
+    PostContentGenerator::fake([
+        ['tweet_text' => 'Raw tweet with image.', 'image_keywords' => ['tech']],
+    ]);
+
+    PostContentHumanizer::fake([]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldReceive('forTweetCard')->once()->andReturn([]);
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    app(RunGenerateNode::class)($run, [
+        'style' => ContentStyle::TweetCardImage->value,
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write a tweet about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    PostContentHumanizer::assertNeverPrompted();
+});
+
+it('dry run returns sensible image_count for tweet_card style', function () {
+    PostContentGenerator::fake([
+        ['tweet_text' => 'A tweet for dry run.'],
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => 'x']);
+
+    $pipeline = Mockery::mock(PostImagePipeline::class);
+    $pipeline->shouldNotReceive('forTweetCard');
+    $pipeline->shouldNotReceive('forSingle');
+    $pipeline->shouldNotReceive('forCarousel');
+    app()->instance(PostImagePipeline::class, $pipeline);
+
+    $automation = Automation::factory()->for($workspace)->create();
+    $run = AutomationRun::factory()->for($automation)->create([
+        'is_dry_run' => true,
+        'context' => ['trigger' => ['title' => 'test']],
+    ]);
+
+    $result = app(RunGenerateNode::class)($run, [
+        'style' => ContentStyle::TweetCard->value,
+        'accounts' => [
+            ['social_account_id' => (string) $account->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+        ],
+        'prompt_template' => 'Write about {{ trigger.title }}',
+        'target_slide_count' => 1,
+    ]);
+
+    expect($result->status->value)->toBe('completed');
+    expect($result->output['generated']['dry_run'])->toBeTrue();
+    expect($result->output['generated']['image_count'])->toBe(1);
+    expect($result->output['generated']['post_id'])->toBeNull();
+    expect(Post::count())->toBe(0);
 });

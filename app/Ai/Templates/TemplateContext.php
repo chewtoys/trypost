@@ -18,5 +18,6 @@ class TemplateContext
         public string $format,
         public int $imageCount,
         public bool $isCarousel = false,
+        public bool $applyBrandVisuals = true,
     ) {}
 }

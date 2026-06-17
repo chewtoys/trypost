@@ -118,6 +118,7 @@ class ImageCardTemplate implements AiContentTemplate
                 account: $context->socialAccount,
                 structured: $structured,
                 contentType: ContentType::InstagramFeed,
+                applyBrandVisuals: $context->applyBrandVisuals,
             );
         }
 
@@ -142,6 +143,7 @@ class ImageCardTemplate implements AiContentTemplate
                 account: $context->socialAccount,
                 structured: $structured,
                 contentType: $contentType,
+                applyBrandVisuals: $context->applyBrandVisuals,
             );
         }
 
