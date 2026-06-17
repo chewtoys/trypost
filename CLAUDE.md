@@ -336,6 +336,11 @@ Vue components must have a single root element.
     - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
     - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
 
+## HTTP User-Agent
+
+- NEVER hardcode a custom `User-Agent` string for outbound HTTP. There is ONE shared default: `config('trypost.user_agent')` (`env('TRYPOST_USER_AGENT', ...)`). Use it for any outbound request that needs a UA.
+    - If a provider REQUIRES its own UA (e.g. Reddit's API mandates a unique descriptive User-Agent), add a per-platform key under `config/trypost.php` `platforms.<name>.user_agent` that DEFAULTS to the shared one — `env('<PLATFORM>_USER_AGENT', $userAgent)` where `$userAgent` is the hoisted shared value — never a fresh hardcoded literal.
+
 ## TryPost.it Documentation
 
 - All our documentation to final user it's under https://docs.trypost.it
