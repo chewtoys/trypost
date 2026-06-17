@@ -109,3 +109,37 @@ test('throws when no subreddit is configured', function () {
     $platform = redditPlatform([]);
     expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
 });
+
+test('sends nsfw, spoiler and flair fields in the payload', function () {
+    Http::fake([
+        'https://oauth.reddit.com/api/submit*' => Http::response(['json' => ['errors' => [], 'data' => ['name' => 't3_abc', 'id' => 'abc']]], 200),
+        'https://oauth.reddit.com/api/info*' => Http::response(['data' => ['children' => []]], 200),
+    ]);
+
+    $platform = redditPlatform([[
+        'name' => 'test',
+        'title' => 'T',
+        'type' => 'self',
+        'nsfw' => true,
+        'spoiler' => true,
+        'flair_id' => 'flair-123',
+        'flair_text' => 'Discussion',
+    ]]);
+    app(RedditPublisher::class)->publish($platform);
+
+    Http::assertSent(fn ($r) => str_contains($r->url(), '/api/submit')
+        && $r['nsfw'] === 'true'
+        && $r['spoiler'] === 'true'
+        && $r['flair_id'] === 'flair-123'
+        && $r['flair_text'] === 'Discussion');
+});
+
+test('throws when a subreddit has no title', function () {
+    $platform = redditPlatform([['name' => 'test', 'type' => 'self']]);
+    expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
+});
+
+test('throws on media types since upload is not yet supported', function () {
+    $platform = redditPlatform([['name' => 'test', 'title' => 'T', 'type' => 'image']]);
+    expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
+});

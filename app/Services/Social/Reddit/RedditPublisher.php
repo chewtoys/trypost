@@ -88,11 +88,19 @@ class RedditPublisher
     {
         $name = (string) data_get($sub, 'name');
         $type = (string) data_get($sub, 'type', 'self');
+        $title = trim((string) data_get($sub, 'title'));
+
+        if ($title === '') {
+            throw new RedditPublishException(
+                userMessage: "A title is required to post to r/{$name}.",
+                category: ErrorCategory::Unknown,
+            );
+        }
 
         $payload = array_filter([
             'api_type' => 'json',
             'sr' => $name,
-            'title' => (string) data_get($sub, 'title'),
+            'title' => $title,
             'kind' => $this->kind($type),
             'nsfw' => (bool) data_get($sub, 'nsfw', false) ? 'true' : null,
             'spoiler' => (bool) data_get($sub, 'spoiler', false) ? 'true' : null,
@@ -149,7 +157,7 @@ class RedditPublisher
             'link' => 'link',
             'image' => 'image',
             'video' => 'video',
-            'gallery' => 'image',
+            'gallery' => 'gallery',
             default => 'self',
         };
     }
