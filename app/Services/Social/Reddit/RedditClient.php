@@ -112,6 +112,20 @@ class RedditClient
             ->all();
     }
 
+    /**
+     * @return array{link_karma: int, comment_karma: int, total_karma: int}
+     */
+    public function me(SocialAccount $account): array
+    {
+        $data = $this->reddit($account)->get($this->url('/api/v1/me'))->json();
+
+        return [
+            'link_karma' => (int) data_get($data, 'link_karma', 0),
+            'comment_karma' => (int) data_get($data, 'comment_karma', 0),
+            'total_karma' => (int) data_get($data, 'total_karma', 0),
+        ];
+    }
+
     private function url(string $path): string
     {
         return (string) config('trypost.platforms.reddit.api').$path;
