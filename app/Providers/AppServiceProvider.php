@@ -34,6 +34,7 @@ use App\Services\PostTemplate\Registry as PostTemplateRegistry;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
+use App\Socialite\RedditProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -191,6 +192,12 @@ class AppServiceProvider extends ServiceProvider
             $config = $app['config']['services.discord'];
 
             return Socialite::buildProvider(DiscordProvider::class, $config);
+        });
+
+        Socialite::extend('reddit', function ($app) {
+            $config = $app['config']['services.reddit'];
+
+            return Socialite::buildProvider(RedditProvider::class, $config);
         });
 
         Event::listen(SocialiteWasCalled::class, FacebookExtendSocialite::class);
