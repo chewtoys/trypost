@@ -154,6 +154,20 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function reddit(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::Reddit,
+            'scopes' => Platform::Reddit->requiredPublishScopes(),
+            'platform_user_id' => (string) $this->faker->numberBetween(100000, 999999),
+            'username' => $this->faker->userName(),
+            'display_name' => $this->faker->name(),
+            'access_token' => 'reddit-access-token',
+            'refresh_token' => 'reddit-refresh-token',
+            'token_expires_at' => now()->addHour(),
+        ]);
+    }
+
     public function discord(): static
     {
         return $this->state(fn (array $attributes) => [

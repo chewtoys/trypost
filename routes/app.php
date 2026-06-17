@@ -38,6 +38,7 @@ use App\Http\Controllers\Auth\LinkedInController;
 use App\Http\Controllers\Auth\LinkedInPageController;
 use App\Http\Controllers\Auth\MastodonController;
 use App\Http\Controllers\Auth\PinterestController;
+use App\Http\Controllers\Auth\RedditController;
 use App\Http\Controllers\Auth\SocialController;
 use App\Http\Controllers\Auth\TelegramController;
 use App\Http\Controllers\Auth\ThreadsController;
@@ -125,6 +126,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('connect/discord', [DiscordController::class, 'connect'])->name('app.social.discord.connect');
     Route::get('accounts/discord/callback', [DiscordController::class, 'callback'])->name('app.social.discord.callback');
+
+    Route::get('connect/reddit', [RedditController::class, 'connect'])->name('app.social.reddit.connect');
+    Route::get('accounts/reddit/callback', [RedditController::class, 'callback'])->name('app.social.reddit.callback');
 });
 
 // Routes that require active subscription and completed onboarding
