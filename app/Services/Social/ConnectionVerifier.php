@@ -70,6 +70,7 @@ class ConnectionVerifier
             Platform::Mastodon => $this->verifyMastodon($account),
             Platform::Telegram => $this->verifyTelegram($account),
             Platform::Discord => $this->verifyDiscord($account),
+            Platform::Reddit => $this->verifyReddit($account),
         };
     }
 
@@ -103,6 +104,7 @@ class ConnectionVerifier
                 Platform::Pinterest => $this->refreshPinterestToken($account),
                 Platform::Threads => $this->refreshThreadsToken($account),
                 Platform::Instagram => $this->refreshInstagramToken($account),
+                Platform::Reddit => $this->refreshRedditToken($account),
                 // Facebook / InstagramFacebook use Page tokens that don't expire.
                 // Mastodon tokens don't expire either.
                 default => null,
@@ -536,5 +538,43 @@ class ConnectionVerifier
         }
 
         return $response->successful();
+    }
+
+    private function verifyReddit(SocialAccount $account): bool
+    {
+        $response = Http::withToken((string) $account->access_token)
+            ->withHeaders(['User-Agent' => (string) config('trypost.platforms.reddit.user_agent')])
+            ->get(config('trypost.platforms.reddit.api').'/api/v1/me');
+
+        if (in_array($response->status(), [401, 403], true)) {
+            throw new TokenExpiredException('Reddit access token is invalid or expired');
+        }
+
+        return $response->successful();
+    }
+
+    private function refreshRedditToken(SocialAccount $account): void
+    {
+        if (! $account->refresh_token) {
+            throw new TokenExpiredException('No refresh token available for Reddit account');
+        }
+
+        $response = TokenRefreshClient::for(Platform::Reddit)->send(fn () => Http::asForm()
+            ->withBasicAuth((string) config('services.reddit.client_id'), (string) config('services.reddit.client_secret'))
+            ->withHeaders(['User-Agent' => (string) config('trypost.platforms.reddit.user_agent')])
+            ->post(config('trypost.platforms.reddit.oauth_api').'/access_token', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+            ]));
+
+        $data = $response->json();
+
+        $account->update([
+            'access_token' => data_get($data, 'access_token'),
+            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds((int) data_get($data, 'expires_in')) : null,
+        ]);
+
+        $account->refresh();
     }
 }
