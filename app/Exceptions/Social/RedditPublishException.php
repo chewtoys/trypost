@@ -32,11 +32,6 @@ class RedditPublishException extends SocialPublishException
         $rawResponse = $response->body();
         $json = $response->json() ?? [];
 
-        $errors = data_get($json, 'errors', []);
-        $apiMessage = is_array($errors) && count($errors) > 0
-            ? (string) data_get($errors, '0.1', '')
-            : '';
-
         if ($status === 401 || $status === 403) {
             return new static(
                 userMessage: 'Reddit rejected the request. Check that the account is connected and has permission to post.',
@@ -64,9 +59,7 @@ class RedditPublishException extends SocialPublishException
             );
         }
 
-        $message = $apiMessage !== ''
-            ? $apiMessage
-            : "An unknown Reddit error occurred (HTTP {$status}).";
+        $message = self::extractApiMessage($json, $status);
 
         return new static(
             userMessage: $message,
@@ -74,6 +67,26 @@ class RedditPublishException extends SocialPublishException
             platformErrorCode: (string) $status,
             rawResponse: $rawResponse,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    private static function extractApiMessage(array $json, int $status): string
+    {
+        foreach ([
+            data_get($json, 'json.errors.0.1'),
+            data_get($json, 'errors.0.1'),
+            data_get($json, 'explanation'),
+            data_get($json, 'reason'),
+            data_get($json, 'message'),
+        ] as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return "An unknown Reddit error occurred (HTTP {$status}).";
     }
 
     public function platform(): string

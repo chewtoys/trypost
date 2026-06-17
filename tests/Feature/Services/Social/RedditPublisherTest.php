@@ -139,11 +139,9 @@ test('throws when a subreddit has no title', function () {
     expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
 });
 
-test('throws for video and gallery since they are not yet supported', function () {
-    foreach (['video', 'gallery'] as $type) {
-        $platform = redditPlatform([['name' => 'test', 'title' => 'T', 'type' => $type]]);
-        expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
-    }
+test('throws for video type since it is not yet supported', function () {
+    $platform = redditPlatform([['name' => 'test', 'title' => 'T', 'type' => 'video']]);
+    expect(fn () => app(RedditPublisher::class)->publish($platform))->toThrow(RedditPublishException::class);
 });
 
 test('throws when an image post has no media attached', function () {
@@ -212,4 +210,87 @@ test('uploads an image then submits the asset url', function () {
 
     expect($result['id'])->toContain('img');
     Http::assertSent(fn ($r) => str_contains($r->url(), '/api/submit') && isset($r['url']) && str_contains((string) $r['url'], 'photo.jpg'));
+});
+
+test('gallery: 3 images upload and submit via submit_gallery_post with 3 media_ids', function () {
+    test()->post->update([
+        'media' => [
+            ['id' => 'g1', 'path' => 'media/img1.jpg', 'url' => 'https://cdn.test/img1.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'img1.jpg'],
+            ['id' => 'g2', 'path' => 'media/img2.jpg', 'url' => 'https://cdn.test/img2.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'img2.jpg'],
+            ['id' => 'g3', 'path' => 'media/img3.jpg', 'url' => 'https://cdn.test/img3.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'img3.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.reddit.api').'/api/media/asset*' => Http::sequence()
+            ->push(['args' => ['action' => '//reddit-uploads.s3.amazonaws.com', 'fields' => [['name' => 'key', 'value' => 'abc/img1.jpg']]], 'asset' => ['asset_id' => 'asset-id-1']], 200)
+            ->push(['args' => ['action' => '//reddit-uploads.s3.amazonaws.com', 'fields' => [['name' => 'key', 'value' => 'abc/img2.jpg']]], 'asset' => ['asset_id' => 'asset-id-2']], 200)
+            ->push(['args' => ['action' => '//reddit-uploads.s3.amazonaws.com', 'fields' => [['name' => 'key', 'value' => 'abc/img3.jpg']]], 'asset' => ['asset_id' => 'asset-id-3']], 200),
+        'https://reddit-uploads.s3.amazonaws.com' => Http::response('<?xml version="1.0"?><PostResponse><Location>https://reddit-uploads.s3.amazonaws.com/abc/img.jpg</Location></PostResponse>', 201),
+        'https://cdn.test/img1.jpg' => Http::response('bytes1', 200),
+        'https://cdn.test/img2.jpg' => Http::response('bytes2', 200),
+        'https://cdn.test/img3.jpg' => Http::response('bytes3', 200),
+        config('trypost.platforms.reddit.api').'/api/submit_gallery_post.json*' => Http::response(['json' => ['errors' => [], 'data' => ['name' => 't3_gal', 'id' => 'gal']]], 200),
+        config('trypost.platforms.reddit.api').'/api/info*' => Http::response(['data' => ['children' => [
+            ['data' => ['name' => 't3_gal', 'url' => 'https://www.reddit.com/r/pics/comments/gal/x/']],
+        ]]], 200),
+    ]);
+
+    $platform = redditPlatform([['name' => 'pics', 'title' => 'My gallery', 'type' => 'image']]);
+    $result = app(RedditPublisher::class)->publish($platform);
+
+    expect($result['id'])->toContain('gal');
+    Http::assertSent(function ($r) {
+        if (! str_contains($r->url(), '/api/submit_gallery_post.json')) {
+            return false;
+        }
+        $items = json_decode((string) $r['items'], true);
+
+        return is_array($items)
+            && count($items) === 3
+            && $items[0]['media_id'] === 'asset-id-1'
+            && $items[1]['media_id'] === 'asset-id-2'
+            && $items[2]['media_id'] === 'asset-id-3';
+    });
+});
+
+test('more than 10 images are capped at 10', function () {
+    $media = collect(range(1, 12))->map(fn ($i) => [
+        'id' => "g{$i}",
+        'path' => "media/img{$i}.jpg",
+        'url' => "https://cdn.test/img{$i}.jpg",
+        'mime_type' => 'image/jpeg',
+        'original_filename' => "img{$i}.jpg",
+    ])->all();
+
+    test()->post->update(['media' => $media]);
+
+    $leaseSequence = Http::sequence();
+    for ($i = 1; $i <= 10; $i++) {
+        $leaseSequence->push(['args' => ['action' => '//reddit-uploads.s3.amazonaws.com', 'fields' => [['name' => 'key', 'value' => "abc/img{$i}.jpg"]]], 'asset' => ['asset_id' => "asset-id-{$i}"]], 200);
+    }
+
+    $cdnFakes = [];
+    for ($i = 1; $i <= 12; $i++) {
+        $cdnFakes["https://cdn.test/img{$i}.jpg"] = Http::response("bytes{$i}", 200);
+    }
+
+    Http::fake(array_merge([
+        config('trypost.platforms.reddit.api').'/api/media/asset*' => $leaseSequence,
+        'https://reddit-uploads.s3.amazonaws.com' => Http::response('<?xml version="1.0"?><PostResponse><Location>https://reddit-uploads.s3.amazonaws.com/abc/img.jpg</Location></PostResponse>', 201),
+        config('trypost.platforms.reddit.api').'/api/submit_gallery_post.json*' => Http::response(['json' => ['errors' => [], 'data' => ['name' => 't3_cap', 'id' => 'cap']]], 200),
+        config('trypost.platforms.reddit.api').'/api/info*' => Http::response(['data' => ['children' => []]], 200),
+    ], $cdnFakes));
+
+    $platform = redditPlatform([['name' => 'pics', 'title' => 'Gallery cap test', 'type' => 'image']]);
+    app(RedditPublisher::class)->publish($platform);
+
+    Http::assertSent(function ($r) {
+        if (! str_contains($r->url(), '/api/submit_gallery_post.json')) {
+            return false;
+        }
+        $items = json_decode((string) $r['items'], true);
+
+        return is_array($items) && count($items) === 10;
+    });
 });

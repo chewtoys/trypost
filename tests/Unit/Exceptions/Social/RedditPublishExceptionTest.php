@@ -92,3 +92,37 @@ test('platform returns reddit', function () {
 
     expect($exception->platform())->toBe('reddit');
 });
+
+test('json.errors submit wrapper message takes priority over top-level errors', function () {
+    $response = Http::response([
+        'json' => ['errors' => [['SUBREDDIT_BANNED', 'that subreddit is banned', 'sr']]],
+        'errors' => [['OTHER', 'fallback message', 'x']],
+    ], 400);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://oauth.reddit.com/api/submit');
+
+    $exception = RedditPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->userMessage)->toBe('that subreddit is banned');
+});
+
+test('explanation field is used for api errors without errors array', function () {
+    $response = Http::response([
+        'reason' => 'BAD_SR_NAME',
+        'explanation' => 'that name is taken',
+        'message' => 'Bad Request',
+    ], 400);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://oauth.reddit.com/api/submit');
+
+    $exception = RedditPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->userMessage)->toBe('that name is taken');
+});
+
+test('message field is used when no errors or explanation present', function () {
+    $response = Http::response(['message' => 'Forbidden'], 404);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://oauth.reddit.com/api/submit');
+
+    $exception = RedditPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->userMessage)->toBe('Forbidden');
+});

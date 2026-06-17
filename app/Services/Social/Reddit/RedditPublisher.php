@@ -13,6 +13,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -28,8 +29,6 @@ class RedditPublisher
     use HasSocialHttpClient;
 
     private const SUBMIT_DELAY_MICROSECONDS = 1_100_000;
-
-    private ?MediaItem $currentMedia = null;
 
     public function __construct(private readonly RedditClient $client) {}
 
@@ -55,7 +54,10 @@ class RedditPublisher
             ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
             : '';
 
-        $this->currentMedia = $postPlatform->post->mediaItems->first();
+        $imageMedia = $postPlatform->post->mediaItems
+            ->filter(fn (MediaItem $item) => $item->isImage())
+            ->take($postPlatform->platform->maxImages())
+            ->values();
 
         /** @var list<array{subreddit: string, id: string, url: string}> $results */
         $results = [];
@@ -66,7 +68,7 @@ class RedditPublisher
             }
 
             try {
-                $results[] = $this->submitOne($account, $sub, $text);
+                $results[] = $this->submitOne($account, $sub, $text, $imageMedia);
             } catch (Throwable $e) {
                 $this->persistResults($postPlatform, $results);
 
@@ -88,9 +90,10 @@ class RedditPublisher
 
     /**
      * @param  array<string, mixed>  $sub
+     * @param  Collection<int, MediaItem>  $imageMedia
      * @return array{subreddit: string, id: string, url: string}
      */
-    private function submitOne(SocialAccount $account, array $sub, string $text): array
+    private function submitOne(SocialAccount $account, array $sub, string $text, Collection $imageMedia): array
     {
         $name = (string) data_get($sub, 'name');
         $type = (string) data_get($sub, 'type', 'self');
@@ -101,6 +104,10 @@ class RedditPublisher
                 userMessage: "A title is required to post to r/{$name}.",
                 category: ErrorCategory::Unknown,
             );
+        }
+
+        if ($type === 'image' && $imageMedia->count() >= 2) {
+            return $this->submitGallery($account, $sub, $name, $title, $imageMedia);
         }
 
         $payload = array_filter([
@@ -119,7 +126,7 @@ class RedditPublisher
         } elseif ($type === 'link') {
             $payload['url'] = (string) data_get($sub, 'url');
         } else {
-            $payload['url'] = $this->uploadMedia($account, $sub);
+            $payload['url'] = $this->uploadSingleImage($account, $imageMedia);
         }
 
         $response = $this->reddit($account)->asForm()->post($this->url('/api/submit'), $payload);
@@ -138,27 +145,84 @@ class RedditPublisher
     }
 
     /**
-     * Uploads the post's first image through Reddit's asset lease and returns the
-     * hosted URL to submit as a link/image post.
-     *
      * @param  array<string, mixed>  $sub
+     * @param  Collection<int, MediaItem>  $imageMedia
+     * @return array{subreddit: string, id: string, url: string}
      */
-    private function uploadMedia(SocialAccount $account, array $sub): string
+    private function submitGallery(SocialAccount $account, array $sub, string $name, string $title, Collection $imageMedia): array
     {
-        $type = (string) data_get($sub, 'type');
+        $imageMedia->each(function (MediaItem $item) {
+            if ($item->isVideo()) {
+                throw new RedditPublishException(
+                    userMessage: 'Reddit video posts are not supported yet.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+        });
 
-        if ($type !== 'image') {
-            throw new RedditPublishException(
-                userMessage: 'Reddit video and gallery posts are not supported yet.',
-                category: ErrorCategory::MediaFormat,
-            );
-        }
+        $items = $imageMedia->map(function (MediaItem $item) use ($account) {
+            ['asset_id' => $assetId] = $this->leaseAndUpload($account, $item);
 
-        $item = $this->currentMedia ?? throw new RedditPublishException(
+            return ['media_id' => $assetId, 'caption' => '', 'outbound_url' => ''];
+        })->values()->all();
+
+        $payload = array_filter([
+            'api_type' => 'json',
+            'sr' => $name,
+            'title' => $title,
+            'nsfw' => (bool) data_get($sub, 'nsfw', false) ? 'true' : null,
+            'spoiler' => (bool) data_get($sub, 'spoiler', false) ? 'true' : null,
+            'flair_id' => data_get($sub, 'flair_id') ?: null,
+            'flair_text' => data_get($sub, 'flair_text') ?: null,
+            'items' => json_encode($items),
+        ], fn ($v) => $v !== null);
+
+        $response = $this->reddit($account)->asForm()->post($this->url('/api/submit_gallery_post.json'), $payload);
+
+        $this->assertOk($response);
+
+        $id = (string) data_get($response->json(), 'json.data.id');
+        $fullname = (string) data_get($response->json(), 'json.data.name');
+        $fullname = $fullname !== '' ? $fullname : ($id !== '' ? "t3_{$id}" : '');
+
+        return [
+            'subreddit' => $name,
+            'id' => $fullname,
+            'url' => $this->resolveUrl($account, $fullname),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, MediaItem>  $imageMedia
+     */
+    private function uploadSingleImage(SocialAccount $account, Collection $imageMedia): string
+    {
+        $item = $imageMedia->first() ?? throw new RedditPublishException(
             userMessage: 'No image attached for this Reddit image post.',
             category: ErrorCategory::MediaFormat,
         );
 
+        if ($item->isVideo()) {
+            throw new RedditPublishException(
+                userMessage: 'Reddit video posts are not supported yet.',
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        ['url' => $hostedUrl] = $this->leaseAndUpload($account, $item);
+
+        return $hostedUrl;
+    }
+
+    /**
+     * Leases a Reddit media asset, uploads the file to S3, and returns both
+     * the asset_id (needed for gallery submissions) and the hosted URL
+     * (needed for single-image submissions).
+     *
+     * @return array{asset_id: string, url: string}
+     */
+    private function leaseAndUpload(SocialAccount $account, MediaItem $item): array
+    {
         $mime = (string) ($item->mime_type ?: 'image/jpeg');
         $filename = $item->original_filename ?: (basename((string) $item->path) ?: 'image');
 
@@ -168,6 +232,7 @@ class RedditPublisher
         ]);
         $this->assertOk($lease);
 
+        $assetId = (string) data_get($lease->json(), 'asset.asset_id');
         $action = 'https:'.preg_replace('#^https?:#', '', (string) data_get($lease->json(), 'args.action'));
         $fields = collect((array) data_get($lease->json(), 'args.fields'))
             ->mapWithKeys(fn ($f) => [(string) data_get($f, 'name') => (string) data_get($f, 'value')])
@@ -176,8 +241,8 @@ class RedditPublisher
         $bytes = Http::timeout(120)->get($item->url)->body();
 
         $upload = Http::asMultipart();
-        foreach ($fields as $name => $value) {
-            $upload = $upload->attach($name, $value);
+        foreach ($fields as $fieldName => $value) {
+            $upload = $upload->attach($fieldName, $value);
         }
         $upload = $upload->attach('file', $bytes, $filename);
         $s3 = $upload->post($action);
@@ -190,10 +255,10 @@ class RedditPublisher
         }
 
         if (preg_match('/<Location>(.*?)<\/Location>/', $s3->body(), $m)) {
-            return html_entity_decode($m[1]);
+            return ['asset_id' => $assetId, 'url' => html_entity_decode($m[1])];
         }
 
-        return rtrim($action, '/').'/'.($fields['key'] ?? $filename);
+        return ['asset_id' => $assetId, 'url' => rtrim($action, '/').'/'.($fields['key'] ?? $filename)];
     }
 
     private function resolveUrl(SocialAccount $account, string $fullname): string
