@@ -7,6 +7,7 @@ import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
+import RedditSettings from '@/components/posts/editor/RedditSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +172,14 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
             />
             <DiscordSettings
                 v-else-if="channel.platform === Platform.Discord"
+                :social-account="channel.socialAccount"
+                :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <RedditSettings
+                v-else-if="channel.platform === Platform.Reddit"
                 :social-account="channel.socialAccount"
                 :meta="channel.meta"
                 :disabled="disabled"
