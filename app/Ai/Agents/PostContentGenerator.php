@@ -7,6 +7,7 @@ namespace App\Ai\Agents;
 use App\Ai\Agents\Concerns\ResolvesPlatformCopyBudget;
 use App\Ai\Templates\AiContentTemplate;
 use App\Ai\Templates\TemplateContext;
+use App\Enums\Ai\GeneratorFormat;
 use App\Models\Workspace;
 use App\Services\Ai\TemplateContextResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -25,7 +26,7 @@ class PostContentGenerator implements Agent, HasStructuredOutput
     public function __construct(
         public Workspace $workspace,
         public ?string $currentContent = null,
-        public string $format = 'single',
+        public GeneratorFormat $format = GeneratorFormat::Single,
         public int $slideCount = 1,
         public ?string $platformContext = null,
         public bool $applyBrandVoice = true,
@@ -51,7 +52,7 @@ class PostContentGenerator implements Agent, HasStructuredOutput
 
         $budget = $this->platformCopyBudget($this->platformContext);
 
-        if ($this->template?->generatorFormat() === 'tweet_card') {
+        if ($this->template?->style()->isTweetCard()) {
             $budget['hard_max_chars'] = 560;
             $budget['target_chars'] = 280;
         }
@@ -66,7 +67,7 @@ class PostContentGenerator implements Agent, HasStructuredOutput
             'brand_voice_traits' => $this->applyBrandVoice ? ($this->workspace->brand_voice_traits ?? []) : [],
             'content_language' => $this->workspace->content_language,
             'current_content' => $this->currentContent,
-            'format' => $this->format,
+            'format' => $this->format->value,
             'slide_count' => $this->slideCount,
             'examples' => $examples,
             'hard_max_chars' => $budget['hard_max_chars'],
@@ -81,7 +82,7 @@ class PostContentGenerator implements Agent, HasStructuredOutput
             return $this->template->schema($schema, $this->templateContext);
         }
 
-        if ($this->format === 'carousel') {
+        if ($this->format->isCarousel()) {
             return [
                 'caption' => $schema->string()->description('The Instagram caption for the carousel post.')->required(),
                 'slides' => $schema->array()

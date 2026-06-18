@@ -49,11 +49,6 @@ class ImageCardTemplate implements AiContentTemplate
         return [];
     }
 
-    public function generatorFormat(): string
-    {
-        return 'single';
-    }
-
     public function promptView(TemplateContext $context): string
     {
         return 'prompts.post_content.generator';

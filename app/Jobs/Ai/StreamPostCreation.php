@@ -10,6 +10,8 @@ use App\Ai\Agents\PostContentHumanizer;
 use App\Ai\Templates\AiTemplateRegistry;
 use App\Ai\Templates\GeneratedPost;
 use App\Ai\Templates\TemplateContext;
+use App\Enums\Ai\ContentStyle;
+use App\Enums\Ai\GeneratorFormat;
 use App\Enums\Notification\Channel as NotificationChannel;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\PostPlatform\ContentType;
@@ -53,7 +55,7 @@ class StreamPostCreation implements ShouldQueue
         $style = app(AiTemplateRegistry::class)->find($this->template);
 
         $isCarousel = $this->format === ContentType::CAROUSEL_FORMAT;
-        $agentFormat = $isCarousel ? 'carousel' : 'single';
+        $agentFormat = $isCarousel ? GeneratorFormat::Carousel : GeneratorFormat::Single;
         $slideCount = $isCarousel && $this->imageCount > 0 ? $this->imageCount : 1;
 
         $context = new TemplateContext(
@@ -88,8 +90,7 @@ class StreamPostCreation implements ShouldQueue
 
             $structured = $response->structured ?? [];
 
-            $humanizeFormat = $isCarousel ? 'carousel' : $agentFormat;
-            $structured = $this->humanize($workspace, $structured, $humanizeFormat, $this->template);
+            $structured = $this->humanize($workspace, $structured, $agentFormat, $style->style());
 
             $generated = $style->assemble($structured, $context);
             $post = $this->createPostFromGenerated($workspace, $generated, $socialAccount);
@@ -116,14 +117,14 @@ class StreamPostCreation implements ShouldQueue
      * @param  array<string, mixed>  $structured
      * @return array<string, mixed>
      */
-    private function humanize(Workspace $workspace, array $structured, string $format, string $styleKey = 'image_card'): array
+    private function humanize(Workspace $workspace, array $structured, GeneratorFormat $format, ContentStyle $style): array
     {
-        if ($styleKey === 'tweet_card' || $styleKey === 'tweet_card_image') {
+        if (! $style->humanizes()) {
             return $structured;
         }
 
         try {
-            $input = $format === 'carousel'
+            $input = $format->isCarousel()
                 ? [
                     'caption' => data_get($structured, 'caption', ''),
                     'slides' => array_map(
@@ -151,7 +152,7 @@ class StreamPostCreation implements ShouldQueue
                 provider: (string) config('ai.default'),
                 model: (string) config('ai.default_text_model'),
                 userId: $this->userId,
-                metadata: ['agent' => 'post_humanizer', 'format' => $format],
+                metadata: ['agent' => 'post_humanizer', 'format' => $format->value],
             );
         } catch (\Throwable $e) {
             Log::warning('PostContentHumanizer failed, using generator output as-is', [
@@ -162,7 +163,7 @@ class StreamPostCreation implements ShouldQueue
             return $structured;
         }
 
-        if ($format === 'carousel') {
+        if ($format->isCarousel()) {
             $structured['caption'] = data_get($humanized, 'caption', $structured['caption'] ?? '');
             $originalSlides = $structured['slides'] ?? [];
             $humanizedSlides = data_get($humanized, 'slides', []);

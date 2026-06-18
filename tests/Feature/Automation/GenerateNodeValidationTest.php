@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Automation\Node\RunGenerateNode;
+use App\Enums\Ai\GeneratorFormat;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Automation;
 use App\Models\User;
@@ -128,20 +129,20 @@ it('caps the carousel slide count at the global max and the per-content-type lim
 
     // tiktok_photo allows 35, but AI generation is capped at 10.
     expect($node->deriveFormat([['content_type' => 'tiktok_photo']], ['target_slide_count' => 15]))
-        ->toBe(['format' => 'carousel', 'slide_count' => 10]);
+        ->toBe(['format' => GeneratorFormat::Carousel, 'slide_count' => 10]);
 
     // pinterest_carousel allows only 5.
     expect($node->deriveFormat([['content_type' => 'pinterest_carousel']], ['target_slide_count' => 8]))
-        ->toBe(['format' => 'carousel', 'slide_count' => 5]);
+        ->toBe(['format' => GeneratorFormat::Carousel, 'slide_count' => 5]);
 });
 
 it('recognises facebook_post as multi-image capable (rules-derived, not a hardcoded list)', function () {
     $node = app(RunGenerateNode::class);
 
     expect($node->deriveFormat([['content_type' => 'facebook_post']], ['target_slide_count' => 6]))
-        ->toBe(['format' => 'carousel', 'slide_count' => 6]);
+        ->toBe(['format' => GeneratorFormat::Carousel, 'slide_count' => 6]);
 
     // A single-image (video) format never becomes a carousel.
     expect($node->deriveFormat([['content_type' => 'tiktok_video']], ['target_slide_count' => 5]))
-        ->toBe(['format' => 'single', 'slide_count' => 1]);
+        ->toBe(['format' => GeneratorFormat::Single, 'slide_count' => 1]);
 });

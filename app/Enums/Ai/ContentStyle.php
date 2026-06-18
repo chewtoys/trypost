@@ -31,6 +31,24 @@ enum ContentStyle: string
         };
     }
 
+    /** Whether this style's generated text is run through the humanizer pass. */
+    public function humanizes(): bool
+    {
+        return match ($this) {
+            self::ImageCard => true,
+            self::TweetCard, self::TweetCardImage => false,
+        };
+    }
+
+    /** Whether this style renders the post as a tweet-style card. */
+    public function isTweetCard(): bool
+    {
+        return match ($this) {
+            self::TweetCard, self::TweetCardImage => true,
+            self::ImageCard => false,
+        };
+    }
+
     /** Public path to the picker preview thumbnail. */
     public function previewAsset(): string
     {

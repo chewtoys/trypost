@@ -17,7 +17,7 @@ test('tweet card template identity', function () {
     expect($t->style())->toBe(ContentStyle::TweetCard)
         ->and($t->key())->toBe('tweet_card')
         ->and($t->needsAccount())->toBeTrue()
-        ->and($t->generatorFormat())->toBe('tweet_card')
+        ->and($t->style()->isTweetCard())->toBeTrue()
         ->and($t->promptView($singleContext))->toBe('prompts.post_content.tweet_card')
         ->and($t->promptView($carouselContext))->toBe('prompts.post_content.tweet_card_carousel');
 });

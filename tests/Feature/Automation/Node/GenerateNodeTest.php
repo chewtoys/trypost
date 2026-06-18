@@ -6,6 +6,7 @@ use App\Actions\Automation\Node\RunGenerateNode;
 use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
 use App\Enums\Ai\ContentStyle;
+use App\Enums\Ai\GeneratorFormat;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Automation;
@@ -180,7 +181,7 @@ it('still resolves the most restrictive context when the format is a carousel', 
         'target_slide_count' => 2,
     ]);
 
-    PostContentGenerator::assertPrompted(fn ($prompt) => $prompt->agent->format === 'carousel'
+    PostContentGenerator::assertPrompted(fn ($prompt) => $prompt->agent->format === GeneratorFormat::Carousel
         && $prompt->agent->platformContext === ContentType::XPost->value);
 });
 
@@ -260,7 +261,7 @@ it('derives carousel format when a carousel-capable account is configured with t
 
     ['format' => $format, 'slide_count' => $slideCount] = $action->deriveFormat($accountsConfig, ['target_slide_count' => 5]);
 
-    expect($format)->toBe('carousel');
+    expect($format)->toBe(GeneratorFormat::Carousel);
     expect($slideCount)->toBe(5);
 });
 
@@ -276,7 +277,7 @@ it('derives single format when carousel account has target_slide_count of 1', fu
 
     ['format' => $format, 'slide_count' => $slideCount] = $action->deriveFormat($accountsConfig, ['target_slide_count' => 1]);
 
-    expect($format)->toBe('single');
+    expect($format)->toBe(GeneratorFormat::Single);
     expect($slideCount)->toBe(1);
 });
 
@@ -290,7 +291,7 @@ it('derives single format when no carousel-capable account is configured', funct
 
     ['format' => $format, 'slide_count' => $slideCount] = $action->deriveFormat($accountsConfig, ['target_slide_count' => 5]);
 
-    expect($format)->toBe('single');
+    expect($format)->toBe(GeneratorFormat::Single);
     expect($slideCount)->toBe(1);
 });
 

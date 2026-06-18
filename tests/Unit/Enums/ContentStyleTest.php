@@ -21,6 +21,12 @@ test('needsAccount is false only for ImageCard', function () {
     expect(ContentStyle::TweetCardImage->needsAccount())->toBeTrue();
 });
 
+test('humanizes is true only for ImageCard', function () {
+    expect(ContentStyle::ImageCard->humanizes())->toBeTrue();
+    expect(ContentStyle::TweetCard->humanizes())->toBeFalse();
+    expect(ContentStyle::TweetCardImage->humanizes())->toBeFalse();
+});
+
 test('previewAsset returns the correct public path for each case', function () {
     expect(ContentStyle::ImageCard->previewAsset())->toBe('/images/ai-templates/image-card.png');
     expect(ContentStyle::TweetCard->previewAsset())->toBe('/images/ai-templates/tweet-card.png');

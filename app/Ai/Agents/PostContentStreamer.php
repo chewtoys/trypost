@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ai\Agents;
 
+use App\Enums\Ai\GeneratorFormat;
 use App\Models\Workspace;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
@@ -36,7 +37,7 @@ class PostContentStreamer implements Agent
             'brand_voice_traits' => $this->workspace->brand_voice_traits ?? [],
             'content_language' => $this->workspace->content_language,
             'current_content' => $this->currentContent,
-            'format' => 'single',
+            'format' => GeneratorFormat::Single->value,
             'slide_count' => 1,
         ])->render();
     }

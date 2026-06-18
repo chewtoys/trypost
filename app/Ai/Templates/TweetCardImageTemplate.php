@@ -47,11 +47,6 @@ class TweetCardImageTemplate implements AiContentTemplate
         return [];
     }
 
-    public function generatorFormat(): string
-    {
-        return 'tweet_card';
-    }
-
     public function promptView(TemplateContext $context): string
     {
         return $context->isCarousel

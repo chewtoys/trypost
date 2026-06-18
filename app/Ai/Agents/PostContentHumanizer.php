@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Agents;
 
 use App\Ai\Agents\Concerns\ResolvesPlatformCopyBudget;
+use App\Enums\Ai\GeneratorFormat;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\Temperature;
@@ -27,7 +28,7 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
 
     public function __construct(
         public Workspace $workspace,
-        public string $format = 'single',
+        public GeneratorFormat $format = GeneratorFormat::Single,
         public ?string $platformContext = null,
         public bool $applyBrandVoice = true,
     ) {}
@@ -43,7 +44,7 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
             'brand_name' => $this->workspace->name ?? '',
             'brand_voice_traits' => $this->applyBrandVoice ? ($this->workspace->brand_voice_traits ?? []) : [],
             'content_language' => $this->workspace->content_language,
-            'format' => $this->format,
+            'format' => $this->format->value,
             'hard_max_chars' => $budget['hard_max_chars'],
             'target_chars' => $budget['target_chars'],
             'platform_label' => $budget['platform_label'],
@@ -52,7 +53,7 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
 
     public function schema(JsonSchema $schema): array
     {
-        if ($this->format === 'carousel') {
+        if ($this->format->isCarousel()) {
             return [
                 'caption' => $schema->string()->description('The humanized Instagram caption.')->required(),
                 'slides' => $schema->array()

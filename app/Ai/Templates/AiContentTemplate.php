@@ -34,9 +34,6 @@ interface AiContentTemplate
      */
     public function supportedFormats(): array;
 
-    /** The 'format' string passed to the generator agent (e.g. 'single'). */
-    public function generatorFormat(): string;
-
     /** The Blade view path for the generator prompt. */
     public function promptView(TemplateContext $context): string;
 

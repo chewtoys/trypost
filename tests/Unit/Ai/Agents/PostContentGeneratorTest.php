@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Ai\Agents\PostContentGenerator;
+use App\Enums\Ai\GeneratorFormat;
 use App\Models\Workspace;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 
@@ -60,7 +61,7 @@ test('instructions omit current_content when not provided', function () {
 
 test('single format schema returns content and image_keywords', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'single');
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Single);
 
     $schemaFactory = new JsonSchemaTypeFactory;
     $schema = $agent->schema($schemaFactory);
@@ -73,7 +74,7 @@ test('single format schema returns content and image_keywords', function () {
 
 test('carousel format schema returns caption and slides', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'carousel', slideCount: 5);
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Carousel, slideCount: 5);
 
     $schemaFactory = new JsonSchemaTypeFactory;
     $schema = $agent->schema($schemaFactory);
@@ -85,7 +86,7 @@ test('carousel format schema returns caption and slides', function () {
 
 test('carousel slide schema includes role enum', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'carousel', slideCount: 4);
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Carousel, slideCount: 4);
 
     $schemaFactory = new JsonSchemaTypeFactory;
     $schema = $agent->schema($schemaFactory);
@@ -100,7 +101,7 @@ test('carousel slide schema includes role enum', function () {
 
 test('carousel instructions mention slide count', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'carousel', slideCount: 5);
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Carousel, slideCount: 5);
 
     $instructions = $agent->instructions();
 
@@ -110,7 +111,7 @@ test('carousel instructions mention slide count', function () {
 
 test('carousel instructions describe the roteiro arc with hook, development, proof and cta', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'carousel', slideCount: 4);
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Carousel, slideCount: 4);
 
     $instructions = $agent->instructions();
 
@@ -123,7 +124,7 @@ test('carousel instructions describe the roteiro arc with hook, development, pro
 
 test('single format instructions do not include carousel roteiro section', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'single');
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Single);
 
     $instructions = $agent->instructions();
 
@@ -133,7 +134,7 @@ test('single format instructions do not include carousel roteiro section', funct
 
 test('single instructions mention image_keywords', function () {
     $workspace = Workspace::factory()->make();
-    $agent = new PostContentGenerator(workspace: $workspace, format: 'single');
+    $agent = new PostContentGenerator(workspace: $workspace, format: GeneratorFormat::Single);
 
     $instructions = $agent->instructions();
 
@@ -143,7 +144,7 @@ test('single instructions mention image_keywords', function () {
 test('instructions include examples when platform context provided and templates exist', function () {
     $agent = new PostContentGenerator(
         workspace: Workspace::factory()->make(),
-        format: 'carousel',
+        format: GeneratorFormat::Carousel,
         slideCount: 3,
         platformContext: 'instagram_carousel',
     );
@@ -161,7 +162,7 @@ test('instructions include examples when platform context provided and templates
 test('instructions do not include examples section when platform context is null', function () {
     $agent = new PostContentGenerator(
         workspace: Workspace::factory()->make(),
-        format: 'single',
+        format: GeneratorFormat::Single,
     );
 
     expect($agent->instructions())->not->toContain('curated library');
@@ -170,7 +171,7 @@ test('instructions do not include examples section when platform context is null
 test('instructions inject the platform character cap from the shared budget', function () {
     $agent = new PostContentGenerator(
         workspace: Workspace::factory()->make(),
-        format: 'single',
+        format: GeneratorFormat::Single,
         platformContext: 'x_post',
     );
 

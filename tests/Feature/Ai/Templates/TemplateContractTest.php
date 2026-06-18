@@ -16,7 +16,6 @@ test('image card template exposes its identity', function () {
     expect($t->style())->toBe(ContentStyle::ImageCard)
         ->and($t->key())->toBe('image_card')
         ->and($t->needsAccount())->toBeFalse()
-        ->and($t->generatorFormat())->toBe('single')
         ->and($t->promptView($context))->toBe('prompts.post_content.generator')
         ->and($t->supportedFormats())->toBe([]);
 });

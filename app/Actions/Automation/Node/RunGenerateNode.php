@@ -11,6 +11,7 @@ use App\Ai\Templates\AiTemplateRegistry;
 use App\Ai\Templates\TemplateContext;
 use App\DataTransferObjects\Automation\NodeRunResult;
 use App\Enums\Ai\ContentStyle;
+use App\Enums\Ai\GeneratorFormat;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\AutomationRun;
 use App\Models\SocialAccount;
@@ -84,13 +85,13 @@ class RunGenerateNode
             ? $activeAccounts->get(data_get($platforms[0], 'social_account_id'))
             : null;
 
-        $isCarousel = $format === 'carousel';
+        $isCarousel = $format->isCarousel();
         $imageCount = $isCarousel ? $slideCount : ($wantsImage ? 1 : 0);
 
         $templateContext = new TemplateContext(
             workspace: $workspace,
             socialAccount: $brandAccount,
-            format: $platformContext ?? $format,
+            format: $platformContext ?? $format->value,
             imageCount: $imageCount,
             isCarousel: $isCarousel,
             applyBrandVisuals: (bool) data_get($config, 'use_brand_visuals', true),
@@ -114,12 +115,12 @@ class RunGenerateNode
             completionTokens: $generatorResponse->usage->completionTokens,
             provider: (string) config('ai.default'),
             model: (string) config('ai.default_text_model'),
-            metadata: ['agent' => 'post_generator', 'format' => $format, 'source' => 'automation'],
+            metadata: ['agent' => 'post_generator', 'format' => $format->value, 'source' => 'automation'],
         );
 
         $structured = $generatorResponse->structured ?? [];
 
-        $structured = $this->humanize($workspace, $structured, $format, $style->value, $applyBrandVoice, $platformContext);
+        $structured = $this->humanize($workspace, $structured, $format, $style, $applyBrandVoice, $platformContext);
 
         $intendedImageCount = $this->intendedImageCount($format, $slideCount, $wantsImage, $structured, $brandAccount, $style);
 
@@ -161,14 +162,14 @@ class RunGenerateNode
      * @param  array<string, mixed>  $structured
      * @return array<string, mixed>
      */
-    private function humanize(Workspace $workspace, array $structured, string $format, string $styleKey = 'image_card', bool $applyBrandVoice = true, ?string $platformContext = null): array
+    private function humanize(Workspace $workspace, array $structured, GeneratorFormat $format, ContentStyle $style, bool $applyBrandVoice = true, ?string $platformContext = null): array
     {
-        if ($styleKey === 'tweet_card' || $styleKey === 'tweet_card_image') {
+        if (! $style->humanizes()) {
             return $structured;
         }
 
         try {
-            $input = $format === 'carousel'
+            $input = $format->isCarousel()
                 ? [
                     'caption' => data_get($structured, 'caption', ''),
                     'slides' => array_map(
@@ -195,10 +196,10 @@ class RunGenerateNode
                 completionTokens: $response->usage->completionTokens,
                 provider: (string) config('ai.default'),
                 model: (string) config('ai.default_text_model'),
-                metadata: ['agent' => 'post_humanizer', 'format' => $format, 'source' => 'automation'],
+                metadata: ['agent' => 'post_humanizer', 'format' => $format->value, 'source' => 'automation'],
             );
 
-            if ($format === 'carousel') {
+            if ($format->isCarousel()) {
                 $structured['caption'] = data_get($humanized, 'caption', $structured['caption'] ?? '');
                 $originalSlides = $structured['slides'] ?? [];
                 $humanizedSlides = data_get($humanized, 'slides', []);
@@ -232,15 +233,15 @@ class RunGenerateNode
      *
      * @param  array<string, mixed>  $structured
      */
-    private function extractContent(array $structured, string $format, ContentStyle $style): string
+    private function extractContent(array $structured, GeneratorFormat $format, ContentStyle $style): string
     {
-        if ($style === ContentStyle::TweetCard || $style === ContentStyle::TweetCardImage) {
-            return $format === 'carousel'
+        if ($style->isTweetCard()) {
+            return $format->isCarousel()
                 ? (string) data_get($structured, 'caption', '')
                 : (string) data_get($structured, 'tweet_text', '');
         }
 
-        return $format === 'carousel'
+        return $format->isCarousel()
             ? (string) data_get($structured, 'caption', '')
             : (string) data_get($structured, 'content', '');
     }
@@ -261,7 +262,7 @@ class RunGenerateNode
      *
      * @param  array<int, array{social_account_id: string, content_type: ?string, meta: array<string, mixed>}>  $accountsConfig
      * @param  array<string, mixed>  $config
-     * @return array{format: string, slide_count: int}
+     * @return array{format: GeneratorFormat, slide_count: int}
      */
     public function deriveFormat(array $accountsConfig, array $config): array
     {
@@ -278,10 +279,10 @@ class RunGenerateNode
         if ($maxImagesAcross > 1 && $targetSlideCount > 1) {
             $cap = min(GenerateNodeValidator::MAX_GENERATED_IMAGES, $maxImagesAcross);
 
-            return ['format' => 'carousel', 'slide_count' => min($targetSlideCount, $cap)];
+            return ['format' => GeneratorFormat::Carousel, 'slide_count' => min($targetSlideCount, $cap)];
         }
 
-        return ['format' => 'single', 'slide_count' => 1];
+        return ['format' => GeneratorFormat::Single, 'slide_count' => 1];
     }
 
     /**
@@ -311,17 +312,17 @@ class RunGenerateNode
      *
      * @param  array<string, mixed>  $structured
      */
-    private function intendedImageCount(string $format, int $slideCount, bool $wantsImage, array $structured, ?SocialAccount $brandAccount, ContentStyle $style): int
+    private function intendedImageCount(GeneratorFormat $format, int $slideCount, bool $wantsImage, array $structured, ?SocialAccount $brandAccount, ContentStyle $style): int
     {
         if (! $brandAccount) {
             return 0;
         }
 
-        if ($style === ContentStyle::TweetCard || $style === ContentStyle::TweetCardImage) {
-            return $format === 'carousel' ? $slideCount : 1;
+        if ($style->isTweetCard()) {
+            return $format->isCarousel() ? $slideCount : 1;
         }
 
-        if ($format === 'carousel') {
+        if ($format->isCarousel()) {
             $slides = data_get($structured, 'slides', []);
 
             return is_array($slides) ? count($slides) : $slideCount;
