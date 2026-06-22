@@ -8,7 +8,6 @@ import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.v
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { disconnect } from '@/routes/app/accounts';
 import { Platform } from '@/types/platform';
 
@@ -164,8 +163,6 @@ const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
     null,
 );
 
-const { canManageAccounts } = useWorkspaceRole();
-
 const { openOAuthPopup } = useOAuthPopup(() => {
     router.reload();
 });
@@ -309,33 +306,31 @@ const cardState = computed((): Record<string, CardStateValue> => {
                     </p>
                 </div>
 
-                <template v-if="canManageAccounts">
-                    <Button
-                        v-if="cardState[platform.value] === CardState.Reconnect"
-                        size="sm"
-                        class="mt-auto w-full"
-                        @click="reconnectAccount(cardConnection[platform.value]!)"
-                    >
-                        {{ $t('accounts.reconnect') }}
-                    </Button>
-                    <Button
-                        v-else-if="cardState[platform.value] === CardState.Connected"
-                        variant="destructive"
-                        size="sm"
-                        class="mt-auto w-full"
-                        @click="disconnectAccount(cardConnection[platform.value]!)"
-                    >
-                        {{ $t('accounts.disconnect') }}
-                    </Button>
-                    <Button
-                        v-else
-                        size="sm"
-                        class="mt-auto w-full"
-                        @click="connectPlatform(platform.value)"
-                    >
-                        {{ $t('accounts.connect_cta') }}
-                    </Button>
-                </template>
+                <Button
+                    v-if="cardState[platform.value] === CardState.Reconnect"
+                    size="sm"
+                    class="mt-auto w-full"
+                    @click="reconnectAccount(cardConnection[platform.value]!)"
+                >
+                    {{ $t('accounts.reconnect') }}
+                </Button>
+                <Button
+                    v-else-if="cardState[platform.value] === CardState.Connected"
+                    variant="destructive"
+                    size="sm"
+                    class="mt-auto w-full"
+                    @click="disconnectAccount(cardConnection[platform.value]!)"
+                >
+                    {{ $t('accounts.disconnect') }}
+                </Button>
+                <Button
+                    v-else
+                    size="sm"
+                    class="mt-auto w-full"
+                    @click="connectPlatform(platform.value)"
+                >
+                    {{ $t('accounts.connect_cta') }}
+                </Button>
             </div>
         </div>
 

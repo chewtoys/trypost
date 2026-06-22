@@ -11,6 +11,7 @@ import { PostStatus } from '@/types/post';
 
 interface Props {
     post: { status: string };
+    canEdit?: boolean;
     isSaving: boolean;
     showSaved: boolean;
     isSubmitting: boolean;
@@ -19,7 +20,9 @@ interface Props {
     pickTimeLabel: string;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    canEdit: true,
+});
 
 const hasPickedTime = defineModel<boolean>('hasPickedTime', { required: true });
 const scheduledDateTime = defineModel<string>('scheduledDateTime', { required: true });
@@ -61,6 +64,7 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                 </p>
             </div>
             <Button
+                v-if="canEdit"
                 type="button"
                 variant="outline"
                 class="bg-background hover:bg-violet-50"
@@ -91,7 +95,7 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                 </span>
             </div>
 
-            <div v-if="!isReadOnly" class="flex flex-col items-end gap-1">
+            <div v-if="!isReadOnly && canEdit" class="flex flex-col items-end gap-1">
                 <div class="flex items-center gap-2">
                     <TooltipProvider>
                         <Tooltip>

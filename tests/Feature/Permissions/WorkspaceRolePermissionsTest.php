@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
 use App\Models\User;
@@ -26,6 +27,12 @@ beforeEach(function () {
         'current_workspace_id' => $this->workspace->id,
     ]);
     $this->workspace->members()->attach($this->member->id, ['role' => Role::Member->value]);
+
+    $this->admin = User::factory()->create([
+        'account_id' => $this->owner->account_id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($this->admin->id, ['role' => Role::Admin->value]);
 
     $this->post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
 });
@@ -61,20 +68,30 @@ test('a viewer can comment on a post', function () {
     ]);
 });
 
-test('a viewer opening a draft post sees the read-only page instead of the editor', function () {
-    $this->actingAs($this->viewer)
+test('opening a draft post redirects to the editor for every workspace member', function (string $actor) {
+    $this->actingAs($this->{$actor})
         ->get(route('app.posts.show', $this->post))
+        ->assertRedirect(route('app.posts.edit', $this->post));
+})->with(['admin', 'member', 'viewer']);
+
+test('a viewer can open the post editor to review and comment', function () {
+    $this->actingAs($this->viewer)
+        ->get(route('app.posts.edit', $this->post))
         ->assertOk();
 });
 
-test('a member opening a draft post is redirected to the editor', function () {
-    $this->actingAs($this->member)
-        ->get(route('app.posts.show', $this->post))
-        ->assertRedirect(route('app.posts.edit', $this->post));
-});
-
-test('a viewer cannot open the post editor directly', function () {
+test('a viewer cannot save changes to a post', function () {
     $this->actingAs($this->viewer)
-        ->get(route('app.posts.edit', $this->post))
+        ->put(route('app.posts.update', $this->post), ['status' => Status::Draft->value])
         ->assertForbidden();
 });
+
+test('only admins and above can open the connections screen', function (string $actor, bool $allowed) {
+    $response = $this->actingAs($this->{$actor})->get(route('app.accounts'));
+
+    $allowed ? $response->assertOk() : $response->assertForbidden();
+})->with([
+    'admin' => ['admin', true],
+    'member' => ['member', false],
+    'viewer' => ['viewer', false],
+]);

@@ -146,7 +146,7 @@ const canDelete = (post: Post): boolean => DELETABLE_STATUSES.includes(post.stat
 const { canCreatePost } = useWorkspaceRole();
 
 const postUrl = (post: Post): string =>
-    canCreatePost.value && canEdit(post) ? editPost.url(post.id) : showPost.url(post.id);
+    canEdit(post) ? editPost.url(post.id) : showPost.url(post.id);
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 

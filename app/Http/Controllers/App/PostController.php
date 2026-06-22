@@ -212,8 +212,7 @@ class PostController extends Controller
 
         $this->authorize('view', $post);
 
-        if ($request->user()->can('update', $post)
-            && in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true)) {
+        if (in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true)) {
             return redirect()->route('app.posts.edit', $post);
         }
 
@@ -233,13 +232,15 @@ class PostController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('update', $post);
+        $this->authorize('view', $post);
 
         if (PostStatusRules::blocksEditing($post)) {
             return redirect()->route('app.posts.show', $post);
         }
 
-        SyncPostPlatforms::execute($post);
+        if ($request->user()->can('update', $post)) {
+            SyncPostPlatforms::execute($post);
+        }
 
         $post->load(['postPlatforms.socialAccount', 'labels']);
         $socialAccounts = $workspace->socialAccounts()->active()->get();

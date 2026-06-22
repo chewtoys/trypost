@@ -41,7 +41,7 @@ class SocialController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('view', $workspace);
+        $this->authorize('manageAccounts', $workspace);
 
         $platforms = collect(SocialPlatform::enabled())->map(fn ($platform) => [
             'value' => $platform->value,

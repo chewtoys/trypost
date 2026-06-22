@@ -17,6 +17,7 @@ import {
     getMediaIncompatibilityReason,
     usePostCompliance,
 } from '@/composables/usePostCompliance';
+import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import debounce from '@/debounce';
@@ -90,6 +91,8 @@ const props = defineProps<{
     authUserId: string;
 }>();
 
+const { canCreatePost } = useWorkspaceRole();
+
 const post = computed(() => props.post);
 const READONLY_STATUSES: readonly string[] = [
     PostStatus.Publishing,
@@ -100,9 +103,9 @@ const READONLY_STATUSES: readonly string[] = [
 const isReadOnly = computed(() => READONLY_STATUSES.includes(post.value.status));
 const isPublishing = computed(() => post.value.status === PostStatus.Publishing);
 const isScheduled = computed(() => post.value.status === PostStatus.Scheduled);
-// Locked states — terminal + scheduled. Field edits and auto-save suppressed;
-// user must unschedule to re-enter draft and edit.
-const isLocked = computed(() => isReadOnly.value || isScheduled.value);
+// Locked states — terminal + scheduled, plus viewers who can only comment.
+// Field edits and auto-save are suppressed.
+const isLocked = computed(() => isReadOnly.value || isScheduled.value || !canCreatePost.value);
 
 // Content
 const content = ref(post.value.content || '');
@@ -201,7 +204,10 @@ const isPostActionDisabled = computed(
 const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const initialTabFromQuery = (() => {
     const tab = queryParams?.get('tab');
-    return ['preview', 'schedule', 'comments'].includes(tab ?? '') ? (tab as string) : 'schedule';
+    if (['preview', 'schedule', 'comments'].includes(tab ?? '')) {
+        return tab as string;
+    }
+    return canCreatePost.value ? 'schedule' : 'comments';
 })();
 const initialHighlightCommentId = queryParams?.get('comment') ?? null;
 const activeTab = ref(initialTabFromQuery);
@@ -352,6 +358,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
         <div class="flex flex-col flex-1 min-h-0">
             <PostEditorHeader
                 :post="post"
+                :can-edit="canCreatePost"
                 :is-saving="isSaving"
                 :show-saved="showSaved"
                 :is-submitting="isSubmitting"
@@ -387,7 +394,11 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                     class="flex h-full"
                     :class="{ 'pointer-events-none select-none opacity-60': isScheduled }"
                 >
-                    <div class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-foreground">
+                    <div
+                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-foreground"
+                        :class="{ 'pointer-events-none select-none opacity-60': !canCreatePost }"
+                        :inert="!canCreatePost"
+                    >
                         <PostEditorComposer
                             v-model:content="content"
                             v-model:media="media"

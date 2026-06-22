@@ -64,7 +64,7 @@ const currentWorkspace = computed<Workspace | null>(() => page.props.auth.curren
 const workspaces = computed<Workspace[]>(() => page.props.auth.workspaces as Workspace[]);
 const subscriptionPastDue = computed<boolean>(() => Boolean(page.props.auth.subscriptionPastDue));
 
-const { canCreatePost, canManageAutomations, canCreateWorkspace } = useWorkspaceRole();
+const { canCreatePost, canManageAccounts, canManageAutomations, canCreateWorkspace } = useWorkspaceRole();
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -114,11 +114,15 @@ const postsNavItems = computed<NavItem[]>(() => [
 ]);
 
 const workspaceNavItems = computed<NavItem[]>(() => [
-    {
-        title: trans('sidebar.workspace.connections'),
-        href: accounts.url(),
-        icon: IconAffiliate,
-    },
+    ...(canManageAccounts.value
+        ? [
+              {
+                  title: trans('sidebar.workspace.connections'),
+                  href: accounts.url(),
+                  icon: IconAffiliate,
+              },
+          ]
+        : []),
     ...(canCreatePost.value
         ? [
               {
@@ -212,7 +216,7 @@ const handleCreateWorkspace = () => {
 
             <NavMain v-if="currentWorkspace" :items="mainNavItems" />
             <NavMain v-if="currentWorkspace" :items="postsNavItems" :label="$t('sidebar.groups.posts')" />
-            <NavMain v-if="currentWorkspace" :items="workspaceNavItems" :label="$t('sidebar.groups.workspace')" />
+            <NavMain v-if="currentWorkspace && workspaceNavItems.length" :items="workspaceNavItems" :label="$t('sidebar.groups.workspace')" />
         </SidebarContent>
 
         <SidebarFooter>
