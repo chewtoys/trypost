@@ -20,7 +20,6 @@ test('user without subscription is redirected to subscribe', function () {
         'name' => 'Alice',
         'email' => 'alice@example.com',
         'password' => 'password123',
-        'timezone' => 'UTC',
         'registration_ip' => '127.0.0.1',
     ]);
 
@@ -41,7 +40,6 @@ test('user with active subscription can access the app', function () {
         'name' => 'Alice',
         'email' => 'alice2@example.com',
         'password' => 'password123',
-        'timezone' => 'UTC',
         'registration_ip' => '127.0.0.1',
     ]);
 
@@ -127,7 +125,6 @@ test('user on generic trial can access the app when card is not required', funct
         'name' => 'Alice',
         'email' => 'alice-generic@example.com',
         'password' => 'password123',
-        'timezone' => 'UTC',
         'registration_ip' => '127.0.0.1',
     ]);
 

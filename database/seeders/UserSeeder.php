@@ -23,7 +23,6 @@ class UserSeeder extends Seeder
             'email' => 'admin@trypost.it',
             'password' => 'password',
             'email_verified_at' => now(),
-            'timezone' => 'UTC',
         ]);
 
         $this->command->info('Admin account created — change the password on first login:');

@@ -40,20 +40,6 @@ test('new users get a default workspace on registration', function () {
     expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
 });
 
-test('new users can register with a timezone preference', function () {
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-        'timezone' => 'America/Sao_Paulo',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
-    expect($user)->not->toBeNull();
-    expect($user->workspaces()->count())->toBe(1);
-});
-
 test('new users do not have verified email by default', function () {
     $this->post(route('register.store'), [
         'name' => 'Test User',
@@ -64,42 +50,6 @@ test('new users do not have verified email by default', function () {
     $user = User::where('email', 'test@example.com')->first();
 
     expect($user->email_verified_at)->toBeNull();
-});
-
-test('new users can register with deprecated timezone Asia/Calcutta', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-        'timezone' => 'Asia/Calcutta',
-    ]);
-
-    $response->assertSessionHasNoErrors();
-    expect(User::where('email', 'test@example.com')->exists())->toBeTrue();
-});
-
-test('new users can register with deprecated timezone US/Eastern', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-        'timezone' => 'US/Eastern',
-    ]);
-
-    $response->assertSessionHasNoErrors();
-    expect(User::where('email', 'test@example.com')->exists())->toBeTrue();
-});
-
-test('new users cannot register with invalid timezone', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-        'timezone' => 'Invalid/Timezone',
-    ]);
-
-    $response->assertSessionHasErrors('timezone');
-    expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
 });
 
 test('new users registering via invite have verified email automatically', function () {

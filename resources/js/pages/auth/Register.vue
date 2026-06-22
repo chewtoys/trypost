@@ -28,8 +28,6 @@ defineProps<{
 const showPassword = ref(false);
 const showEmailForm = ref(false);
 
-const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
 const page = usePage();
 const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
 const hasSocial = computed(
@@ -74,7 +72,6 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 class="flex flex-col gap-6"
             >
                 <input v-if="redirect" type="hidden" name="redirect" :value="redirect" />
-                <input type="hidden" name="timezone" :value="timezone" />
 
                 <div
                     v-if="hasSocial && showEmailForm"

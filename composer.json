@@ -45,7 +45,6 @@
         "laravel/mcp": "^0.6.4",
         "laravel/nightwatch": "^1.22",
         "laravel/passport": "^13.7",
-        "laravel/pennant": "^1.23",
         "laravel/reverb": "^1.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^3.0",

@@ -8,7 +8,6 @@ use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Rules\Timezone;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +36,6 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', Rules\Password::defaults()],
-            'timezone' => ['nullable', 'string', new Timezone],
         ]);
 
         $isInviteRegistration = str_contains($request->input('redirect', ''), '/invites/');
@@ -48,7 +46,6 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
-            'timezone' => $request->input('timezone', 'UTC'),
             'is_invite' => $isInviteRegistration,
             'registration_ip' => $request->ip(),
         ], $utmParameters);
