@@ -6,16 +6,16 @@ use App\Enums\Plan\Slug;
 use App\Models\Plan;
 
 test('plan can be created with factory', function () {
-    Plan::where('slug', Slug::Pro)->delete();
+    Plan::where('slug', Slug::Workspace)->delete();
 
     $plan = Plan::factory()->create([
-        'slug' => Slug::Pro,
-        'name' => 'Pro',
+        'slug' => Slug::Workspace,
+        'name' => 'Workspace',
     ]);
 
     expect($plan)->toBeInstanceOf(Plan::class)
-        ->and($plan->slug)->toBe(Slug::Pro)
-        ->and($plan->name)->toBe('Pro')
+        ->and($plan->slug)->toBe(Slug::Workspace)
+        ->and($plan->name)->toBe('Workspace')
         ->and($plan->is_archived)->toBeFalse();
 });
 

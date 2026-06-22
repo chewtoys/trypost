@@ -18,7 +18,7 @@ beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
 
     $this->account = Account::factory()->create([
-        'plan_id' => Plan::query()->where('slug', 'starter')->first()?->id,
+        'plan_id' => Plan::query()->where('slug', 'workspace')->first()?->id,
     ]);
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
     $this->account->update(['owner_id' => $this->user->id]);

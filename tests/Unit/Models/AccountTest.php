@@ -174,7 +174,7 @@ test('activeTrialEndsAt returns null for paying customer post-trial', function (
     $account = Account::factory()->create([
         'trial_ends_at' => null,
         'stripe_id' => 'cus_test_'.fake()->uuid(),
-        'plan_id' => Plan::where('slug', Slug::Starter)->value('id'),
+        'plan_id' => Plan::where('slug', Slug::Workspace)->value('id'),
     ]);
     $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,

@@ -21,8 +21,8 @@ class PlanFactory extends Factory
     public function definition(): array
     {
         return [
-            'slug' => fake()->randomElement(Slug::cases()),
-            'name' => fake()->word(),
+            'slug' => Slug::Workspace,
+            'name' => 'Workspace',
             'stripe_monthly_price_id' => null,
             'stripe_yearly_price_id' => null,
             'monthly_credits_limit' => 2500,
