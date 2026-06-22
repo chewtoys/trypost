@@ -120,6 +120,11 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
+        // You cannot remove yourself
+        if ($userId === $request->user()->id) {
+            return back()->withErrors(['member' => 'You cannot remove yourself.']);
+        }
+
         // Account owner cannot be removed
         if ($userId === $workspace->account?->owner_id) {
             return back()->withErrors(['member' => 'Cannot remove the account owner.']);
@@ -142,6 +147,11 @@ class WorkspaceInviteController extends Controller
         }
 
         $this->authorize('manageTeam', $workspace);
+
+        // You cannot change your own role
+        if ($userId === $request->user()->id) {
+            return back()->withErrors(['role' => 'You cannot change your own role.']);
+        }
 
         // Account owner's role cannot be changed
         if ($userId === $workspace->account?->owner_id) {

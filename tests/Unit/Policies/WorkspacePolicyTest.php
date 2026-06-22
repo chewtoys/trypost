@@ -256,6 +256,27 @@ test('account owner and workspace member can create post', function () {
     expect($this->policy->createPost($otherUser, $workspace))->toBeFalse();
 });
 
+test('a viewer can view but cannot create posts or manage the team', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
+    $account->update(['owner_id' => $owner->id]);
+    $viewer = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+
+    expect($this->policy->view($viewer, $workspace))->toBeTrue();
+    expect($this->policy->createPost($viewer, $workspace))->toBeFalse();
+    expect($this->policy->manageTeam($viewer, $workspace))->toBeFalse();
+    expect($this->policy->inviteMember($viewer, $workspace))->toBeFalse();
+});
+
 test('only account owner can manage billing', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
