@@ -103,8 +103,6 @@ const READONLY_STATUSES: readonly string[] = [
 const isReadOnly = computed(() => READONLY_STATUSES.includes(post.value.status));
 const isPublishing = computed(() => post.value.status === PostStatus.Publishing);
 const isScheduled = computed(() => post.value.status === PostStatus.Scheduled);
-// Locked states — terminal + scheduled, plus viewers who can only comment.
-// Field edits and auto-save are suppressed.
 const isLocked = computed(() => isReadOnly.value || isScheduled.value || !canCreatePost.value);
 
 // Content

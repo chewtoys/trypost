@@ -54,8 +54,6 @@ return [
     'no_notifications' => 'Sin notificaciones',
 
     'support' => [
-        'discord' => 'Discord',
-        'last_updates' => 'Últimas actualizaciones',
         'docs' => 'Documentación',
         'referral' => 'Gana 30% de comisión',
         'stay_updated' => 'Mantente al día',

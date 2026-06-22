@@ -161,7 +161,7 @@ const supportNavItems = computed(() => [
     },
     {
         title: trans('sidebar.support.docs'),
-        href: 'https://trypost.it/docs',
+        href: 'https://docs.trypost.it',
         icon: IconLifebuoy,
     },
 ]);

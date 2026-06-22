@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -95,3 +96,41 @@ test('only admins and above can open the connections screen', function (string $
     'member' => ['member', false],
     'viewer' => ['viewer', false],
 ]);
+
+test('opening the editor does not create platform rows for a viewer', function () {
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($this->viewer)
+        ->get(route('app.posts.edit', $this->post))
+        ->assertOk();
+
+    expect($this->post->postPlatforms()->count())->toBe(0);
+});
+
+test('opening the editor syncs platform rows for a member', function () {
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($this->member)
+        ->get(route('app.posts.edit', $this->post))
+        ->assertOk();
+
+    expect($this->post->postPlatforms()->count())->toBe(1);
+});
+
+test('a member without connected accounts is redirected away from the admin-only accounts screen when creating a post', function () {
+    $this->actingAs($this->member)
+        ->post(route('app.posts.store'))
+        ->assertRedirect(route('app.calendar'));
+});
+
+test('an admin without connected accounts is sent to the accounts screen when creating a post', function () {
+    $this->actingAs($this->admin)
+        ->post(route('app.posts.store'))
+        ->assertRedirect(route('app.accounts'));
+});

@@ -43,11 +43,12 @@ test('any workspace member (including viewer) can view a post', function (string
     expect($this->policy->view($actor, $post))->toBeTrue();
 })->with(['owner', 'admin', 'member', 'viewer']);
 
-test('post update/delete is allowed for member+ and denied for viewer', function (string $role, bool $allowed) {
+test('post update/delete/duplicate is allowed for member+ and denied for viewer', function (string $role, bool $allowed) {
     [$actor, $post] = postPolicyActor($role);
 
     expect($this->policy->update($actor, $post))->toBe($allowed);
     expect($this->policy->delete($actor, $post))->toBe($allowed);
+    expect($this->policy->duplicate($actor, $post))->toBe($allowed);
 })->with([
     'owner' => ['owner', true],
     'admin' => ['admin', true],

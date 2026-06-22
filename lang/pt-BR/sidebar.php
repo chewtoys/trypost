@@ -54,8 +54,6 @@ return [
     'no_notifications' => 'Sem notificações',
 
     'support' => [
-        'discord' => 'Discord',
-        'last_updates' => 'Últimas Atualizações',
         'docs' => 'Documentação',
         'referral' => 'Ganhe 30% de indicação',
         'stay_updated' => 'Fique por dentro',

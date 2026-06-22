@@ -180,7 +180,9 @@ class PostController extends Controller
             session()->flash('flash.banner', __('posts.flash.connect_first'));
             session()->flash('flash.bannerStyle', 'danger');
 
-            return redirect()->route('app.accounts');
+            return $request->user()->can('manageAccounts', $workspace)
+                ? redirect()->route('app.accounts')
+                : redirect()->route('app.calendar');
         }
 
         $post = CreatePost::execute($workspace, $request->user(), [
