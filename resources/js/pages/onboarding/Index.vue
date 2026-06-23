@@ -6,6 +6,7 @@ import {
     IconBuildingSkyscraper,
     IconBuildingStore,
     IconCheck,
+    IconCode,
     IconDots,
     IconRocket,
     IconUser,
@@ -26,6 +27,7 @@ const form = useForm({ persona: props.selected ?? '' });
 const personaMeta: Record<string, { icon: FunctionalComponent; color: string }> = {
     creator: { icon: IconUser, color: 'text-rose-600' },
     freelancer: { icon: IconBriefcase, color: 'text-amber-600' },
+    developer: { icon: IconCode, color: 'text-cyan-600' },
     startup: { icon: IconRocket, color: 'text-violet-700' },
     agency: { icon: IconBuildingSkyscraper, color: 'text-blue-700' },
     small_business: { icon: IconBuildingStore, color: 'text-emerald-600' },

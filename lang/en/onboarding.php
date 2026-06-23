@@ -9,6 +9,7 @@ return [
     'personas' => [
         'creator' => 'Creator',
         'freelancer' => 'Freelancer',
+        'developer' => 'Developer',
         'startup' => 'Startup',
         'agency' => 'Agency',
         'small_business' => 'Small business',
