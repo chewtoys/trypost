@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
@@ -23,6 +24,7 @@ use App\Services\Social\LinkedInPublisher;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -77,6 +79,61 @@ test('publish to social platform marks platform as published on success', functi
     expect($this->postPlatform->status)->toBe(PlatformStatus::Published);
     expect($this->postPlatform->platform_post_id)->toBe('post-123');
     expect($this->postPlatform->platform_url)->toBe('https://linkedin.com/post/123');
+});
+
+test('publish job runs the real document flow end-to-end for a LinkedIn PDF post', function () {
+    Event::fake();
+
+    // Real publisher (no mock) — exercise the full job -> getPublisher -> publishDocument chain.
+    $this->socialAccount->update([
+        'platform_user_id' => 'person-xyz',
+        'token_expires_at' => now()->addDays(60),
+    ]);
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInDocument]);
+    $this->post->update([
+        'content' => 'Our deck',
+        'media' => [[
+            'id' => 'doc-1', 'path' => 'media/deck.pdf', 'url' => 'https://example.com/deck.pdf',
+            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms-uploads/document/e2e';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/documents') && str_contains($url, 'initializeUpload')) {
+            return Http::response(['value' => ['uploadUrl' => $uploadUrl, 'document' => 'urn:li:document:E2E']], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/documents/')) {
+            return Http::response(['status' => 'AVAILABLE'], 200);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:e2e']);
+        }
+
+        return Http::response('fake-pdf-bytes', 200);
+    });
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Published);
+    expect($this->postPlatform->platform_post_id)->toBe('urn:li:share:e2e');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/documents') && str_contains($request->url(), 'initializeUpload'));
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/rest/posts')
+            && data_get($request->data(), 'content.media.id') === 'urn:li:document:E2E'
+            && data_get($request->data(), 'content.media.title') === 'deck.pdf';
+    });
 });
 
 test('publish to social platform marks platform as failed on error', function () {

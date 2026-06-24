@@ -233,7 +233,7 @@ class LinkedInPagePublisher
             return (string) $title;
         }
 
-        return $postPlatform->post->mediaItems->first()?->original_filename ?? 'Document';
+        return $postPlatform->post->mediaItems->first(fn ($media) => $media->isDocument())?->original_filename ?? 'Document';
     }
 
     private function publishDocument(string $organizationUrn, ?string $content, $mediaCollection, string $title, $account): array
