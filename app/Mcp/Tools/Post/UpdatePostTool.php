@@ -16,6 +16,7 @@ use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -36,9 +37,6 @@ class UpdatePostTool extends Tool
             return Response::error('Post not found.');
         }
 
-        $enforcesMediaCompatibility = data_get($request->all(), 'status') === Status::Scheduled->value;
-        $storedMedia = (array) ($post->media ?? []);
-
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'content' => ['nullable', 'string', 'max:10000'],
@@ -57,10 +55,24 @@ class UpdatePostTool extends Tool
                 'string',
                 Rule::in(array_column(ContentType::cases(), 'value')),
                 new ContentTypeMatchesPostPlatform,
-                Rule::when($enforcesMediaCompatibility, [new ContentTypeCompatibleWithMedia($storedMedia)]),
             ],
             ...PostPlatformMetaRules::rules(),
         ]);
+
+        // On schedule, validate each platform's effective content_type (resubmitted
+        // here, or stored) against the post's stored media — the tool can't change
+        // media, so a misconfigured post can't be scheduled even without resubmitting
+        // content_type. Mirrors the public API's withValidator check.
+        if (data_get($validated, 'status') === Status::Scheduled->value) {
+            $errors = ContentTypeCompatibleWithMedia::errorsFor(
+                ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
+                (array) ($post->media ?? []),
+            );
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+        }
 
         $payload = collect($validated)->except('post_id')->all();
 

@@ -346,3 +346,39 @@ test('linkedin page publisher can publish a document (pdf carousel) using organi
             && data_get($request->data(), 'content.media.title') === 'Company Deck';
     });
 });
+
+test('linkedin page publisher throws and does not post when document processing fails', function () {
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInPageDocument]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'doc-media-1', 'path' => 'media/2026-01/company-deck.pdf',
+            'url' => 'https://example.com/media/2026-01/company-deck.pdf',
+            'mime_type' => 'application/pdf', 'original_filename' => 'company-deck.pdf',
+        ]],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms-uploads/document/org/fail';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/documents') && str_contains($url, 'initializeUpload')) {
+            return Http::response(['value' => ['uploadUrl' => $uploadUrl, 'document' => 'urn:li:document:OrgFail']], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/documents/')) {
+            return Http::response(['status' => 'PROCESSING_FAILED'], 200);
+        }
+
+        return Http::response('fake-pdf-bytes', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(Exception::class, 'LinkedIn Page document processing failed');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});

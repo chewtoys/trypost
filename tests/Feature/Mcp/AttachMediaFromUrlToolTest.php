@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Models\Media;
 use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
@@ -88,6 +92,60 @@ test('reports failures and successes separately', function () {
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+});
+
+test('attaches a pdf document from a url to a LinkedIn post', function () {
+    Http::fake([
+        'example.com/deck.pdf' => Http::response(
+            "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
+            200,
+            ['Content-Type' => 'application/pdf'],
+        ),
+    ]);
+
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    PostPlatform::factory()->create([
+        'post_id' => $this->post->id, 'social_account_id' => $linkedin->id,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => ['https://example.com/deck.pdf'],
+        ]);
+
+    $response->assertOk();
+
+    $media = $this->post->fresh()->media;
+    expect($media)->toHaveCount(1)
+        ->and($media[0]['type'])->toBe('document');
+});
+
+test('rejects a pdf url for a post with no PDF-capable platform', function () {
+    Http::fake([
+        'example.com/deck.pdf' => Http::response(
+            "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
+            200,
+            ['Content-Type' => 'application/pdf'],
+        ),
+    ]);
+
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+    PostPlatform::factory()->create([
+        'post_id' => $this->post->id, 'social_account_id' => $tiktok->id,
+        'platform' => Platform::TikTok, 'content_type' => ContentType::TikTokVideo, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => ['https://example.com/deck.pdf'],
+        ]);
+
+    $response->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
 });
 
 test('post 404 from another workspace', function () {

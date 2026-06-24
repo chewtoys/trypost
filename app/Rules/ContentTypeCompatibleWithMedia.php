@@ -48,22 +48,71 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
      */
     public static function assertStoredPostCompatible(Post $post): void
     {
-        $media = (array) ($post->media ?? []);
-        $errors = [];
-
-        foreach ($post->postPlatforms()->where('enabled', true)->get()->values() as $index => $postPlatform) {
-            (new self($media))->validate(
-                "platforms.{$index}.content_type",
-                (string) $postPlatform->content_type?->value,
-                function (string $message) use (&$errors, $index): void {
-                    $errors["platforms.{$index}.content_type"] = $message;
-                },
-            );
-        }
+        $errors = self::errorsFor(
+            self::entriesForUpdate($post, null),
+            (array) ($post->media ?? []),
+        );
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * The per-platform entries to validate for a post update: each platform's
+     * effective content_type (resubmitted in this request, else its stored
+     * value), keyed by the error path the caller surfaces. When $requestPlatforms
+     * is null, the post's currently-enabled platforms are used.
+     *
+     * @param  array<int, mixed>|null  $requestPlatforms
+     * @return array<int, array{key: string, content_type: string|null}>
+     */
+    public static function entriesForUpdate(Post $post, ?array $requestPlatforms): array
+    {
+        if (is_array($requestPlatforms)) {
+            return collect($requestPlatforms)->map(fn ($platform, $index): array => [
+                'key' => "platforms.{$index}.content_type",
+                'content_type' => data_get($platform, 'content_type')
+                    ?? $post->postPlatforms()->where('id', data_get($platform, 'id'))->first()?->content_type?->value,
+            ])->all();
+        }
+
+        return $post->postPlatforms()->where('enabled', true)->get()->values()
+            ->map(fn ($postPlatform, $index): array => [
+                'key' => "platforms.{$index}.content_type",
+                'content_type' => $postPlatform->content_type?->value,
+            ])->all();
+    }
+
+    /**
+     * Validate a set of platform entries against the given media, returning
+     * `[errorKey => message]` for each incompatible content_type.
+     *
+     * @param  array<int, array{key: string, content_type: string|null}>  $entries
+     * @param  array<int, mixed>  $media
+     * @return array<string, string>
+     */
+    public static function errorsFor(array $entries, array $media): array
+    {
+        $errors = [];
+
+        foreach ($entries as $entry) {
+            $contentType = data_get($entry, 'content_type');
+
+            if ($contentType === null) {
+                continue;
+            }
+
+            (new self($media))->validate(
+                $entry['key'],
+                (string) $contentType,
+                function (string $message) use (&$errors, $entry): void {
+                    $errors[$entry['key']] = $message;
+                },
+            );
+        }
+
+        return $errors;
     }
 
     /**

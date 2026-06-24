@@ -578,3 +578,50 @@ test('linkedin publisher throws and does not post when document processing fails
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });
+
+test('linkedin publisher throws and does not post when document init fails', function () {
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInDocument]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'doc-media-1', 'path' => 'media/2026-01/deck.pdf',
+            'url' => 'https://example.com/media/2026-01/deck.pdf',
+            'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/rest/documents') && str_contains($request->url(), 'initializeUpload')) {
+            return Http::response(['message' => 'Invalid request', 'status' => 400], 400);
+        }
+
+        return Http::response('fake-pdf-bytes', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(Exception::class);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});
+
+test('linkedin publisher throws when document init response is missing the urn', function () {
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInDocument]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'doc-media-1', 'path' => 'media/2026-01/deck.pdf',
+            'url' => 'https://example.com/media/2026-01/deck.pdf',
+            'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/rest/documents') && str_contains($request->url(), 'initializeUpload')) {
+            return Http::response(['value' => []], 200); // no uploadUrl / document
+        }
+
+        return Http::response('fake-pdf-bytes', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(Exception::class, 'missing uploadUrl or document URN');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});

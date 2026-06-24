@@ -197,6 +197,41 @@ it('rejects publishing a misconfigured post even when content_type is not resubm
         ->assertJsonValidationErrors(['platforms.0.content_type']);
 });
 
+it('rejects only the platform that cannot take a PDF in a multi-platform post', function () {
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Deck',
+        'media' => [[
+            'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
+            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+    $linkedinPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+    ]);
+    $xPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $x->id,
+        'platform' => Platform::X, 'content_type' => ContentType::XPost, 'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [
+                ['id' => $linkedinPlatform->id, 'content_type' => ContentType::LinkedInDocument->value],
+                ['id' => $xPlatform->id, 'content_type' => ContentType::XPost->value],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.1.content_type'])
+        ->assertJsonMissingValidationErrors(['platforms.0.content_type']);
+});
+
 it('persists per-platform meta across networks on store', function () {
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);

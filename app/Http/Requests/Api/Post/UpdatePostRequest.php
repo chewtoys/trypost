@@ -105,29 +105,13 @@ class UpdatePostRequest extends FormRequest
 
         $media = $this->has('media') ? (array) $this->input('media', []) : (array) ($post->media ?? []);
 
-        $entries = $this->has('platforms')
-            ? collect($this->input('platforms', []))->map(fn ($platform, $index) => [
-                'key' => "platforms.{$index}.content_type",
-                'content_type' => data_get($platform, 'content_type')
-                    ?? $post->postPlatforms()->where('id', data_get($platform, 'id'))->first()?->content_type?->value,
-            ])
-            : $post->postPlatforms()->where('enabled', true)->get()->values()->map(fn ($postPlatform, $index) => [
-                'key' => "platforms.{$index}.content_type",
-                'content_type' => $postPlatform->content_type?->value,
-            ]);
+        $entries = ContentTypeCompatibleWithMedia::entriesForUpdate(
+            $post,
+            $this->has('platforms') ? (array) $this->input('platforms', []) : null,
+        );
 
-        foreach ($entries as $entry) {
-            if (data_get($entry, 'content_type') === null) {
-                continue;
-            }
-
-            (new ContentTypeCompatibleWithMedia($media))->validate(
-                $entry['key'],
-                (string) $entry['content_type'],
-                function (string $message) use ($validator, $entry): void {
-                    $validator->errors()->add($entry['key'], $message);
-                },
-            );
+        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries, $media) as $key => $message) {
+            $validator->errors()->add($key, $message);
         }
     }
 

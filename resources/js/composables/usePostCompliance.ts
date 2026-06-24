@@ -92,6 +92,7 @@ export const getMediaIncompatibilityReason = (
 ): string | null => {
     const rules = getMediaRulesForContentType(contentType);
     const videos = mediaItems.filter((m) => m.type === 'video' || m.mime_type?.startsWith('video/'));
+    const documents = mediaItems.filter((m) => m.type === 'document' || m.mime_type === 'application/pdf');
     const images = mediaItems.filter((m) => m.type === 'image' || m.mime_type?.startsWith('image/'));
     const gifs = mediaItems.filter((m) => m.mime_type === 'image/gif');
     const total = mediaItems.length;
@@ -99,6 +100,7 @@ export const getMediaIncompatibilityReason = (
     if (rules.requiresMedia && total === 0) return trans('posts.edit.compliance.requires_media');
     if (!rules.acceptVideos && videos.length > 0) return trans('posts.edit.compliance.no_videos');
     if (!rules.acceptImages && images.length > 0) return trans('posts.edit.compliance.no_images');
+    if (!rules.acceptDocuments && documents.length > 0) return trans('posts.edit.compliance.no_documents');
     if (rules.forbidsMixedMedia && videos.length > 0 && images.length > 0) return trans('posts.edit.compliance.no_mixed_media');
     if (!rules.acceptsGif && gifs.length > 0) return trans('posts.edit.compliance.no_gifs');
     if (total > rules.maxFiles) return trans('posts.edit.compliance.too_many_files', { max: String(rules.maxFiles) });
@@ -106,10 +108,16 @@ export const getMediaIncompatibilityReason = (
 
     for (const m of mediaItems) {
         const isVideo = m.type === 'video' || m.mime_type?.startsWith('video/');
+        const isDocument = m.type === 'document' || m.mime_type === 'application/pdf';
         const size = m.size ?? 0;
         const duration = m.meta?.duration ?? 0;
         const width = m.meta?.width ?? 0;
         const height = m.meta?.height ?? 0;
+
+        if (isDocument) {
+            if (rules.maxDocumentBytes && size > 0 && size > rules.maxDocumentBytes) return trans('posts.edit.compliance.document_too_large');
+            continue;
+        }
 
         if (isVideo) {
             if (rules.maxVideoBytes && size > 0 && size > rules.maxVideoBytes) return trans('posts.edit.compliance.video_too_large');

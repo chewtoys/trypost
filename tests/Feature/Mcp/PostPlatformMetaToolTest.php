@@ -266,6 +266,34 @@ test('publish post rejects a LinkedIn document whose media is an image, not a PD
     $response->assertHasErrors(['Document does not support images.']);
 });
 
+test('update post rejects scheduling a misconfigured LinkedIn post without resubmitting content_type', function () {
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'media' => [[
+            'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
+            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'platforms' => [['id' => $platform->id]],
+        ]);
+
+    $response->assertHasErrors(['Post does not support PDF documents.']);
+});
+
 test('publish post succeeds for a Discord platform with a channel', function () {
     Queue::fake();
 
