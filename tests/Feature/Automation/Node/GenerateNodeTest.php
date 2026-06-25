@@ -285,7 +285,7 @@ it('derives single format when no carousel-capable account is configured', funct
     $action = app(RunGenerateNode::class);
 
     $accountsConfig = [
-        ['social_account_id' => '1', 'content_type' => ContentType::LinkedInPost->value, 'meta' => []],
+        ['social_account_id' => '1', 'content_type' => ContentType::PinterestPin->value, 'meta' => []],
         ['social_account_id' => '2', 'content_type' => ContentType::InstagramReel->value, 'meta' => []],
     ];
 

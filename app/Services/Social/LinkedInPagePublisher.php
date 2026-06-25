@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -58,18 +57,32 @@ class LinkedInPagePublisher
         }
 
         $organizationUrn = "urn:li:organization:{$organizationId}";
-        $contentType = $postPlatform->content_type;
 
         try {
-            return match ($contentType) {
-                ContentType::LinkedInPageCarousel => $this->publishCarousel($organizationUrn, $content, $postPlatform->post->mediaItems, $this->account),
-                ContentType::LinkedInPageDocument => $this->publishDocument($organizationUrn, $content, $postPlatform->post->mediaItems, $this->resolveDocumentTitle($postPlatform), $this->account),
-                ContentType::LinkedInPagePost => $this->publishPost($organizationUrn, $content, $postPlatform->post->mediaItems, $this->account),
-                default => throw new \Exception("Unsupported LinkedIn Page content type: {$contentType?->value}"),
-            };
+            return $this->dispatchByMedia($organizationUrn, $content, $postPlatform);
         } catch (TokenExpiredException $e) {
             return $this->retryWithRefresh($postPlatform, $content, $e);
         }
+    }
+
+    /**
+     * The page publish format follows the attached media — a PDF becomes a
+     * document post, 2+ images a multi-image post, and anything else a regular
+     * post.
+     */
+    private function dispatchByMedia(string $organizationUrn, ?string $content, PostPlatform $postPlatform): array
+    {
+        $media = $postPlatform->post->mediaItems;
+
+        if ($media->contains(fn ($item) => $item->isDocument())) {
+            return $this->publishDocument($organizationUrn, $content, $media, $this->resolveDocumentTitle($postPlatform), $this->account);
+        }
+
+        if ($media->filter(fn ($item) => $item->isImage())->count() >= 2) {
+            return $this->publishCarousel($organizationUrn, $content, $media, $this->account);
+        }
+
+        return $this->publishPost($organizationUrn, $content, $media, $this->account);
     }
 
     private function retryWithRefresh(PostPlatform $postPlatform, ?string $content, TokenExpiredException $originalException): array
@@ -86,14 +99,8 @@ class LinkedInPagePublisher
 
             $organizationId = $this->account->meta['organization_id'] ?? null;
             $organizationUrn = "urn:li:organization:{$organizationId}";
-            $contentType = $postPlatform->content_type;
 
-            return match ($contentType) {
-                ContentType::LinkedInPageCarousel => $this->publishCarousel($organizationUrn, $content, $postPlatform->post->mediaItems, $this->account),
-                ContentType::LinkedInPageDocument => $this->publishDocument($organizationUrn, $content, $postPlatform->post->mediaItems, $this->resolveDocumentTitle($postPlatform), $this->account),
-                ContentType::LinkedInPagePost => $this->publishPost($organizationUrn, $content, $postPlatform->post->mediaItems, $this->account),
-                default => throw new \Exception("Unsupported LinkedIn Page content type: {$contentType?->value}"),
-            };
+            return $this->dispatchByMedia($organizationUrn, $content, $postPlatform);
         } catch (\Throwable $e) {
             Log::error('LinkedIn Page refresh failed during retry', [
                 'account_id' => $this->account->id,
@@ -173,10 +180,6 @@ class LinkedInPagePublisher
                     'media' => $imageUrn,
                 ];
             }
-        }
-
-        if (empty($carouselItems)) {
-            throw new \Exception('No valid images for LinkedIn Page carousel');
         }
 
         $payload = [

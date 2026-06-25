@@ -43,6 +43,56 @@ test('accounts index shows platforms and connected accounts', function () {
     );
 });
 
+test('accounts index offers a single linkedin card and no standalone linkedin page card', function () {
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::LinkedIn->value)
+            && ! collect($platforms)->contains('value', Platform::LinkedInPage->value)
+        )
+    );
+});
+
+test('the linkedin card still shows when only company pages are enabled', function () {
+    config(['trypost.platforms.linkedin.enabled' => false]);
+    config(['trypost.platforms.linkedin-page.enabled' => true]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::LinkedIn->value))
+    );
+});
+
+test('the linkedin card disappears only when both capabilities are disabled', function () {
+    config(['trypost.platforms.linkedin.enabled' => false]);
+    config(['trypost.platforms.linkedin-page.enabled' => false]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', fn ($platforms) => ! collect($platforms)->contains('value', Platform::LinkedIn->value))
+    );
+});
+
+test('a connected linkedin page account is still returned so it surfaces under the linkedin card', function () {
+    SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('connectedAccounts.0.platform', Platform::LinkedInPage->value)
+    );
+});
+
 test('an unsubscribed account can disconnect during onboarding (no active subscription required)', function () {
     config(['trypost.self_hosted' => false]);
 

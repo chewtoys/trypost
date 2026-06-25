@@ -45,7 +45,7 @@ test('platform has correct allowed media types', function () {
 });
 
 test('platform has correct max images', function () {
-    expect(Platform::LinkedIn->maxImages())->toBe(1);
+    expect(Platform::LinkedIn->maxImages())->toBe(20);
     expect(Platform::X->maxImages())->toBe(4);
     expect(Platform::TikTok->maxImages())->toBe(0);
     expect(Platform::YouTube->maxImages())->toBe(0);
@@ -109,4 +109,26 @@ test('disabled platforms are excluded from enabled list', function () {
     $enabled = Platform::enabled();
 
     expect($enabled)->not->toContain(Platform::LinkedIn);
+});
+
+test('only linkedin pages are not directly connectable', function () {
+    expect(Platform::LinkedInPage->isConnectable())->toBeFalse();
+    expect(Platform::LinkedIn->isConnectable())->toBeTrue();
+    expect(Platform::InstagramFacebook->isConnectable())->toBeTrue();
+    expect(Platform::Instagram->isConnectable())->toBeTrue();
+});
+
+test('the linkedin card is connectable while either capability is enabled', function () {
+    config(['trypost.platforms.linkedin.enabled' => true, 'trypost.platforms.linkedin-page.enabled' => false]);
+    expect(Platform::LinkedIn->isConnectable())->toBeTrue();
+
+    config(['trypost.platforms.linkedin.enabled' => false, 'trypost.platforms.linkedin-page.enabled' => true]);
+    expect(Platform::LinkedIn->isConnectable())->toBeTrue();
+
+    config(['trypost.platforms.linkedin.enabled' => false, 'trypost.platforms.linkedin-page.enabled' => false]);
+    expect(Platform::LinkedIn->isConnectable())->toBeFalse();
+
+    // A company page never gets its own card regardless of toggles.
+    config(['trypost.platforms.linkedin-page.enabled' => true]);
+    expect(Platform::LinkedInPage->isConnectable())->toBeFalse();
 });

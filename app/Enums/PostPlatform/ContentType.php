@@ -13,15 +13,12 @@ enum ContentType: string
     case InstagramReel = 'instagram_reel';
     case InstagramStory = 'instagram_story';
 
-    // LinkedIn
+    // LinkedIn — one type per account kind; the publish format (single image,
+    // multi-image, video, or PDF document) is inferred from the attached media.
     case LinkedInPost = 'linkedin_post';
-    case LinkedInCarousel = 'linkedin_carousel';
-    case LinkedInDocument = 'linkedin_document';
 
     // LinkedIn Page
     case LinkedInPagePost = 'linkedin_page_post';
-    case LinkedInPageCarousel = 'linkedin_page_carousel';
-    case LinkedInPageDocument = 'linkedin_page_document';
 
     // Facebook
     case FacebookPost = 'facebook_post';
@@ -71,8 +68,6 @@ enum ContentType: string
             self::InstagramReel => 'Reel',
             self::InstagramStory => 'Story',
             self::LinkedInPost, self::LinkedInPagePost => 'Post',
-            self::LinkedInCarousel, self::LinkedInPageCarousel => 'Carousel',
-            self::LinkedInDocument, self::LinkedInPageDocument => 'Document',
             self::FacebookPost => 'Post',
             self::FacebookReel => 'Reel',
             self::FacebookStory => 'Story',
@@ -100,8 +95,8 @@ enum ContentType: string
     {
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => SocialPlatform::Instagram,
-            self::LinkedInPost, self::LinkedInCarousel, self::LinkedInDocument => SocialPlatform::LinkedIn,
-            self::LinkedInPagePost, self::LinkedInPageCarousel, self::LinkedInPageDocument => SocialPlatform::LinkedInPage,
+            self::LinkedInPost => SocialPlatform::LinkedIn,
+            self::LinkedInPagePost => SocialPlatform::LinkedInPage,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
@@ -167,9 +162,7 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
-            self::LinkedInPost, self::LinkedInPagePost => 1,
-            self::LinkedInCarousel, self::LinkedInPageCarousel => 20,
-            self::LinkedInDocument, self::LinkedInPageDocument => 1,
+            self::LinkedInPost, self::LinkedInPagePost => 20,
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
             self::TikTokVideo => 1,
@@ -191,8 +184,6 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => true,
             self::LinkedInPost, self::LinkedInPagePost => true,
-            self::LinkedInCarousel, self::LinkedInPageCarousel => false,
-            self::LinkedInDocument, self::LinkedInPageDocument => false,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => true,
             self::TikTokVideo => true,
             self::TikTokPhoto => false,
@@ -217,20 +208,19 @@ enum ContentType: string
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
             self::PinterestVideoPin => false,
-            self::LinkedInDocument, self::LinkedInPageDocument => false,
             default => true,
         };
     }
 
     /**
-     * Whether this content type carries a document (PDF) attachment instead of
-     * images/videos — currently the LinkedIn swipeable document ("carousel").
-     * A document post is PDF-only: it never combines with images or videos.
+     * Whether this content type can carry a PDF document (the swipeable LinkedIn
+     * document/carousel). LinkedIn infers the document format from a PDF being
+     * attached; the document is always the only attachment (see the media rule).
      */
     public function supportsDocument(): bool
     {
         return match ($this) {
-            self::LinkedInDocument, self::LinkedInPageDocument => true,
+            self::LinkedInPost, self::LinkedInPagePost => true,
             default => false,
         };
     }
@@ -245,6 +235,8 @@ enum ContentType: string
     {
         return match ($this) {
             self::BlueskyPost => false,
+            // LinkedIn publishes images XOR one video XOR one document — never mixed.
+            self::LinkedInPost, self::LinkedInPagePost => false,
             default => true,
         };
     }

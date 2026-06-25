@@ -60,39 +60,18 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 
-    // LinkedIn
+    // LinkedIn — one type per account kind; the publish format (single image,
+    // multi-image, video, or PDF document) is inferred from the attached media.
+    // Images (up to 20) XOR one video XOR one PDF, never mixed.
     linkedin_post: {
-        maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: false,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60,
-    },
-    linkedin_carousel: {
-        maxFiles: 20, acceptImages: true, acceptVideos: false, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 5 * MB,
-        aspectRatioMin: 0.5, aspectRatioMax: 1,
+        maxFiles: 20, acceptImages: true, acceptVideos: true, acceptDocuments: true,
+        requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
     },
     linkedin_page_post: {
-        maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: false,
-        acceptsGif: false,
-        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60,
-    },
-    linkedin_page_carousel: {
-        maxFiles: 20, acceptImages: true, acceptVideos: false, requiresMedia: true,
-        acceptsGif: false,
-        maxImageBytes: 5 * MB,
-        aspectRatioMin: 0.5, aspectRatioMax: 1,
-    },
-    // Document (PDF) posts — the swipeable LinkedIn carousel. One PDF, up to 100MB.
-    linkedin_document: {
-        maxFiles: 1, acceptImages: false, acceptVideos: false, acceptDocuments: true, requiresMedia: true,
-        acceptsGif: false,
-        maxDocumentBytes: 100 * MB,
-    },
-    linkedin_page_document: {
-        maxFiles: 1, acceptImages: false, acceptVideos: false, acceptDocuments: true, requiresMedia: true,
-        acceptsGif: false,
-        maxDocumentBytes: 100 * MB,
+        maxFiles: 20, acceptImages: true, acceptVideos: true, acceptDocuments: true,
+        requiresMedia: false, acceptsGif: false, forbidsMixedMedia: true,
+        maxImageBytes: 5 * MB, maxVideoBytes: 5 * GB, maxVideoDurationSec: 10 * 60, maxDocumentBytes: 100 * MB,
     },
 
     // TikTok

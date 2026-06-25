@@ -62,7 +62,7 @@ test('create post persists LinkedIn document_title meta', function () {
             'content' => 'Check our latest deck',
             'platforms' => [[
                 'social_account_id' => $linkedin->id,
-                'content_type' => ContentType::LinkedInDocument->value,
+                'content_type' => ContentType::LinkedInPost->value,
                 'meta' => ['document_title' => 'Q2 Report'],
             ]],
         ]);
@@ -187,7 +187,7 @@ test('attach media from upload accepts a PDF for a LinkedIn post', function () {
     ]);
     PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $uploadToken = (string) Str::uuid();
@@ -233,7 +233,7 @@ test('publish post succeeds for a LinkedIn document that has a PDF', function ()
     ]);
     PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -243,55 +243,27 @@ test('publish post succeeds for a LinkedIn document that has a PDF', function ()
     Queue::assertPushed(PublishPost::class);
 });
 
-test('publish post rejects a LinkedIn document whose media is an image, not a PDF', function () {
+test('publish post rejects a LinkedIn post that mixes a PDF with an image', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'media' => [[
-            'id' => 'img-1', 'path' => 'medias/slide.jpg', 'url' => 'https://example.com/slide.jpg',
-            'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'slide.jpg',
-        ]],
+        'media' => [
+            ['id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf', 'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf'],
+            ['id' => 'img-1', 'path' => 'medias/slide.jpg', 'url' => 'https://example.com/slide.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'slide.jpg'],
+        ],
     ]);
     PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
-    ]);
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
-
-    $response->assertHasErrors(['Document does not support images.']);
-});
-
-test('update post rejects scheduling a misconfigured LinkedIn post without resubmitting content_type', function () {
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'media' => [[
-            'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
-            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
-        ]],
-    ]);
-    $platform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
         'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
-        ->tool(UpdatePostTool::class, [
-            'post_id' => $post->id,
-            'status' => PostStatus::Scheduled->value,
-            'scheduled_at' => now()->addDay()->toIso8601String(),
-            'platforms' => [['id' => $platform->id]],
-        ]);
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
 
-    $response->assertHasErrors(['Post does not support PDF documents.']);
+    $response->assertHasErrors(['A PDF document must be the only attachment.']);
 });
 
 test('publish post succeeds for a Discord platform with a channel', function () {

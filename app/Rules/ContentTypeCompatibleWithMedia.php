@@ -158,6 +158,11 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $fail("{$contentType->label()} does not support PDF documents.");
         }
 
+        // A PDF document is always published on its own (LinkedIn document post).
+        if ($hasDocument && $count > 1) {
+            $fail('A PDF document must be the only attachment.');
+        }
+
         if ($hasImage && $hasVideo && ! $contentType->supportsMixedMedia()) {
             $fail("{$contentType->label()} can't combine an image and a video in the same post.");
         }

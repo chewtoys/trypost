@@ -112,7 +112,7 @@ enum Platform: string
     public function maxImages(): int
     {
         return match ($this) {
-            self::LinkedIn, self::LinkedInPage => 1,
+            self::LinkedIn, self::LinkedInPage => 20,
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
@@ -285,6 +285,22 @@ enum Platform: string
     public function isEnabled(): bool
     {
         return config("trypost.platforms.{$this->value}.enabled", true);
+    }
+
+    /**
+     * Whether this platform gets its own "Connect" card in the accounts grid.
+     * LinkedIn company pages are reached through the unified LinkedIn connect
+     * flow's identity picker, never a standalone card. The single LinkedIn card
+     * stands for the whole network, so it shows whenever the profile OR the
+     * company-page capability is enabled (self-hosters may run with only one).
+     */
+    public function isConnectable(): bool
+    {
+        return match ($this) {
+            self::LinkedInPage => false,
+            self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
+            default => $this->isEnabled(),
+        };
     }
 
     /**

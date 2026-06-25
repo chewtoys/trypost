@@ -139,12 +139,8 @@ return [
             'settings' => 'Configurações do LinkedIn',
             'settings_page' => 'Configurações da Página do LinkedIn',
             'posting_to' => 'Publicando em',
-            'variant_label' => 'Tipo de publicação',
-            'variant' => [
-                'post' => 'Post',
-                'carousel' => 'Carrossel',
-                'document' => 'Documento',
-            ],
+            'document_title' => 'Título do documento',
+            'document_title_placeholder' => 'Aparece no seu post de documento PDF',
         ],
         'pinterest' => [
             'settings' => 'Configurações do Pinterest',
@@ -190,6 +186,8 @@ return [
             'no_video_allowed' => 'Este tipo não aceita vídeos.',
             'no_image_allowed' => 'Este tipo aceita apenas vídeos.',
             'no_document_allowed' => 'Este tipo não aceita documentos PDF.',
+            'no_mixed_media' => 'Não dá pra combinar imagens e um vídeo no mesmo post.',
+            'document_not_alone' => 'Um PDF deve ser o único anexo.',
             'gif_not_allowed' => 'Esta rede não aceita GIF. Remova o GIF ou escolha outra rede.',
             'image_too_large' => 'A imagem passa do limite de :max (a sua tem :current).',
             'video_too_large' => 'O vídeo passa do limite de :max (o seu tem :current).',
@@ -348,6 +346,7 @@ return [
             'no_mixed_media' => 'Não é possível combinar imagem e vídeo na mesma publicação.',
             'no_gifs' => 'GIFs não são suportados aqui.',
             'no_documents' => 'Documentos PDF não são suportados por este formato.',
+            'document_not_alone' => 'Um PDF deve ser o único anexo.',
             'video_too_large' => 'Vídeo excede o limite de tamanho desta plataforma.',
             'video_too_long' => 'Vídeo deve ter menos de :seconds segundos neste formato.',
             'image_too_large' => 'Imagem excede o limite de tamanho desta plataforma.',
@@ -463,27 +462,11 @@ return [
         ],
         'linkedin_post' => [
             'label' => 'Post',
-            'description' => 'Post padrão com texto e mídia',
-        ],
-        'linkedin_carousel' => [
-            'label' => 'Carrossel',
-            'description' => 'Imagens deslizáveis',
+            'description' => 'Post padrão — imagem, várias imagens, vídeo ou PDF',
         ],
         'linkedin_page_post' => [
             'label' => 'Post',
-            'description' => 'Post padrão com texto e mídia',
-        ],
-        'linkedin_page_carousel' => [
-            'label' => 'Carrossel',
-            'description' => 'Imagens deslizáveis',
-        ],
-        'linkedin_document' => [
-            'label' => 'Documento',
-            'description' => 'Carrossel PDF deslizável',
-        ],
-        'linkedin_page_document' => [
-            'label' => 'Documento',
-            'description' => 'Carrossel PDF deslizável',
+            'description' => 'Post padrão — imagem, várias imagens, vídeo ou PDF',
         ],
         'facebook_post' => [
             'label' => 'Post',

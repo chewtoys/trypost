@@ -10,7 +10,6 @@ test('content type has correct labels', function () {
     expect(ContentType::InstagramReel->label())->toBe('Reel');
     expect(ContentType::InstagramStory->label())->toBe('Story');
     expect(ContentType::LinkedInPost->label())->toBe('Post');
-    expect(ContentType::LinkedInCarousel->label())->toBe('Carousel');
     expect(ContentType::YouTubeShort->label())->toBe('Short');
     expect(ContentType::XPost->label())->toBe('Post');
     expect(ContentType::TikTokVideo->label())->toBe('Video');
@@ -60,7 +59,7 @@ test('instagram_carousel is not a content type — it is an AI generation format
 test('content type has correct max media count', function () {
     expect(ContentType::InstagramFeed->maxMediaCount())->toBe(10);
     expect(ContentType::InstagramReel->maxMediaCount())->toBe(1);
-    expect(ContentType::LinkedInCarousel->maxMediaCount())->toBe(20);
+    expect(ContentType::LinkedInPost->maxMediaCount())->toBe(20);
     expect(ContentType::XPost->maxMediaCount())->toBe(4);
     expect(ContentType::PinterestCarousel->maxMediaCount())->toBe(5);
     expect(ContentType::BlueskyPost->maxMediaCount())->toBe(4);
@@ -71,7 +70,7 @@ test('content type supports video correctly', function () {
     expect(ContentType::InstagramReel->supportsVideo())->toBeTrue();
     expect(ContentType::TikTokVideo->supportsVideo())->toBeTrue();
     expect(ContentType::YouTubeShort->supportsVideo())->toBeTrue();
-    expect(ContentType::LinkedInCarousel->supportsVideo())->toBeFalse();
+    expect(ContentType::LinkedInPost->supportsVideo())->toBeTrue();
     expect(ContentType::PinterestPin->supportsVideo())->toBeFalse();
 });
 
@@ -151,28 +150,25 @@ test('bluesky and mastodon support video', function () {
     expect(ContentType::MastodonPost->supportsVideo())->toBeTrue();
 });
 
-test('linkedin document content types are pdf-only and single-file', function () {
-    foreach ([ContentType::LinkedInDocument, ContentType::LinkedInPageDocument] as $type) {
-        expect($type->label())->toBe('Document');
+test('linkedin post content types accept images, videos and documents but never mixed', function () {
+    foreach ([ContentType::LinkedInPost, ContentType::LinkedInPagePost] as $type) {
+        expect($type->supportsImage())->toBeTrue();
+        expect($type->supportsVideo())->toBeTrue();
         expect($type->supportsDocument())->toBeTrue();
-        expect($type->supportsImage())->toBeFalse();
-        expect($type->supportsVideo())->toBeFalse();
-        expect($type->requiresMedia())->toBeTrue();
-        expect($type->maxMediaCount())->toBe(1);
+        expect($type->supportsMixedMedia())->toBeFalse();
+        expect($type->requiresMedia())->toBeFalse();
+        expect($type->maxMediaCount())->toBe(20);
     }
-
-    expect(ContentType::LinkedInDocument->platform())->toBe(Platform::LinkedIn);
-    expect(ContentType::LinkedInPageDocument->platform())->toBe(Platform::LinkedInPage);
 });
 
-test('only linkedin document content types support documents', function () {
-    expect(ContentType::LinkedInPost->supportsDocument())->toBeFalse();
-    expect(ContentType::LinkedInCarousel->supportsDocument())->toBeFalse();
+test('only linkedin post content types support documents', function () {
+    expect(ContentType::LinkedInPost->supportsDocument())->toBeTrue();
+    expect(ContentType::LinkedInPagePost->supportsDocument())->toBeTrue();
     expect(ContentType::InstagramFeed->supportsDocument())->toBeFalse();
     expect(ContentType::XPost->supportsDocument())->toBeFalse();
 });
 
-test('linkedin document content types are exposed for their platform', function () {
-    expect(ContentType::forPlatform(Platform::LinkedIn))->toContain(ContentType::LinkedInDocument);
-    expect(ContentType::forPlatform(Platform::LinkedInPage))->toContain(ContentType::LinkedInPageDocument);
+test('linkedin exposes a single post content type per account kind', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->toHaveCount(1)->toContain(ContentType::LinkedInPost);
+    expect(ContentType::forPlatform(Platform::LinkedInPage))->toHaveCount(1)->toContain(ContentType::LinkedInPagePost);
 });

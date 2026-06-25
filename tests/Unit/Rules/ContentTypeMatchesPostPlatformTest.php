@@ -42,7 +42,6 @@ test('passes when content_type matches the post_platform social account', functi
     ]);
 
     expect(runMatchesPostPlatformRule(ContentType::LinkedInPost->value, $postPlatform->id))->toBe([]);
-    expect(runMatchesPostPlatformRule(ContentType::LinkedInCarousel->value, $postPlatform->id))->toBe([]);
 });
 
 test('fails when content_type belongs to a different platform than the post_platform', function () {

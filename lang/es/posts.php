@@ -139,12 +139,8 @@ return [
             'settings' => 'Configuración de LinkedIn',
             'settings_page' => 'Configuración de la Página de LinkedIn',
             'posting_to' => 'Publicando en',
-            'variant_label' => 'Tipo de publicación',
-            'variant' => [
-                'post' => 'Publicación',
-                'carousel' => 'Carrusel',
-                'document' => 'Documento',
-            ],
+            'document_title' => 'Título del documento',
+            'document_title_placeholder' => 'Se muestra en tu publicación de documento PDF',
         ],
         'pinterest' => [
             'settings' => 'Configuración de Pinterest',
@@ -190,6 +186,8 @@ return [
             'no_video_allowed' => 'Este tipo no acepta videos.',
             'no_image_allowed' => 'Este tipo acepta solo videos.',
             'no_document_allowed' => 'Este tipo no acepta documentos PDF.',
+            'no_mixed_media' => 'No se pueden combinar imágenes y un video en la misma publicación.',
+            'document_not_alone' => 'Un PDF debe ser el único archivo adjunto.',
             'gif_not_allowed' => 'Esta red no acepta GIF. Elimínalo o selecciona otra red.',
             'image_too_large' => 'La imagen supera el límite de :max (la tuya es :current).',
             'video_too_large' => 'El video supera el límite de :max (el tuyo es :current).',
@@ -348,6 +346,7 @@ return [
             'no_mixed_media' => 'No se pueden combinar imágenes y videos en la misma publicación.',
             'no_gifs' => 'Los GIFs no son compatibles aquí.',
             'no_documents' => 'Los documentos PDF no son compatibles con este formato.',
+            'document_not_alone' => 'Un PDF debe ser el único archivo adjunto.',
             'video_too_large' => 'El video supera el límite de tamaño de esta plataforma.',
             'video_too_long' => 'El video debe durar menos de :seconds segundos en este formato.',
             'image_too_large' => 'La imagen supera el límite de tamaño de esta plataforma.',
@@ -463,27 +462,11 @@ return [
         ],
         'linkedin_post' => [
             'label' => 'Post',
-            'description' => 'Post estándar con texto y multimedia',
-        ],
-        'linkedin_carousel' => [
-            'label' => 'Carrusel',
-            'description' => 'Imágenes deslizables',
+            'description' => 'Post estándar — imagen, varias imágenes, video o PDF',
         ],
         'linkedin_page_post' => [
             'label' => 'Post',
-            'description' => 'Post estándar con texto y multimedia',
-        ],
-        'linkedin_page_carousel' => [
-            'label' => 'Carrusel',
-            'description' => 'Imágenes deslizables',
-        ],
-        'linkedin_document' => [
-            'label' => 'Documento',
-            'description' => 'Carrusel PDF deslizable',
-        ],
-        'linkedin_page_document' => [
-            'label' => 'Documento',
-            'description' => 'Carrusel PDF deslizable',
+            'description' => 'Post estándar — imagen, varias imágenes, video o PDF',
         ],
         'facebook_post' => [
             'label' => 'Post',

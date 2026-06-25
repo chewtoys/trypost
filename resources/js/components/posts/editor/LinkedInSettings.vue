@@ -3,10 +3,11 @@ import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons
 import { computed, ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
-import { getMediaValidationWarning } from '@/composables/useMedia';
+import { Input } from '@/components/ui/input';
+import { getMediaValidationWarning, isDocumentMedia } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import { Platform } from '@/types/platform';
 
 interface SocialAccount {
     id: string;
@@ -21,41 +22,33 @@ interface Props {
     platform: string;
     contentType: string;
     media: MediaItem[];
+    meta?: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    meta: () => ({}),
     disabled: false,
     previewOnly: false,
 });
 
 const emit = defineEmits<{
-    'update:contentType': [value: string];
+    'update:meta': [value: Record<string, any>];
 }>();
 
 const open = ref(false);
 
-const isPage = computed(() => props.platform === 'linkedin-page');
+const isPage = computed(() => props.platform === Platform.LinkedInPage);
 
-const variants = computed(() =>
-    isPage.value
-        ? [
-            { value: ContentType.LinkedInPagePost, labelKey: 'posts.form.linkedin.variant.post' },
-            { value: ContentType.LinkedInPageCarousel, labelKey: 'posts.form.linkedin.variant.carousel' },
-            { value: ContentType.LinkedInPageDocument, labelKey: 'posts.form.linkedin.variant.document' },
-        ]
-        : [
-            { value: ContentType.LinkedInPost, labelKey: 'posts.form.linkedin.variant.post' },
-            { value: ContentType.LinkedInCarousel, labelKey: 'posts.form.linkedin.variant.carousel' },
-            { value: ContentType.LinkedInDocument, labelKey: 'posts.form.linkedin.variant.document' },
-        ],
-);
+// The publish format follows the media; the only thing to configure is the
+// title shown on a document (PDF) post, so we only expose it when a PDF is set.
+const hasPdf = computed(() => props.media.some((item) => isDocumentMedia(item)));
 
-const pickVariant = (value: string) => {
-    if (props.disabled) return;
-    emit('update:contentType', value);
-};
+const documentTitle = computed({
+    get: () => (props.meta?.document_title as string | undefined) ?? '',
+    set: (value: string) => emit('update:meta', { ...props.meta, document_title: value || null }),
+});
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
 </script>
@@ -94,23 +87,14 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.linkedin.variant_label') }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        v-for="variant in variants"
-                        :key="variant.value"
-                        type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="contentType === variant.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="disabled"
-                        @click="pickVariant(variant.value)"
-                    >
-                        {{ $t(variant.labelKey) }}
-                    </button>
-                </div>
+            <div v-if="hasPdf" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.linkedin.document_title') }}</p>
+                <Input
+                    v-model="documentTitle"
+                    type="text"
+                    :placeholder="$t('posts.form.linkedin.document_title_placeholder')"
+                    :disabled="disabled || previewOnly"
+                />
             </div>
 
             <p

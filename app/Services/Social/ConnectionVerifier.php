@@ -135,9 +135,6 @@ class ConnectionVerifier
         ]);
 
         $account->refresh();
-
-        // Sync tokens between LinkedIn personal and LinkedIn Page
-        app(LinkedInTokenSynchronizer::class)->syncTokens($account);
     }
 
     private function refreshXToken(SocialAccount $account): void

@@ -165,9 +165,10 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :platform="channel.platform"
                 :content-type="channel.contentType"
                 :media="media"
+                :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"
-                @update:content-type="emit('update:contentType', channel.id, $event)"
+                @update:meta="emit('update:meta', channel.id, $event)"
             />
             <DiscordSettings
                 v-else-if="channel.platform === Platform.Discord"

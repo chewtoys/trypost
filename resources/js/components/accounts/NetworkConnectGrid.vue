@@ -44,8 +44,8 @@ const getPlatformDescription = (platform: string): string =>
 
 // Mirrors `NetworksGrid.vue` from the marketing site — pastel tile bg
 // + ink 2px border + slight rotation per platform, real PNG logo inside.
-// `linkedin-page` / `instagram-facebook` fall back to the base brand
-// image and same color since they're variants of the same network.
+// `instagram-facebook` falls back to the base brand image and same color
+// since it's a variant of the same network.
 const platformTheme: Record<
     string,
     { bg: string; rotate: string; image: string }
@@ -66,11 +66,6 @@ const platformTheme: Record<
         image: '/images/accounts/facebook.png',
     },
     linkedin: {
-        bg: 'bg-blue-200',
-        rotate: '-rotate-1',
-        image: '/images/accounts/linkedin.png',
-    },
-    'linkedin-page': {
         bg: 'bg-blue-200',
         rotate: '-rotate-1',
         image: '/images/accounts/linkedin.png',
@@ -177,6 +172,9 @@ const disconnectAccount = (account: ConnectedAccount) => {
 const needsReconnect = (account: ConnectedAccount): boolean =>
     account.status === 'disconnected' || account.status === 'token_expired';
 
+const connectEntryFor = (platformValue: string): string =>
+    platformValue === Platform.LinkedInPage ? Platform.LinkedIn : platformValue;
+
 const openConnect = (platformValue: string) => {
     if (platformValue === Platform.Telegram) {
         telegramOpen.value = true;
@@ -195,7 +193,7 @@ const connectPlatform = (platformValue: string) => {
 };
 
 const reconnectAccount = (account: ConnectedAccount) => {
-    openConnect(account.platform);
+    openConnect(connectEntryFor(account.platform));
 };
 
 const CardState = {

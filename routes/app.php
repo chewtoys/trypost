@@ -36,7 +36,6 @@ use App\Http\Controllers\Auth\FacebookController;
 use App\Http\Controllers\Auth\InstagramController;
 use App\Http\Controllers\Auth\InstagramFacebookController;
 use App\Http\Controllers\Auth\LinkedInController;
-use App\Http\Controllers\Auth\LinkedInPageController;
 use App\Http\Controllers\Auth\MastodonController;
 use App\Http\Controllers\Auth\PinterestController;
 use App\Http\Controllers\Auth\SocialController;
@@ -80,11 +79,8 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('connect/linkedin', [LinkedInController::class, 'connect'])->name('app.social.linkedin.connect');
     Route::get('accounts/linkedin/callback', [LinkedInController::class, 'callback'])->name('app.social.linkedin.callback');
-
-    Route::get('connect/linkedin-page', [LinkedInPageController::class, 'connect'])->name('app.social.linkedin-page.connect');
-    Route::get('accounts/linkedin-page/callback', [LinkedInPageController::class, 'callback'])->name('app.social.linkedin-page.callback');
-    Route::get('accounts/linkedin-page/select', [LinkedInPageController::class, 'selectPage'])->name('app.social.linkedin-page.select-page');
-    Route::post('accounts/linkedin-page/select', [LinkedInPageController::class, 'select'])->name('app.social.linkedin-page.select');
+    Route::get('accounts/linkedin/select', [LinkedInController::class, 'selectIdentity'])->name('app.social.linkedin.select-identity');
+    Route::post('accounts/linkedin/select', [LinkedInController::class, 'select'])->name('app.social.linkedin.select');
 
     Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');
     Route::get('accounts/x/callback', [XController::class, 'callback'])->name('app.social.x.callback');

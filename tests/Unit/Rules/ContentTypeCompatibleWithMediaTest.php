@@ -136,71 +136,90 @@ test('a mixed-media content type accepts an image and a video together', functio
     expect(runMediaRule(ContentType::DiscordMessage->value, $media))->toBe([]);
 });
 
-test('linkedin document accepts a pdf', function () {
+test('linkedin post accepts a pdf on its own', function () {
     $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf']];
 
-    expect(runMediaRule(ContentType::LinkedInDocument->value, $media))->toBe([]);
-    expect(runMediaRule(ContentType::LinkedInPageDocument->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::LinkedInPost->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::LinkedInPagePost->value, $media))->toBe([]);
 });
 
-test('linkedin document detects a pdf from mime when type field is missing', function () {
+test('linkedin post detects a pdf from mime when type field is missing', function () {
     $media = [['mime_type' => 'application/pdf']];
 
-    expect(runMediaRule(ContentType::LinkedInDocument->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::LinkedInPost->value, $media))->toBe([]);
 });
 
-test('linkedin document rejects an image', function () {
-    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg']];
-
-    $errors = runMediaRule(ContentType::LinkedInDocument->value, $media);
-
-    expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support images');
-});
-
-test('a pdf is rejected on content types that are not documents', function () {
-    $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf']];
+test('a pdf must be the only attachment on linkedin', function () {
+    $media = [
+        ['type' => MediaType::Document->value, 'mime_type' => 'application/pdf'],
+        ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg'],
+    ];
 
     $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support PDF documents');
+    expect($errors[0])->toContain('must be the only attachment');
+});
 
-    expect(runMediaRule(ContentType::LinkedInCarousel->value, $media)[0])->toContain('does not support PDF documents');
+test('linkedin rejects mixing an image and a video', function () {
+    $media = [
+        ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg'],
+        ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4'],
+    ];
+
+    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain("can't combine an image and a video");
+});
+
+test('a pdf is rejected on content types that do not support documents', function () {
+    $media = [['type' => MediaType::Document->value, 'mime_type' => 'application/pdf']];
+
+    $errors = runMediaRule(ContentType::XPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('does not support PDF documents');
 });
 
 test('falls back to stored media when the request omits the media key', function () {
+    // A PDF fallback on a document-capable type passes.
     $errors = [];
     (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
         ->setData([]) // no 'media' key in the request -> use the fallback
-        ->validate('platforms.0.content_type', ContentType::LinkedInDocument->value, function (string $message) use (&$errors): void {
+        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
         });
 
     expect($errors)->toBe([]);
 
-    $imageErrors = [];
-    (new ContentTypeCompatibleWithMedia([['type' => 'image', 'mime_type' => 'image/jpeg']]))
+    // The same PDF fallback on X (no document support) is rejected — proving the fallback is used.
+    $xErrors = [];
+    (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
         ->setData([])
-        ->validate('platforms.0.content_type', ContentType::LinkedInDocument->value, function (string $message) use (&$imageErrors): void {
-            $imageErrors[] = $message;
+        ->validate('platforms.0.content_type', ContentType::XPost->value, function (string $message) use (&$xErrors): void {
+            $xErrors[] = $message;
         });
 
-    expect($imageErrors)->toHaveCount(1);
-    expect($imageErrors[0])->toContain('does not support images');
+    expect($xErrors)->toHaveCount(1);
+    expect($xErrors[0])->toContain('does not support PDF documents');
 });
 
 test('request media takes precedence over the stored fallback', function () {
-    // Fallback is a PDF, but the request explicitly carries an image instead.
+    // Fallback is a lone PDF (would pass), but the request carries a PDF + image,
+    // which must be rejected — proving the request media is used over the fallback.
     $errors = [];
     (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
-        ->setData(['media' => [['type' => 'image', 'mime_type' => 'image/jpeg']]])
-        ->validate('platforms.0.content_type', ContentType::LinkedInDocument->value, function (string $message) use (&$errors): void {
+        ->setData(['media' => [
+            ['type' => 'document', 'mime_type' => 'application/pdf'],
+            ['type' => 'image', 'mime_type' => 'image/jpeg'],
+        ]])
+        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
         });
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support images');
+    expect($errors[0])->toContain('must be the only attachment');
 });
 
 test('does nothing for invalid content type values', function () {

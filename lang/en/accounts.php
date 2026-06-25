@@ -15,7 +15,7 @@ return [
     'disconnect' => 'Disconnect',
 
     'descriptions' => [
-        'linkedin' => 'Connect your LinkedIn personal profile',
+        'linkedin' => 'Connect your LinkedIn profile or company page',
         'linkedin-page' => 'Connect a LinkedIn company page',
         'x' => 'Connect your X (Twitter) account',
         'tiktok' => 'Connect your TikTok account',
@@ -98,6 +98,12 @@ return [
         'no_pages' => 'No pages found',
         'no_pages_description' => 'You are not an administrator of any LinkedIn page.',
         'page_label' => 'LinkedIn Page',
+        'select_title' => 'Where do you want to post?',
+        'select_subtitle' => 'Post as yourself or choose a company page you manage.',
+        'person_tag' => 'Person',
+        'organization_tag' => 'Organization',
+        'view' => 'View',
+        'choose' => 'Choose',
     ],
 
     'flash' => [

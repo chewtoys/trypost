@@ -61,6 +61,12 @@ export const getMediaValidationWarning = (
     if (! rules.acceptDocuments && documents.length > 0) {
         return { key: 'no_document_allowed', params: {} };
     }
+    if (rules.forbidsMixedMedia && videos.length > 0 && images.length > 0) {
+        return { key: 'no_mixed_media', params: {} };
+    }
+    if (rules.acceptDocuments && documents.length > 0 && total > 1) {
+        return { key: 'document_not_alone', params: {} };
+    }
     if (! rules.acceptsGif && gifs.length > 0) {
         return { key: 'gif_not_allowed', params: {} };
     }

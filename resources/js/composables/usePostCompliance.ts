@@ -24,8 +24,8 @@ export const PLATFORM_VARIANTS: Record<string, string[]> = {
     [Platform.Facebook]: [ContentType.FacebookPost, ContentType.FacebookReel, ContentType.FacebookStory],
     [Platform.Instagram]: [ContentType.InstagramFeed, ContentType.InstagramReel, ContentType.InstagramStory],
     [Platform.InstagramFacebook]: [ContentType.InstagramFeed, ContentType.InstagramReel, ContentType.InstagramStory],
-    [Platform.LinkedIn]: [ContentType.LinkedInPost, ContentType.LinkedInCarousel, ContentType.LinkedInDocument],
-    [Platform.LinkedInPage]: [ContentType.LinkedInPagePost, ContentType.LinkedInPageCarousel, ContentType.LinkedInPageDocument],
+    [Platform.LinkedIn]: [ContentType.LinkedInPost],
+    [Platform.LinkedInPage]: [ContentType.LinkedInPagePost],
     [Platform.TikTok]: [ContentType.TikTokVideo, ContentType.TikTokPhoto],
     [Platform.Pinterest]: [ContentType.PinterestPin, ContentType.PinterestVideoPin, ContentType.PinterestCarousel],
 };
@@ -101,6 +101,7 @@ export const getMediaIncompatibilityReason = (
     if (!rules.acceptVideos && videos.length > 0) return trans('posts.edit.compliance.no_videos');
     if (!rules.acceptImages && images.length > 0) return trans('posts.edit.compliance.no_images');
     if (!rules.acceptDocuments && documents.length > 0) return trans('posts.edit.compliance.no_documents');
+    if (rules.acceptDocuments && documents.length > 0 && total > 1) return trans('posts.edit.compliance.document_not_alone');
     if (rules.forbidsMixedMedia && videos.length > 0 && images.length > 0) return trans('posts.edit.compliance.no_mixed_media');
     if (!rules.acceptsGif && gifs.length > 0) return trans('posts.edit.compliance.no_gifs');
     if (total > rules.maxFiles) return trans('posts.edit.compliance.too_many_files', { max: String(rules.maxFiles) });

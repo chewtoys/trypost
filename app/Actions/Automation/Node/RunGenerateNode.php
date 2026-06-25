@@ -251,8 +251,8 @@ class RunGenerateNode
      *
      * Carousel-capable content types:
      *   - instagram_feed       (Instagram feed carousel = multi-image feed post)
-     *   - linkedin_carousel    (LinkedIn personal carousel PDF)
-     *   - linkedin_page_carousel (LinkedIn page carousel PDF)
+     *   - linkedin_post        (LinkedIn multi-image post — 2+ images)
+     *   - linkedin_page_post   (LinkedIn page multi-image post)
      *   - pinterest_carousel   (Pinterest carousel pin)
      *   - tiktok_photo         (TikTok photo carousel)
      *

@@ -213,7 +213,7 @@ const getBoards = (account: SocialAccount): PinterestBoard[] =>
 
 // Image-capability is derived from the SAME media rules the post editor uses
 // (per content type), never a hardcoded list — facebook_post, tiktok_photo,
-// linkedin_carousel etc. all accept multiple images. We cap AI image generation
+// linkedin_post etc. all accept multiple images. We cap AI image generation
 // at MAX_GENERATED_IMAGES regardless of how many a platform technically allows.
 const MAX_GENERATED_IMAGES = 10;
 

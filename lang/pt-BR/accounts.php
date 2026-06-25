@@ -15,7 +15,7 @@ return [
     'disconnect' => 'Desconectar',
 
     'descriptions' => [
-        'linkedin' => 'Conecte seu perfil pessoal do LinkedIn',
+        'linkedin' => 'Conecte seu perfil do LinkedIn ou página de empresa',
         'linkedin-page' => 'Conecte uma página de empresa do LinkedIn',
         'x' => 'Conecte sua conta do X (Twitter)',
         'tiktok' => 'Conecte sua conta do TikTok',
@@ -98,6 +98,12 @@ return [
         'no_pages' => 'Nenhuma página encontrada',
         'no_pages_description' => 'Você não é administrador de nenhuma página do LinkedIn.',
         'page_label' => 'Página do LinkedIn',
+        'select_title' => 'Onde você quer publicar?',
+        'select_subtitle' => 'Publique como você mesmo ou escolha uma página de empresa que você administra.',
+        'person_tag' => 'Pessoa',
+        'organization_tag' => 'Empresa',
+        'view' => 'Ver',
+        'choose' => 'Escolher',
     ],
 
     'flash' => [

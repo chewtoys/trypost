@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
@@ -20,6 +21,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -81,6 +83,37 @@ test('publish to social platform marks platform as published on success', functi
     expect($this->postPlatform->platform_url)->toBe('https://linkedin.com/post/123');
 });
 
+test('publish job dispatches a linkedin-page post to the page publisher', function () {
+    Event::fake();
+
+    $workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $pageAccount = SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $pagePostPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pageAccount->id,
+        'platform' => Platform::LinkedInPage,
+        'content_type' => ContentType::LinkedInPagePost,
+        'enabled' => true,
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPagePublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn([
+        'id' => 'org-post-1',
+        'url' => 'https://linkedin.com/company/post/1',
+    ]);
+    $this->app->instance(LinkedInPagePublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($pagePostPlatform))->handle();
+
+    $pagePostPlatform->refresh();
+    expect($pagePostPlatform->status)->toBe(PlatformStatus::Published);
+    expect($pagePostPlatform->platform_post_id)->toBe('org-post-1');
+});
+
 test('publish job runs the real document flow end-to-end for a LinkedIn PDF post', function () {
     Event::fake();
 
@@ -89,7 +122,7 @@ test('publish job runs the real document flow end-to-end for a LinkedIn PDF post
         'platform_user_id' => 'person-xyz',
         'token_expires_at' => now()->addDays(60),
     ]);
-    $this->postPlatform->update(['content_type' => ContentType::LinkedInDocument]);
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
     $this->post->update([
         'content' => 'Our deck',
         'media' => [[

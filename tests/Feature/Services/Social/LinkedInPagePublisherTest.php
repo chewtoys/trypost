@@ -47,7 +47,7 @@ beforeEach(function () {
 
 test('linkedin page publisher can publish text-only post', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -69,7 +69,7 @@ test('linkedin page publisher can publish text-only post', function () {
 
 test('linkedin page publisher uses organization urn', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -90,7 +90,7 @@ test('linkedin page publisher throws exception when organization id missing', fu
 
 test('linkedin page publisher uses correct headers', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -107,7 +107,7 @@ test('linkedin page publisher uses correct headers', function () {
 
 test('linkedin page publisher throws exception on api error', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response([
             'message' => 'Invalid request',
             'status' => 400,
         ], 400),
@@ -119,11 +119,11 @@ test('linkedin page publisher throws exception on api error', function () {
 
 test('linkedin page publisher throws token expired exception on auth error after retry', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response([
             'code' => 'EXPIRED_ACCESS_TOKEN',
             'message' => 'The token used in the request has expired',
         ], 401),
-        'https://www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'error' => 'invalid_grant',
             'error_description' => 'The refresh token is invalid',
         ], 400),
@@ -137,12 +137,12 @@ test('linkedin page publisher refreshes token when expired', function () {
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
 
     Http::fake([
-        'https://www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'access_token' => 'new-access-token',
             'refresh_token' => 'new-refresh-token',
             'expires_in' => 5184000,
         ], 200),
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -171,7 +171,7 @@ test('linkedin page publisher throws TokenExpiredException when refresh_token is
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
 
     Http::fake([
-        'https://www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'error' => 'invalid_grant',
             'error_description' => 'The refresh token is invalid',
         ], 400),
@@ -185,7 +185,7 @@ test('linkedin page publisher handles empty content', function () {
     $this->post->update(['content' => '']);
 
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -199,16 +199,9 @@ test('linkedin page publisher handles empty content', function () {
     });
 });
 
-test('linkedin page publisher throws exception for unsupported content type', function () {
-    $this->postPlatform->update(['content_type' => ContentType::InstagramFeed]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(Exception::class, 'Unsupported LinkedIn Page content type');
-});
-
 test('linkedin page publisher builds correct company url when username present', function () {
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -222,7 +215,7 @@ test('linkedin page publisher builds feed url when username missing', function (
     $this->socialAccount->update(['username' => null]);
 
     Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
         ]),
     ]);
@@ -286,7 +279,7 @@ test('linkedin page publisher can publish post with image using organization urn
 
 test('linkedin page publisher can publish a document (pdf carousel) using organization urn', function () {
     $this->postPlatform->update([
-        'content_type' => ContentType::LinkedInPageDocument,
+        'content_type' => ContentType::LinkedInPagePost,
         'meta' => ['document_title' => 'Company Deck'],
     ]);
     $this->post->update([
@@ -348,7 +341,7 @@ test('linkedin page publisher can publish a document (pdf carousel) using organi
 });
 
 test('linkedin page publisher throws and does not post when document processing fails', function () {
-    $this->postPlatform->update(['content_type' => ContentType::LinkedInPageDocument]);
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInPagePost]);
     $this->post->update([
         'media' => [[
             'id' => 'doc-media-1', 'path' => 'media/2026-01/company-deck.pdf',

@@ -106,7 +106,7 @@ test('attaches a pdf document from a url to a LinkedIn post', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
     PostPlatform::factory()->create([
         'post_id' => $this->post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)

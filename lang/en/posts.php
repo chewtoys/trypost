@@ -139,12 +139,8 @@ return [
             'settings' => 'LinkedIn Settings',
             'settings_page' => 'LinkedIn Page Settings',
             'posting_to' => 'Posting to',
-            'variant_label' => 'Post type',
-            'variant' => [
-                'post' => 'Post',
-                'carousel' => 'Carousel',
-                'document' => 'Document',
-            ],
+            'document_title' => 'Document title',
+            'document_title_placeholder' => 'Shown on your PDF document post',
         ],
         'pinterest' => [
             'settings' => 'Pinterest Settings',
@@ -190,6 +186,8 @@ return [
             'no_video_allowed' => 'This post type does not accept videos.',
             'no_image_allowed' => 'This post type accepts only videos.',
             'no_document_allowed' => 'This post type does not accept PDF documents.',
+            'no_mixed_media' => "Images and a video can't be combined in the same post.",
+            'document_not_alone' => 'A PDF must be the only attachment.',
             'gif_not_allowed' => 'This platform does not accept GIF. Remove the GIF or choose a different network.',
             'image_too_large' => 'Image exceeds the :max limit for this post type (yours is :current).',
             'video_too_large' => 'Video exceeds the :max limit for this post type (yours is :current).',
@@ -348,6 +346,7 @@ return [
             'no_mixed_media' => "Images and videos can't be combined in the same post.",
             'no_gifs' => 'GIFs are not supported here.',
             'no_documents' => 'PDF documents are not supported by this format.',
+            'document_not_alone' => 'A PDF must be the only attachment.',
             'video_too_large' => 'Video exceeds the size limit for this platform.',
             'video_too_long' => 'Video must be under :seconds seconds for this format.',
             'image_too_large' => 'Image exceeds the size limit for this platform.',
@@ -463,27 +462,11 @@ return [
         ],
         'linkedin_post' => [
             'label' => 'Post',
-            'description' => 'Standard post with text and media',
-        ],
-        'linkedin_carousel' => [
-            'label' => 'Carousel',
-            'description' => 'Swipeable images',
+            'description' => 'Standard post — single image, multi-image, video, or PDF',
         ],
         'linkedin_page_post' => [
             'label' => 'Post',
-            'description' => 'Standard post with text and media',
-        ],
-        'linkedin_page_carousel' => [
-            'label' => 'Carousel',
-            'description' => 'Swipeable images',
-        ],
-        'linkedin_document' => [
-            'label' => 'Document',
-            'description' => 'Swipeable PDF carousel',
-        ],
-        'linkedin_page_document' => [
-            'label' => 'Document',
-            'description' => 'Swipeable PDF carousel',
+            'description' => 'Standard post — single image, multi-image, video, or PDF',
         ],
         'facebook_post' => [
             'label' => 'Post',

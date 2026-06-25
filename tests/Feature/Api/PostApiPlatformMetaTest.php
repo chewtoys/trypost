@@ -59,7 +59,7 @@ it('persists the LinkedIn document_title meta on store', function () {
             'content' => 'Check our latest deck',
             'platforms' => [[
                 'social_account_id' => $linkedin->id,
-                'content_type' => ContentType::LinkedInDocument->value,
+                'content_type' => ContentType::LinkedInPost->value,
                 'meta' => ['document_title' => 'Q2 Report'],
             ]],
         ])
@@ -83,52 +83,28 @@ it('publishes a LinkedIn document post that has a PDF', function () {
     ]);
     $platform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $this->withHeaders($this->headers)
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Publishing->value,
-            'platforms' => [['id' => $platform->id, 'content_type' => ContentType::LinkedInDocument->value]],
+            'platforms' => [['id' => $platform->id, 'content_type' => ContentType::LinkedInPost->value]],
         ])
         ->assertOk();
 
     Queue::assertPushed(PublishPost::class);
 });
 
-it('rejects publishing a LinkedIn document post whose media is an image, not a PDF', function () {
+it('rejects publishing a LinkedIn post that mixes a PDF with an image', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'media' => [[
-            'id' => 'img-1', 'path' => 'medias/slide.jpg', 'url' => 'https://example.com/slide.jpg',
-            'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'slide.jpg',
-        ]],
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
-    ]);
-
-    $this->withHeaders($this->headers)
-        ->putJson(route('api.posts.update', $post), [
-            'status' => PostStatus::Publishing->value,
-            'platforms' => [['id' => $platform->id, 'content_type' => ContentType::LinkedInDocument->value]],
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
-});
-
-it('rejects publishing a regular LinkedIn post that has a PDF attached', function () {
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'media' => [[
-            'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
-            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
-        ]],
+        'media' => [
+            ['id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf', 'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf'],
+            ['id' => 'img-1', 'path' => 'medias/slide.jpg', 'url' => 'https://example.com/slide.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'slide.jpg'],
+        ],
     ]);
     $platform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
@@ -159,7 +135,7 @@ it('publishes a valid LinkedIn document without resubmitting content_type', func
     ]);
     $platform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $this->withHeaders($this->headers)
@@ -170,31 +146,6 @@ it('publishes a valid LinkedIn document without resubmitting content_type', func
         ->assertOk();
 
     Queue::assertPushed(PublishPost::class);
-});
-
-it('rejects publishing a misconfigured post even when content_type is not resubmitted', function () {
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'media' => [[
-            'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
-            'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
-        ]],
-    ]);
-    // Stored as a regular post but carrying a PDF — the client publishes without resubmitting content_type.
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
-    ]);
-
-    $this->withHeaders($this->headers)
-        ->putJson(route('api.posts.update', $post), [
-            'status' => PostStatus::Publishing->value,
-            'platforms' => [['id' => $platform->id]],
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
 });
 
 it('rejects only the platform that cannot take a PDF in a multi-platform post', function () {
@@ -212,7 +163,7 @@ it('rejects only the platform that cannot take a PDF in a multi-platform post', 
     ]);
     $linkedinPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInDocument, 'enabled' => true,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
     $xPlatform = PostPlatform::factory()->create([
         'post_id' => $post->id, 'social_account_id' => $x->id,
@@ -223,7 +174,7 @@ it('rejects only the platform that cannot take a PDF in a multi-platform post', 
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Publishing->value,
             'platforms' => [
-                ['id' => $linkedinPlatform->id, 'content_type' => ContentType::LinkedInDocument->value],
+                ['id' => $linkedinPlatform->id, 'content_type' => ContentType::LinkedInPost->value],
                 ['id' => $xPlatform->id, 'content_type' => ContentType::XPost->value],
             ],
         ])
