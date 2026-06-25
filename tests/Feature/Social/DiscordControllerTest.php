@@ -7,6 +7,7 @@ use App\Enums\SocialAccount\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -52,7 +53,7 @@ test('discord oauth callback creates the server account', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.discord.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -74,7 +75,7 @@ test('discord callback fails gracefully when no server was authorized', function
     $response = $this->actingAs($this->user)->get(route('app.social.discord.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Discord)->count())->toBe(0);
 });

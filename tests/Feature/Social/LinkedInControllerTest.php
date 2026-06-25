@@ -134,8 +134,8 @@ test('connect returns the popup callback when the user has no workspace', functi
     $response = $this->actingAs($this->user)->get(route('app.social.linkedin.connect'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
 });
 
 test('linkedin callback stores the person and organizations then redirects to the selector', function () {
@@ -185,8 +185,8 @@ test('linkedin callback fails with expired session', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.linkedin.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('linkedin callback handles oauth errors gracefully', function () {
@@ -200,8 +200,8 @@ test('linkedin callback handles oauth errors gracefully', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.linkedin.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
 test('select-identity screen renders the person and organizations', function () {
@@ -271,7 +271,7 @@ test('selecting the person is rejected when the personal profile capability is d
         'type' => 'person',
     ]);
 
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
     $this->assertDatabaseMissing('social_accounts', ['platform_user_id' => 'person-123']);
 });
 
@@ -294,7 +294,7 @@ test('selecting an organization is rejected when company pages are disabled', fu
         'organization_id' => 123456,
     ]);
 
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
     $this->assertDatabaseMissing('social_accounts', ['platform_user_id' => 123456]);
 });
 
@@ -304,8 +304,8 @@ test('select-identity returns the popup callback when the session expired', func
     $response = $this->actingAs($this->user)->get(route('app.social.linkedin.select-identity'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
 });
 
 test('selecting the person creates a linkedin account', function () {
@@ -324,8 +324,8 @@ test('selecting the person creates a linkedin account', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (Assert $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (Assert $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -384,7 +384,7 @@ test('selecting an organization creates a linkedin-page account with the admin r
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (Assert $page) => $page->where('success', true));
 
     $account = SocialAccount::where('platform', Platform::LinkedInPage->value)
         ->where('platform_user_id', 123456)
@@ -416,7 +416,7 @@ test('selecting an organization the member does not administer is rejected', fun
         'organization_id' => 999,
     ]);
 
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
     $this->assertDatabaseMissing('social_accounts', ['platform_user_id' => 999]);
 });
 
@@ -462,8 +462,8 @@ test('select rejects an invalid identity type without stranding the popup', func
 
     // A redirect-back would strand the popup; it must answer with the self-closing callback view.
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
+    $response->assertInertia(fn (Assert $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
     $this->assertDatabaseMissing('social_accounts', ['platform_user_id' => 'person-123']);
 });
 
@@ -473,8 +473,8 @@ test('select fails with expired session', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('selecting the person shows network_taken when a linkedin page already occupies the network', function () {
@@ -500,8 +500,8 @@ test('selecting the person shows network_taken when a linkedin page already occu
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', __('accounts.popup_callback.network_taken'));
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     $this->assertDatabaseMissing('social_accounts', [
         'platform' => Platform::LinkedIn->value,
@@ -535,7 +535,7 @@ test('user can connect multiple linkedin organizations in self-hosted mode', fun
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (Assert $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::LinkedInPage)->count())->toBe(2);
 });

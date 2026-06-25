@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Enum;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
@@ -39,7 +38,7 @@ class LinkedInController extends SocialController
         }
     }
 
-    public function connect(Request $request): Response|View
+    public function connect(Request $request): Response|InertiaResponse
     {
         $this->ensurePlatformEnabled();
 
@@ -61,7 +60,7 @@ class LinkedInController extends SocialController
         );
     }
 
-    public function callback(Request $request): View|RedirectResponse
+    public function callback(Request $request): InertiaResponse|RedirectResponse
     {
         $workspaceId = session('social_connect_workspace');
 
@@ -105,7 +104,7 @@ class LinkedInController extends SocialController
         }
     }
 
-    public function selectIdentity(Request $request): InertiaResponse|View
+    public function selectIdentity(Request $request): InertiaResponse
     {
         $pending = session('linkedin_pending');
 
@@ -125,7 +124,7 @@ class LinkedInController extends SocialController
         ]);
     }
 
-    public function select(Request $request): View
+    public function select(Request $request): InertiaResponse
     {
         $validator = Validator::make($request->all(), [
             'type' => ['required', new Enum(LinkedInIdentityType::class)],

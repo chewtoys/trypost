@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -81,8 +82,8 @@ test('youtube oauth callback creates account with single channel', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -168,8 +169,8 @@ test('youtube callback fails when no channels found', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'No YouTube channels found. Please create a channel first.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'No YouTube channels found. Please create a channel first.'));
 });
 
 test('youtube callback fails with expired session', function () {
@@ -178,8 +179,8 @@ test('youtube callback fails with expired session', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('user can connect multiple youtube accounts in self-hosted mode', function () {
@@ -225,7 +226,7 @@ test('user can connect multiple youtube accounts in self-hosted mode', function 
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::YouTube)->count())->toBe(2);
 });
@@ -245,8 +246,8 @@ test('youtube callback handles oauth errors gracefully', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
 test('youtube channel selection creates account', function () {
@@ -282,7 +283,7 @@ test('youtube channel selection creates account', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -300,8 +301,8 @@ test('youtube channel selection fails with expired session', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('youtube callback shows network_taken when the network is already connected', function () {
@@ -347,9 +348,9 @@ test('youtube callback shows network_taken when the network is already connected
     $response = $this->actingAs($this->user)->get(route('app.social.youtube.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', __('accounts.popup_callback.network_taken'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::YouTube)->count())->toBe(1);
 });

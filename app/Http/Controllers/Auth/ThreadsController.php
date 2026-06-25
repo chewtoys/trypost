@@ -12,8 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ThreadsController extends SocialController
@@ -57,7 +57,7 @@ class ThreadsController extends SocialController
         return Inertia::location("https://threads.net/oauth/authorize?{$params}");
     }
 
-    public function callback(Request $request): View
+    public function callback(Request $request): InertiaResponse
     {
         $workspaceId = session('social_connect_workspace');
         $savedState = session('threads_oauth_state');

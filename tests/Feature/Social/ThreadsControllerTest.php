@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -59,8 +60,8 @@ test('threads oauth callback creates account', function () {
     ]));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -83,8 +84,8 @@ test('threads callback fails with invalid state', function () {
     ]));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Invalid state. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Invalid state. Please try again.'));
 
     $this->assertDatabaseMissing('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -101,8 +102,8 @@ test('threads callback fails with expired session', function () {
     ]));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('user can connect multiple threads accounts in self-hosted mode', function () {
@@ -142,7 +143,7 @@ test('user can connect multiple threads accounts in self-hosted mode', function 
     ]));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Threads)->count())->toBe(2);
 });
@@ -168,8 +169,8 @@ test('threads callback handles token exchange failure', function () {
     ]));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
 test('threads callback shows network_taken when the network is already connected', function () {
@@ -210,9 +211,9 @@ test('threads callback shows network_taken when the network is already connected
     ]));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', __('accounts.popup_callback.network_taken'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Threads)->count())->toBe(1);
 });

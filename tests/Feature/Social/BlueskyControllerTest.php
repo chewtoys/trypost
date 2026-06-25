@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -45,8 +46,8 @@ test('user can connect bluesky account with valid credentials', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -107,7 +108,7 @@ test('user can connect multiple bluesky accounts in self-hosted mode', function 
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Bluesky)->count())->toBe(2);
 });

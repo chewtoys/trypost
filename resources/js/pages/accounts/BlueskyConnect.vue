@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { useForm } from '@inertiajs/vue3';
 import { IconInfoCircle } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { ref } from 'vue';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -10,56 +10,40 @@ import { Label } from '@/components/ui/label';
 import PopupLayout from '@/layouts/PopupLayout.vue';
 import { store as storeBluesky } from '@/routes/app/social/bluesky';
 
-interface Props {
-    errors?: Record<string, string>;
-}
+const form = useForm({ identifier: '', password: '' });
 
-defineProps<Props>();
-
-const formRef = ref<HTMLFormElement | null>(null);
-const identifier = ref('');
-const password = ref('');
-const isSubmitting = ref(false);
-
-const submit = () => {
-    isSubmitting.value = true;
-    formRef.value?.submit();
-};
-
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+const onSubmit = () => form.post(storeBluesky.url());
 </script>
 
 <template>
     <PopupLayout :title="$t('accounts.bluesky.title')">
         <div class="max-w-md mx-auto">
             <div class="flex items-center gap-3 mb-6">
-                <img src="/images/accounts/bluesky.png" alt="Bluesky" class="h-12 w-12" />
+                <img src="/images/accounts/bluesky.png" alt="Bluesky" class="h-10 w-10" />
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.bluesky.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.bluesky.description') }}</p>
                 </div>
             </div>
 
-            <form ref="formRef" :action="storeBluesky.url()" method="POST" @submit.prevent="submit" class="space-y-4">
-                <input type="hidden" name="_token" :value="csrfToken" />
-
+            <form @submit.prevent="onSubmit" class="space-y-4">
                 <div class="space-y-2">
                     <Label for="identifier">{{ $t('accounts.bluesky.email') }}</Label>
-                    <Input id="identifier" name="identifier" v-model="identifier" type="text"
-                        :placeholder="trans('accounts.bluesky.email_placeholder')" :class="{ 'border-destructive': errors?.identifier }"
+                    <Input id="identifier" v-model="form.identifier" type="text"
+                        :placeholder="trans('accounts.bluesky.email_placeholder')" :class="{ 'border-destructive': form.errors.identifier }"
                     />
-                    <p v-if="errors?.identifier" class="text-sm text-destructive">
-                        {{ errors.identifier }}
+                    <p v-if="form.errors.identifier" class="text-sm text-destructive">
+                        {{ form.errors.identifier }}
                     </p>
                 </div>
 
                 <div class="space-y-2">
                     <Label for="password">{{ $t('accounts.bluesky.app_password') }}</Label>
-                    <Input id="password" name="password" v-model="password" type="password"
-                        :placeholder="trans('accounts.bluesky.app_password_placeholder')" :class="{ 'border-destructive': errors?.password }"
+                    <Input id="password" v-model="form.password" type="password"
+                        :placeholder="trans('accounts.bluesky.app_password_placeholder')" :class="{ 'border-destructive': form.errors.password }"
                     />
-                    <p v-if="errors?.password" class="text-sm text-destructive">
-                        {{ errors.password }}
+                    <p v-if="form.errors.password" class="text-sm text-destructive">
+                        {{ form.errors.password }}
                     </p>
                 </div>
 
@@ -70,8 +54,8 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribut
                     </AlertDescription>
                 </Alert>
 
-                <Button type="submit" :disabled="isSubmitting" class="w-full">
-                    {{ isSubmitting ? $t('accounts.bluesky.submitting') : $t('accounts.bluesky.submit') }}
+                <Button type="submit" :disabled="form.processing" class="w-full">
+                    {{ form.processing ? $t('accounts.bluesky.submitting') : $t('accounts.bluesky.submit') }}
                 </Button>
             </form>
         </div>

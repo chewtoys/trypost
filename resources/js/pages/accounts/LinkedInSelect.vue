@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { useForm } from '@inertiajs/vue3';
 import {
     IconBuilding,
     IconExternalLink,
     IconUser,
-    IconUsers,
 } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,33 +31,22 @@ const props = defineProps<{
     organizations: Organization[];
 }>();
 
+const form = useForm({ type: 'person', organization_id: '' });
+
 const isEmpty = computed(
     () => !props.person && props.organizations.length === 0,
 );
 
-const formRef = ref<HTMLFormElement | null>(null);
-const selectedType = ref<'person' | 'organization'>('person');
-const selectedOrg = ref<Organization | null>(null);
-
-const csrfToken =
-    document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute('content') ?? '';
-
-const submit = () => {
-    setTimeout(() => formRef.value?.submit(), 0);
-};
-
 const choosePerson = () => {
-    selectedType.value = 'person';
-    selectedOrg.value = null;
-    submit();
+    form.type = 'person';
+    form.organization_id = '';
+    form.post(selectLinkedIn.url());
 };
 
 const chooseOrganization = (org: Organization) => {
-    selectedType.value = 'organization';
-    selectedOrg.value = org;
-    submit();
+    form.type = 'organization';
+    form.organization_id = org.id;
+    form.post(selectLinkedIn.url());
 };
 
 const openExternal = (url: string | null) => {
@@ -75,12 +64,6 @@ const organizationUrl = (vanity: string | null): string | null =>
 
 <template>
     <PopupLayout :title="$t('accounts.linkedin.select_title')">
-        <form ref="formRef" :action="selectLinkedIn.url()" method="POST" class="hidden">
-            <input type="hidden" name="_token" :value="csrfToken" />
-            <input type="hidden" name="type" :value="selectedType" />
-            <input type="hidden" name="organization_id" :value="selectedOrg?.id ?? ''" />
-        </form>
-
         <div class="flex flex-col gap-6">
             <div class="flex items-center gap-3">
                 <img src="/images/accounts/linkedin.png" alt="LinkedIn" class="h-10 w-10" />
@@ -140,7 +123,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             <IconExternalLink class="h-4 w-4" />
                             {{ $t('accounts.linkedin.view') }}
                         </Button>
-                        <Button size="sm" dusk="choose-person" @click="choosePerson">
+                        <Button size="sm" dusk="choose-person" :disabled="form.processing" @click="choosePerson">
                             {{ $t('accounts.linkedin.choose') }}
                         </Button>
                     </div>
@@ -164,7 +147,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             <span
                                 class="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                             >
-                                <IconUsers class="h-3 w-3" />
+                                <IconBuilding class="h-3 w-3" />
                                 {{ $t('accounts.linkedin.organization_tag') }}
                             </span>
                         </div>
@@ -182,7 +165,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             <IconExternalLink class="h-4 w-4" />
                             {{ $t('accounts.linkedin.view') }}
                         </Button>
-                        <Button size="sm" dusk="choose-organization" @click="chooseOrganization(org)">
+                        <Button size="sm" dusk="choose-organization" :disabled="form.processing" @click="chooseOrganization(org)">
                             {{ $t('accounts.linkedin.choose') }}
                         </Button>
                     </div>

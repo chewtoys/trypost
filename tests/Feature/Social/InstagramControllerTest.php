@@ -8,6 +8,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -62,8 +63,8 @@ test('instagram oauth callback creates account', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -78,8 +79,8 @@ test('instagram callback fails with expired session', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('user can connect multiple instagram accounts in self-hosted mode', function () {
@@ -115,7 +116,7 @@ test('user can connect multiple instagram accounts in self-hosted mode', functio
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Instagram)->count())->toBe(2);
 });
@@ -150,9 +151,9 @@ test('instagram callback shows network_taken when the network is already connect
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', __('accounts.popup_callback.network_taken'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Instagram)->count())->toBe(1);
 });
@@ -172,8 +173,8 @@ test('instagram callback handles oauth errors gracefully', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.instagram.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
 test('instagram connect redirects to create workspace if none exists', function () {

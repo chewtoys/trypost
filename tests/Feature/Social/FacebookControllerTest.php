@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -70,8 +71,8 @@ test('facebook oauth callback creates account with single page', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -119,9 +120,9 @@ test('facebook callback shows network_taken when the network is already connecte
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', __('accounts.popup_callback.network_taken'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     // The duplicate was blocked by the observer — only the pre-existing account remains.
     expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(1);
@@ -189,8 +190,8 @@ test('facebook callback fails when no pages found', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'No Facebook Pages found. You need to be an admin of at least one page.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'No Facebook Pages found. You need to be an admin of at least one page.'));
 });
 
 test('facebook callback fails with expired session', function () {
@@ -199,8 +200,8 @@ test('facebook callback fails with expired session', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('user can connect multiple facebook accounts in self-hosted mode', function () {
@@ -239,7 +240,7 @@ test('user can connect multiple facebook accounts in self-hosted mode', function
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(2);
 });
@@ -259,8 +260,8 @@ test('facebook callback handles oauth errors gracefully', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
 test('facebook page selection creates account', function () {
@@ -293,7 +294,7 @@ test('facebook page selection creates account', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -311,8 +312,8 @@ test('facebook page selection fails with expired session', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('facebook page selection fails with invalid page id', function () {
@@ -337,6 +338,6 @@ test('facebook page selection fails with invalid page id', function () {
     ]);
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Page not found.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Page not found.'));
 });

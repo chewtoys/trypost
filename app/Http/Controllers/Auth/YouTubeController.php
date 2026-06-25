@@ -12,8 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -50,7 +50,7 @@ class YouTubeController extends SocialController
         return $this->redirectToGoogle();
     }
 
-    public function callback(Request $request): View|RedirectResponse
+    public function callback(Request $request): InertiaResponse|RedirectResponse
     {
         $workspaceId = session('social_connect_workspace');
 
@@ -168,7 +168,7 @@ class YouTubeController extends SocialController
         ]);
     }
 
-    public function select(Request $request): View
+    public function select(Request $request): InertiaResponse
     {
         $request->validate([
             'channel_id' => 'required|string',

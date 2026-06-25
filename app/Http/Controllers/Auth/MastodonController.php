@@ -11,7 +11,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -117,7 +116,7 @@ class MastodonController extends SocialController
     /**
      * Handle OAuth callback
      */
-    public function callback(Request $request): View
+    public function callback(Request $request): Response
     {
         $workspaceId = session('social_connect_workspace');
         $savedState = session('mastodon_oauth_state');

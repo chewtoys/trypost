@@ -10,7 +10,7 @@ use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
+use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -43,7 +43,7 @@ class PinterestController extends SocialController
         return $this->redirectToProvider($request, $this->driver, $this->scopes);
     }
 
-    public function callback(Request $request): View
+    public function callback(Request $request): InertiaResponse
     {
         $workspaceId = session('social_connect_workspace');
 

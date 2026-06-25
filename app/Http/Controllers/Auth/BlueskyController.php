@@ -11,7 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,7 +36,7 @@ class BlueskyController extends SocialController
         ]);
     }
 
-    public function store(Request $request): View|RedirectResponse
+    public function store(Request $request): Response|RedirectResponse
     {
         $this->ensurePlatformEnabled();
 
@@ -74,7 +74,7 @@ class BlueskyController extends SocialController
                     $errorMessage = $body['message'];
                 }
 
-                return back()->withErrors(['password' => $errorMessage]);
+                throw ValidationException::withMessages(['password' => $errorMessage]);
             }
 
             $data = $response->json();
@@ -113,13 +113,15 @@ class BlueskyController extends SocialController
             );
 
             return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Bluesky connection error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->withErrors(['password' => 'Error connecting to Bluesky. Please try again.']);
+            throw ValidationException::withMessages(['password' => 'Error connecting to Bluesky. Please try again.']);
         }
     }
 }

@@ -11,8 +11,8 @@ use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -53,7 +53,7 @@ class InstagramController extends SocialController
         return Inertia::location($url);
     }
 
-    public function callback(Request $request): View
+    public function callback(Request $request): InertiaResponse
     {
         $workspaceId = session('social_connect_workspace');
 

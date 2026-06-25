@@ -16,7 +16,6 @@ use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Socialite\Facades\Socialite;
@@ -135,7 +134,7 @@ class SocialController extends Controller
         Request $request,
         SocialPlatform $platform,
         string $driver
-    ): View {
+    ): Response {
         $workspaceId = session('social_connect_workspace');
 
         if (! $workspaceId) {
@@ -191,13 +190,15 @@ class SocialController extends Controller
     }
 
     /**
-     * Return a view that closes the popup and notifies the parent window.
+     * Render the Inertia page that notifies the opener and closes the connect
+     * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
+     * the XHR selection submits (an Inertia visit that swaps to this page).
      */
-    protected function popupCallback(bool $success, string $message, ?string $platform = null): View
+    protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
     {
         $this->forgetSocialConnectSession();
 
-        return view('auth.social-callback', [
+        return Inertia::render('accounts/PopupCallback', [
             'success' => $success,
             'message' => $message,
             'platform' => $platform,

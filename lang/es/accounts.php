@@ -83,6 +83,8 @@ return [
         'no_pages' => 'No se encontraron páginas',
         'no_pages_description' => 'No eres administrador de ninguna página de Facebook.',
         'page_label' => 'Página de Facebook',
+        'view' => 'Ver',
+        'choose' => 'Elegir',
     ],
 
     'instagram_facebook' => [
@@ -90,6 +92,8 @@ return [
         'description' => 'Elige qué cuenta de Instagram deseas conectar',
         'no_pages' => 'No se encontraron cuentas de Instagram',
         'no_pages_description' => 'No se encontraron páginas de Facebook con cuentas Instagram Business vinculadas.',
+        'view' => 'Ver',
+        'choose' => 'Elegir',
     ],
 
     'linkedin' => [
@@ -121,7 +125,6 @@ return [
         'title_success' => 'Conectado',
         'title_error' => 'Error',
         'closing' => 'Esta ventana se cerrará automáticamente...',
-        'close_now' => 'Puedes cerrar esta ventana ahora.',
         'connected' => '¡Cuenta conectada!',
         'reconnected' => '¡Cuenta reconectada!',
         'error_connecting' => 'Error al conectar la cuenta. Inténtalo de nuevo.',

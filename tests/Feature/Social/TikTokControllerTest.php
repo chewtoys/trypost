@@ -8,6 +8,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -64,8 +65,8 @@ test('tiktok oauth callback creates account', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
 
     $response->assertOk();
-    $response->assertViewIs('auth.social-callback');
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -82,8 +83,8 @@ test('tiktok callback fails with expired session', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Session expired. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
 test('user can connect multiple tiktok accounts in self-hosted mode', function () {
@@ -119,7 +120,7 @@ test('user can connect multiple tiktok accounts in self-hosted mode', function (
     $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', true);
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::TikTok)->count())->toBe(2);
 });
@@ -140,6 +141,6 @@ test('tiktok callback handles oauth errors gracefully', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
 
     $response->assertOk();
-    $response->assertViewHas('success', false);
-    $response->assertViewHas('message', 'Error connecting account. Please try again.');
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
