@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { IconBuilding, IconExternalLink, IconUser } from '@tabler/icons-vue';
+import {
+    IconBuilding,
+    IconExternalLink,
+    IconUser,
+    IconUsers,
+} from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -115,8 +120,9 @@ const organizationUrl = (vanity: string | null): string | null =>
                         <div class="flex items-center gap-2">
                             <h3 class="truncate font-semibold">{{ person.name }}</h3>
                             <span
-                                class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                                class="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                             >
+                                <IconUser class="h-3 w-3" />
                                 {{ $t('accounts.linkedin.person_tag') }}
                             </span>
                         </div>
@@ -156,8 +162,9 @@ const organizationUrl = (vanity: string | null): string | null =>
                         <div class="flex items-center gap-2">
                             <h3 class="truncate font-semibold">{{ org.name }}</h3>
                             <span
-                                class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                                class="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                             >
+                                <IconUsers class="h-3 w-3" />
                                 {{ $t('accounts.linkedin.organization_tag') }}
                             </span>
                         </div>

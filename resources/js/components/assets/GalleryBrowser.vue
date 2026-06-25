@@ -140,6 +140,9 @@ const toggleSelect = (asset: AssetMedia | SavedMedia, extra?: Partial<PickedMedi
                 url: asset.url,
                 type: asset.type,
                 mime_type: asset.mime_type,
+                original_filename: 'original_filename' in asset ? asset.original_filename : undefined,
+                size: 'size' in asset ? asset.size : undefined,
+                meta: 'meta' in asset ? (asset.meta ?? undefined) : undefined,
                 ...extra,
             },
         ];

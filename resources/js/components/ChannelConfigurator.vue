@@ -163,7 +163,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 v-else-if="channel.platform === Platform.LinkedIn || channel.platform === Platform.LinkedInPage"
                 :social-account="channel.socialAccount"
                 :platform="channel.platform"
-                :content-type="channel.contentType"
                 :media="media"
                 :meta="channel.meta"
                 :disabled="disabled"
