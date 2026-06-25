@@ -300,14 +300,17 @@ test('linkedin publisher can publish carousel with multiple images', function ()
     expect($result['id'])->toBe('urn:li:share:carousel999');
     expect($result['url'])->toContain('linkedin.com/feed/update/urn:li:share:carousel999');
 
-    // Assert the post payload contains multiImage.images with 3 items
+    // Each multiImage entry must carry the image URN under `id` (LinkedIn rejects `media`).
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/rest/posts')) {
             return false;
         }
         $images = data_get($request->data(), 'content.multiImage.images');
 
-        return is_array($images) && count($images) === 3;
+        return is_array($images)
+            && count($images) === 3
+            && data_get($images, '0.id') === 'urn:li:image:CarouselImageUrn1'
+            && ! array_key_exists('media', $images[0]);
     });
 });
 

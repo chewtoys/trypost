@@ -82,10 +82,14 @@ test('linkedin page publisher uses organization urn', function () {
 });
 
 test('linkedin page publisher throws exception when organization id missing', function () {
+    Http::fake();
     $this->socialAccount->update(['meta' => []]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(Exception::class, 'LinkedIn Page organization ID not configured');
+
+    // Fail-fast: the missing org id must abort before any LinkedIn request.
+    Http::assertNothingSent();
 });
 
 test('linkedin page publisher uses correct headers', function () {
@@ -275,6 +279,61 @@ test('linkedin page publisher can publish post with image using organization urn
         && ($request['author'] ?? '') === 'urn:li:organization:123456'
         && isset($request['content']['media']['id'])
     );
+});
+
+test('linkedin page publisher publishes a multi-image carousel with image ids under the organization', function () {
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/c1.jpg', 'url' => 'https://example.com/c1.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'c1.jpg'],
+            ['id' => 'm2', 'path' => 'media/c2.jpg', 'url' => 'https://example.com/c2.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'c2.jpg'],
+        ],
+    ]);
+
+    $imageUrns = ['urn:li:image:OrgCarousel1', 'urn:li:image:OrgCarousel2'];
+    $uploadUrls = ['https://www.linkedin.com/dms/upload/org/1', 'https://www.linkedin.com/dms/upload/org/2'];
+    $initCount = 0;
+
+    Http::fake(function ($request) use ($imageUrns, $uploadUrls, &$initCount) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            $idx = $initCount % 2;
+            $initCount++;
+
+            return Http::response(['value' => ['uploadUrl' => $uploadUrls[$idx], 'image' => $imageUrns[$idx]]], 200);
+        }
+
+        foreach ($uploadUrls as $uploadUrl) {
+            if ($url === $uploadUrl) {
+                return Http::response(null, 201);
+            }
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:orgcarousel']);
+        }
+
+        return Http::response('fake-image-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('urn:li:share:orgcarousel');
+
+    // Org carousel must author as the organization and send image URNs under `id` (not `media`).
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+        $data = $request->data();
+        $images = data_get($data, 'content.multiImage.images');
+
+        return data_get($data, 'author') === 'urn:li:organization:123456'
+            && is_array($images)
+            && count($images) === 2
+            && data_get($images, '0.id') === 'urn:li:image:OrgCarousel1'
+            && ! array_key_exists('media', $images[0]);
+    });
 });
 
 test('linkedin page publisher can publish a document (pdf carousel) using organization urn', function () {
