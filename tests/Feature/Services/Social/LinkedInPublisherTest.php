@@ -314,6 +314,60 @@ test('linkedin publisher can publish carousel with multiple images', function ()
     });
 });
 
+test('linkedin publisher caps a carousel at the platform max images', function () {
+    $media = [];
+    for ($i = 1; $i <= 12; $i++) {
+        $media[] = [
+            'id' => "test-media-{$i}",
+            'path' => "media/2026-01/carousel-{$i}.jpg",
+            'url' => "https://example.com/media/2026-01/carousel-{$i}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "carousel-{$i}.jpg",
+        ];
+    }
+    $this->post->update(['media' => $media]);
+
+    $initCallCount = 0;
+
+    Http::fake(function ($request) use (&$initCallCount) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            $initCallCount++;
+
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => "https://www.linkedin.com/dms/upload/v2/pic/carousel/{$initCallCount}",
+                    'image' => "urn:li:image:CarouselImageUrn{$initCallCount}",
+                ],
+            ], 200);
+        }
+
+        if (str_contains($url, '/dms/upload/v2/pic/carousel/')) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:capped']);
+        }
+
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    // Only the first 10 images (LinkedIn::maxImages) are uploaded; the extra 2 are dropped.
+    expect($initCallCount)->toBe(10);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        return count(data_get($request->data(), 'content.multiImage.images', [])) === 10;
+    });
+});
+
 test('linkedin publisher can publish post with video', function () {
     $this->post->update([
         'media' => [
@@ -571,6 +625,55 @@ test('linkedin publisher throws and does not post when document processing fails
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(Exception::class, 'LinkedIn document processing failed');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});
+
+test('linkedin publisher throws and does not post when document processing never completes', function () {
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'doc-media-1', 'path' => 'media/2026-01/deck.pdf',
+            'url' => 'https://example.com/media/2026-01/deck.pdf',
+            'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
+        ]],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms-uploads/document/timeout';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/documents') && str_contains($url, 'initializeUpload')) {
+            return Http::response(['value' => ['uploadUrl' => $uploadUrl, 'document' => 'urn:li:document:Timeout']], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/documents/')) {
+            return Http::response(['status' => 'PROCESSING'], 200);
+        }
+
+        return Http::response('fake-pdf-bytes', 200);
+    });
+
+    $publisher = new class extends LinkedInPublisher
+    {
+        protected function processingMaxAttempts(): int
+        {
+            return 2;
+        }
+
+        protected function processingPollSeconds(): int
+        {
+            return 0;
+        }
+    };
+
+    expect(fn () => $publisher->publish($this->postPlatform))
+        ->toThrow(Exception::class, 'processing did not complete in time');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });

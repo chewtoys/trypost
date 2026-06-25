@@ -134,11 +134,11 @@ abstract class AbstractLinkedInPublisher
     {
         $images = [];
 
-        foreach ($media as $item) {
-            if (! $item->isImage()) {
-                continue;
-            }
+        $imageItems = collect($media)
+            ->filter(fn ($item) => $item->isImage())
+            ->take($this->platform()->maxImages());
 
+        foreach ($imageItems as $item) {
             $imageUrn = $this->uploadImage($item);
 
             if ($imageUrn) {
@@ -447,18 +447,20 @@ abstract class AbstractLinkedInPublisher
 
     /**
      * Poll an asset until it finishes processing. LinkedIn rejects a post that
-     * references an asset still being processed, so we wait for AVAILABLE.
+     * references an asset still being processed, so we wait for AVAILABLE and
+     * fail loudly if it never gets there — publishing against an unprocessed
+     * asset would error out at the API anyway, with a far less obvious message.
      */
-    private function waitForProcessing(string $resource, string $assetUrn, string $label, int $maxAttempts = 30): void
+    private function waitForProcessing(string $resource, string $assetUrn, string $label): void
     {
         $encodedUrn = urlencode($assetUrn);
 
-        for ($i = 0; $i < $maxAttempts; $i++) {
+        for ($i = 0; $i < $this->processingMaxAttempts(); $i++) {
             $response = $this->getHttpClient()->get("{$this->baseUrl()}/rest/{$resource}/{$encodedUrn}");
 
             if ($response->failed()) {
                 Log::warning("{$this->label()} {$label} status check failed", ['attempt' => $i]);
-                sleep(5);
+                sleep($this->processingPollSeconds());
 
                 continue;
             }
@@ -473,10 +475,26 @@ abstract class AbstractLinkedInPublisher
                 throw new \Exception("{$this->label()} {$label} processing failed");
             }
 
-            sleep(5);
+            sleep($this->processingPollSeconds());
         }
 
-        Log::warning("{$this->label()} {$label} processing timeout, proceeding anyway");
+        throw new \Exception("{$this->label()} {$label} processing did not complete in time");
+    }
+
+    /**
+     * How many times to poll an uploaded asset for AVAILABLE before giving up.
+     */
+    protected function processingMaxAttempts(): int
+    {
+        return 30;
+    }
+
+    /**
+     * Seconds to wait between asset processing status checks.
+     */
+    protected function processingPollSeconds(): int
+    {
+        return 5;
     }
 
     private function downloadToTempFile(string $url, string $tempFile): void
