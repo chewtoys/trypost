@@ -214,4 +214,50 @@ export default {
         }
         return `${m}min`;
     },
+
+    /**
+     * Format seconds as a clock (m:ss, or h:mm:ss past one hour).
+     * For media badges and stopwatches (e.g. "5:30", "1:05:30").
+     */
+    formatClock(seconds: number): string {
+        const d = dayjs.duration(Math.round(seconds), 'seconds');
+
+        return d.asHours() >= 1 ? d.format('H:mm:ss') : d.format('m:ss');
+    },
+
+    /**
+     * Format seconds as short words (e.g. "45s", "5min", "5min 30s").
+     */
+    formatDurationWords(seconds: number): string {
+        const s = Math.round(seconds);
+        if (s < 60) {
+            return `${s}s`;
+        }
+
+        const m = Math.floor(s / 60);
+        const rem = s % 60;
+
+        return rem === 0 ? `${m}min` : `${m}min ${rem}s`;
+    },
+
+    /**
+     * Format a duration in milliseconds (e.g. "—", "500ms", "1.5s", "2m 30s").
+     */
+    formatDurationMs(ms: number | null): string {
+        if (ms === null) {
+            return '—';
+        }
+        if (ms < 1000) {
+            return `${ms}ms`;
+        }
+
+        const seconds = ms / 1000;
+        if (seconds < 60) {
+            return `${seconds.toFixed(1)}s`;
+        }
+
+        const minutes = Math.floor(seconds / 60);
+
+        return `${minutes}m ${Math.round(seconds % 60)}s`;
+    },
 };

@@ -6,6 +6,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar as calendarRoute } from '@/routes/app';
 import { create as createPostRoute, edit as editPostRoute } from '@/routes/app/posts';
@@ -53,11 +54,7 @@ const currentTip = computed(() => trans(tipKeys[tipIndex.value % tipKeys.length]
 const elapsed = ref(0);
 let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
-const elapsedLabel = computed(() => {
-    const minutes = Math.floor(elapsed.value / 60);
-    const seconds = elapsed.value % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-});
+const elapsedLabel = computed(() => date.formatClock(elapsed.value));
 
 const progress = computed(() => {
     const ratio = elapsed.value / estimatedSeconds.value;

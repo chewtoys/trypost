@@ -23,6 +23,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatBytes } from '@/composables/useMedia';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import date from '@/date';
 import { classify, isDocument, isVideo, MediaType } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
@@ -84,13 +85,6 @@ const openPreview = (item: MediaItem) => {
         })),
         idx,
     );
-};
-
-const formatDuration = (seconds: number): string => {
-    const total = Math.round(seconds);
-    const m = Math.floor(total / 60);
-    const s = total % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
 const limitsWithUsage = computed(() =>
@@ -267,7 +261,7 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
                                 class="inline-flex items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
                             >
                                 <IconVideo class="size-2.5" />
-                                {{ formatDuration(item.meta.duration) }}
+                                {{ date.formatClock(item.meta.duration) }}
                             </span>
                             <span
                                 v-if="item.size"

@@ -100,14 +100,6 @@ const summary = (invocation: Invocation): string => {
     return trans('automations.invocations.summary.pending');
 };
 
-const formatDuration = (ms: number | null): string => {
-    if (ms === null) return '—';
-    if (ms < 1000) return `${ms}ms`;
-    const seconds = ms / 1000;
-    if (seconds < 60) return `${seconds.toFixed(1)}s`;
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}m ${Math.round(seconds % 60)}s`;
-};
 
 const stepsLabel = (count: number): string =>
     transChoice('automations.invocations.steps', count, {
@@ -362,7 +354,7 @@ const toggleExpand = async (invocation: Invocation) => {
                                         <TableCell
                                             class="text-right text-sm text-foreground/70 tabular-nums"
                                             >{{
-                                                formatDuration(
+                                                date.formatDurationMs(
                                                     invocation.duration_ms,
                                                 )
                                             }}</TableCell

@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 import AutomationDetailLayout from '@/components/automations/AutomationDetailLayout.vue';
 import AutomationRunsChart from '@/components/automations/AutomationRunsChart.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import date from '@/date';
 import dayjs from '@/dayjs';
 import type { Automation } from '@/types/automation/automation';
 
@@ -47,22 +48,13 @@ watch(
     { deep: true },
 );
 
-const formatDuration = (ms: number | null): string => {
-    if (ms === null) return '—';
-    if (ms < 1000) return `${ms}ms`;
-    const seconds = ms / 1000;
-    if (seconds < 60) return `${seconds.toFixed(1)}s`;
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}m ${Math.round(seconds % 60)}s`;
-};
-
 const cards = computed(() => [
     { key: 'runs', label: 'automations.metrics.cards.runs', value: String(props.metrics.totals.runs) },
     { key: 'completed', label: 'automations.metrics.cards.completed', value: String(props.metrics.totals.completed) },
     { key: 'failed', label: 'automations.metrics.cards.failed', value: String(props.metrics.totals.failed) },
     { key: 'in_progress', label: 'automations.metrics.cards.in_progress', value: String(props.metrics.totals.in_progress) },
     { key: 'success_rate', label: 'automations.metrics.cards.success_rate', value: props.metrics.totals.success_rate === null ? '—' : `${props.metrics.totals.success_rate}%` },
-    { key: 'avg_duration', label: 'automations.metrics.cards.avg_duration', value: formatDuration(props.metrics.totals.avg_duration_ms) },
+    { key: 'avg_duration', label: 'automations.metrics.cards.avg_duration', value: date.formatDurationMs(props.metrics.totals.avg_duration_ms) },
     { key: 'posts_created', label: 'automations.metrics.cards.posts_created', value: String(props.metrics.totals.posts_created) },
 ]);
 

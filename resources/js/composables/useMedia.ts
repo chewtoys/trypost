@@ -1,4 +1,5 @@
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
+import date from '@/date';
 import { isDocument, isGif, isImage, isVideo } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
@@ -20,14 +21,6 @@ export const formatBytes = (bytes: number): string => {
     if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return bytes + ' B';
-};
-
-const formatDuration = (seconds: number): string => {
-    const s = Math.round(seconds);
-    if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
-    const rem = s % 60;
-    return rem === 0 ? `${m}min` : `${m}min ${rem}s`;
 };
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
@@ -104,7 +97,7 @@ export const getMediaValidationWarning = (
             if (rules.maxVideoDurationSec && duration > rules.maxVideoDurationSec) {
                 return {
                     key: 'video_too_long',
-                    params: { max: formatDuration(rules.maxVideoDurationSec), current: formatDuration(duration) },
+                    params: { max: date.formatDurationWords(rules.maxVideoDurationSec), current: date.formatDurationWords(duration) },
                 };
             }
         } else if (rules.maxImageBytes && size > rules.maxImageBytes) {
