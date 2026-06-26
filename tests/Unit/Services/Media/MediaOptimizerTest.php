@@ -111,6 +111,22 @@ it('resizes for pinterest max 1000', function () use (&$tempFiles) {
     expect($optimized->width())->toBeLessThanOrEqual(1000);
 });
 
+it('exposes the configured max width per platform', function () {
+    $optimizer = new MediaOptimizer;
+
+    expect($optimizer->maxWidthForPlatform(Platform::TikTok))->toBe(1080)
+        ->and($optimizer->maxWidthForPlatform(Platform::Instagram))->toBe(1440)
+        ->and($optimizer->maxWidthForPlatform(Platform::Pinterest))->toBe(1000);
+});
+
+it('reports a max width for every platform', function () {
+    $optimizer = new MediaOptimizer;
+
+    foreach (Platform::cases() as $platform) {
+        expect($optimizer->maxWidthForPlatform($platform))->toBeInt()->toBeGreaterThan(0);
+    }
+});
+
 it('handles all platforms without error', function () use (&$tempFiles) {
     $source = createTestImage(1000, 800);
     $tempFiles[] = $source;

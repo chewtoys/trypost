@@ -276,9 +276,6 @@ class TikTokPublisher
                 'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
             ];
         } finally {
-            // TikTok pulls the images during the synchronous status poll above,
-            // so by the time we reach here the fetch is finished and the
-            // temporary derivatives can be safely removed.
             if ($derivatives !== []) {
                 Storage::delete($derivatives);
             }
