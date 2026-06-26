@@ -28,10 +28,6 @@ Discord is a channel now. Connect a server, pick the exact channel, add mentions
 
 Generating a post with AI starts with picking a format now: a single image card, a carousel, or a tweet-style card (one even comes with a verified badge, and one sits on a photo background). You pick the visual style on the same screen, and these templates work inside automations too, so your scheduled content can use them.
 
-## A smoother start
-
-Signing up is quicker, with Google and GitHub up front and your first workspace created for you. When you join, we ask two quick things: what best describes you, and what you want to get done with TryPost. There are more ways to describe yourself too, with Developer, Marketer, and Online store added to the list. On the brand settings page, you can pull your brand details straight from your website instead of typing them out.
-
 ## New features
 
 - Post swipeable PDF carousels to LinkedIn, and preview PDFs without leaving the editor
@@ -40,8 +36,6 @@ Signing up is quicker, with Google and GitHub up front and your first workspace 
 - Publish straight to Discord channels and groups
 - AI post formats: image cards, carousels, and tweet-style cards
 - RSS and Atom automations that pull variables from the feed
-- Tell us your goals at signup, plus new personas (Developer, Marketer, Online store)
-- Fill your brand details from your website
 
 ## Fixes
 
@@ -52,7 +46,7 @@ Signing up is quicker, with Google and GitHub up front and your first workspace 
 - Per-platform settings (aspect ratio, TikTok privacy, Pinterest boards, Discord channel) carry through the API and MCP now, not just the app
 - Telegram connection problems show a clear message instead of failing quietly
 
-Questions or ideas? Come hang out in our [Discord](https://trypost.it/discord).
+Questions or ideas? Join the conversation in [GitHub Discussions](https://github.com/orgs/trypostit/discussions).
 
 Cheers,
 Paulo from TryPost.it
