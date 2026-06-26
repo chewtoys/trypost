@@ -122,9 +122,16 @@ Hello! Welcome to this week's update. Here's what's new in TryPost.
 
 Cheers,
 Paulo from TryPost.it
+
+---
+
+You're receiving this because you subscribed.
+[Unsubscribe]({{unsubscribe_url}})
 ```
 
 **Always link the GitHub release from the byline** — make `Release <version>` a link to `https://github.com/<OWNER>/<REPO>/releases/tag/<version>` (as shown above). It gives developer-minded readers the raw PR-level changelog without cluttering the body.
+
+**Always end with the unsubscribe footer** — the `---` separator, the "You're receiving this because you subscribed." line, and an `[Unsubscribe]({{unsubscribe_url}})` link below the signature. Keep `{{unsubscribe_url}}` as a literal placeholder; the email sending tool fills it in. This footer is required on every customer email.
 
 #### Theme grouping (AI clusters by user impact)
 
@@ -171,13 +178,14 @@ Cap around 80 chars. If themes don't fit, shorten to the 2 most impactful + "and
 
 Run the email body through the `humanizer` skill before previewing:
 
-1. Invoke the `Skill` tool with `skill: humanizer` and pass the draft email body plus this context: *"This is a customer-facing changelog email for TryPost (social media scheduler SaaS). Tone: developer founder writing to early users on a Friday — warm, specific, no marketing puffery. Cal.com style. Keep the existing structure (subject frontmatter, section headers, bullets, signature). Do not strip section headers or the 'Cheers, Paulo from TryPost.it' signature."*
+1. Invoke the `Skill` tool with `skill: humanizer` and pass the draft email body plus this context: *"This is a customer-facing changelog email for TryPost (social media scheduler SaaS). Tone: developer founder writing to early users on a Friday — warm, specific, no marketing puffery. Cal.com style. Keep the existing structure (subject frontmatter, section headers, bullets, signature, unsubscribe footer). Do not strip section headers, the 'Cheers, Paulo from TryPost.it' signature, or the unsubscribe footer."*
 2. Replace the draft email body with the humanized version.
 
 **Do NOT humanize:**
 - The changelog from Step 3 (flat commit list, no prose).
 - The subject line frontmatter.
 - The literal signature `Cheers,\nPaulo from TryPost.it` — keep it exact.
+- The unsubscribe footer (`---`, "You're receiving this because you subscribed.", `[Unsubscribe]({{unsubscribe_url}})`) — keep it exact, below the signature.
 
 The humanizer skill itself covers all patterns. Trust it.
 
