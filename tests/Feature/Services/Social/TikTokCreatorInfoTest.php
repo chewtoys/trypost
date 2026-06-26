@@ -17,11 +17,13 @@ beforeEach(function () {
     ]);
 
     $this->service = new TikTokCreatorInfo;
+
+    $this->api = config('trypost.platforms.tiktok.api');
 });
 
 test('it returns full creator payload from api response', function () {
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'creator_nickname' => 'Paulo',
                 'creator_username' => 'paulocastellano',
@@ -49,7 +51,7 @@ test('it returns full creator payload from api response', function () {
 
 test('it returns an empty payload when the api fails', function () {
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response(['error' => 'unauthorized'], 401),
+        $this->api.'/post/publish/creator_info/query/' => Http::response(['error' => 'unauthorized'], 401),
     ]);
 
     $info = $this->service->fetch($this->account);
@@ -66,12 +68,12 @@ test('it refreshes the token before calling when expired', function () {
     $this->account->update(['token_expires_at' => now()->subMinute()]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/oauth/token/' => Http::response([
+        $this->api.'/oauth/token/' => Http::response([
             'access_token' => 'new-token',
             'refresh_token' => 'new-refresh',
             'expires_in' => 3600,
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'privacy_level_options' => ['PUBLIC_TO_EVERYONE'],
             ],

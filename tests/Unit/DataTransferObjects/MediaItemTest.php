@@ -34,3 +34,43 @@ test('media item falls back to the extension when no mime is present', function 
 
     expect($item->isImage())->toBeTrue();
 });
+
+test('fromArray reads pixel dimensions from the meta block', function () {
+    $item = MediaItem::fromArray([
+        'path' => 'photo.jpg',
+        'url' => 'https://x/photo.jpg',
+        'meta' => ['width' => 1254, 'height' => 836],
+    ]);
+
+    expect($item->width())->toBe(1254)
+        ->and($item->height())->toBe(836);
+});
+
+test('width and height are null when no meta is present', function () {
+    $item = MediaItem::fromArray(['path' => 'photo.jpg', 'url' => 'https://x/photo.jpg']);
+
+    expect($item->width())->toBeNull()
+        ->and($item->height())->toBeNull();
+});
+
+test('width and height ignore non-numeric meta values', function () {
+    $item = MediaItem::fromArray([
+        'path' => 'photo.jpg',
+        'url' => 'https://x/photo.jpg',
+        'meta' => ['width' => 'wide', 'height' => null],
+    ]);
+
+    expect($item->width())->toBeNull()
+        ->and($item->height())->toBeNull();
+});
+
+test('numeric string dimensions are coerced to integers', function () {
+    $item = MediaItem::fromArray([
+        'path' => 'photo.jpg',
+        'url' => 'https://x/photo.jpg',
+        'meta' => ['width' => '1080', 'height' => '1920'],
+    ]);
+
+    expect($item->width())->toBe(1080)
+        ->and($item->height())->toBe(1920);
+});

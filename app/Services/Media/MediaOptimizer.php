@@ -96,6 +96,18 @@ class MediaOptimizer
     }
 
     /**
+     * The maximum image width (px) enforced for a platform. Pull-from-URL
+     * publishers (e.g. TikTok) use this to decide whether a source image needs
+     * a resized, spec-compliant derivative before the platform fetches it.
+     */
+    public function maxWidthForPlatform(Platform $platform): ?int
+    {
+        $maxWidth = data_get($this->getImageConfig($platform), 'max_width');
+
+        return is_int($maxWidth) ? $maxWidth : null;
+    }
+
+    /**
      * Center-crop an image to the given aspect ratio (width / height).
      * Returns path to a temp file (caller must clean up).
      */

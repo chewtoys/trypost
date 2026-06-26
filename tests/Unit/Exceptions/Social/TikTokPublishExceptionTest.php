@@ -16,7 +16,7 @@ test('HTTP error rate_limit_exceeded maps to RateLimit category', function () {
         ],
     ], 429);
 
-    $fakeResponse = Http::fake(['*' => $response])->post('https://open.tiktokapis.com/test');
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.tiktok.api').'/test');
 
     $exception = TikTokPublishException::fromApiResponse($fakeResponse);
 
@@ -36,7 +36,7 @@ test('HTTP error access_token_invalid throws TokenExpiredException', function ()
         ],
     ], 401);
 
-    $fakeResponse = Http::fake(['*' => $response])->post('https://open.tiktokapis.com/test');
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.tiktok.api').'/test');
 
     TikTokPublishException::fromApiResponse($fakeResponse);
 })->throws(TokenExpiredException::class);
@@ -50,7 +50,7 @@ test('HTTP error invalid_file_upload maps to MediaFormat category', function () 
         ],
     ], 400);
 
-    $fakeResponse = Http::fake(['*' => $response])->post('https://open.tiktokapis.com/test');
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.tiktok.api').'/test');
 
     $exception = TikTokPublishException::fromApiResponse($fakeResponse);
 
@@ -91,7 +91,7 @@ test('unknown error code falls through with Unknown category', function () {
         ],
     ], 400);
 
-    $fakeResponse = Http::fake(['*' => $response])->post('https://open.tiktokapis.com/test');
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.tiktok.api').'/test');
 
     $exception = TikTokPublishException::fromApiResponse($fakeResponse);
 
