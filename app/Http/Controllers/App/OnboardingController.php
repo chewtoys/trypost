@@ -106,7 +106,9 @@ class OnboardingController extends Controller
 
         $user->update(['goals' => $goals]);
 
-        $postHog->identify($user->id, $this->goalProperties($goals));
+        $postHog->identify($user->id, [
+            'goals' => $goals,
+        ]);
 
         return redirect()->route('app.onboarding.connect');
     }
@@ -182,23 +184,5 @@ class OnboardingController extends Controller
             (string) $plan->stripe_monthly_price_id,
             route('app.onboarding.connect'),
         );
-    }
-
-    /**
-     * PostHog person properties for the selected goals: the full array plus a
-     * boolean per goal, so campaigns can be cross-tabbed against each intent.
-     *
-     * @param  array<int, string>  $goals
-     * @return array<string, mixed>
-     */
-    private function goalProperties(array $goals): array
-    {
-        $properties = ['onboarding_goals' => $goals];
-
-        foreach (Goal::cases() as $goal) {
-            $properties["goal_{$goal->value}"] = in_array($goal->value, $goals, true);
-        }
-
-        return $properties;
     }
 }
