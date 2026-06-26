@@ -84,8 +84,8 @@ Posts publish natively through each platform's official API.
 | | |
 | --- | --- |
 | ☁️&nbsp; **Cloud** | The fastest way in. We host, update, and scale it for you. [Start at trypost.it &rarr;](https://trypost.it) |
-| 🛠️&nbsp; **Self-host** | Free forever, your servers, your data. [Installation guide &rarr;](https://docs.trypost.it/getting-started/installation) |
-| 🤖&nbsp; **Drive it with AI** | Connect Claude, Cursor, or ChatGPT over MCP. [MCP setup &rarr;](https://docs.trypost.it/mcp) |
+| 🛠️&nbsp; **Self-host** | Free forever, your servers, your data. [Installation guide &rarr;](https://docs.trypost.it/self-hosting/overview) |
+| 🤖&nbsp; **Drive it with AI** | Connect Claude, Cursor, or ChatGPT over MCP. [MCP setup &rarr;](https://docs.trypost.it/ai/introduction) |
 
 ## Own your stack
 
