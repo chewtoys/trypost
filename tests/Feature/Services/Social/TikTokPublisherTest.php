@@ -41,6 +41,8 @@ beforeEach(function () {
     ]);
 
     $this->publisher = new TikTokPublisher;
+
+    $this->api = config('trypost.platforms.tiktok.api');
 });
 
 test('tiktok publisher throws exception when no media', function () {
@@ -62,10 +64,10 @@ test('tiktok publisher can publish video', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
                 'publish_id' => 'pub_123',
@@ -100,10 +102,10 @@ test('tiktok publisher can publish photos', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+        $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_photo_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
                 'publish_id' => 'pub_photo_123',
@@ -141,7 +143,7 @@ test('tiktok publisher throws exception on api error', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'error' => [
                 'code' => 'invalid_request',
                 'message' => 'Invalid request',
@@ -167,7 +169,7 @@ test('tiktok publisher throws token expired exception on auth error', function (
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'error' => [
                 'code' => 'access_token_invalid',
                 'message' => 'Access token is invalid',
@@ -195,15 +197,15 @@ test('tiktok publisher refreshes token when expired', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/oauth/token/' => Http::response([
+        $this->api.'/oauth/token/' => Http::response([
             'access_token' => 'new-access-token',
             'refresh_token' => 'new-refresh-token',
             'expires_in' => 86400,
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -256,7 +258,7 @@ test('tiktok publisher throws TokenExpiredException when refresh_token is reject
     ]);
 
     Http::fake([
-        '*/oauth/token/' => Http::response([
+        $this->api.'/oauth/token/' => Http::response([
             'error' => ['code' => 'invalid_grant', 'message' => 'Refresh token expired'],
         ], 400),
     ]);
@@ -296,10 +298,10 @@ test('tiktok publisher builds correct profile url when username present', functi
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -325,10 +327,10 @@ test('tiktok publisher returns null url when username missing', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -356,13 +358,13 @@ test('tiktok publisher publishes with user-selected privacy level even when crea
 
     Http::fake([
         // creator_info/query returns 500 — should not affect publishing since user picked privacy_level.
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'error' => ['code' => 'internal_error', 'message' => 'Internal server error'],
         ], 500),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_fallback_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
                 'publish_id' => 'pub_fallback_123',
@@ -400,10 +402,10 @@ test('tiktok publisher throws exception when publish fails', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'FAILED',
                 'fail_reason' => 'video_rejected',
@@ -441,15 +443,15 @@ test('tiktok publisher sends meta settings in video publish request', function (
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
             ],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_meta_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -496,13 +498,13 @@ test('tiktok publisher sends auto_add_music for photo posts', function () {
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => ['privacy_level_options' => ['SELF_ONLY']],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+        $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_music_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -546,13 +548,13 @@ test('tiktok publisher does not send auto_add_music for video posts', function (
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => ['privacy_level_options' => ['SELF_ONLY']],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_vid_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -587,15 +589,15 @@ test('tiktok publisher uses default settings when only privacy_level is set', fu
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY'],
             ],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_default_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -636,15 +638,15 @@ test('tiktok publisher sends video caption in title field, never description', f
     $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'privacy_level_options' => ['SELF_ONLY'],
             ],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/video/init/' => Http::response([
+        $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_video_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_video_123'],
         ], 200),
     ]);
@@ -679,7 +681,7 @@ test('tiktok publisher throws when meta.privacy_level is missing and user did no
 
     Http::fake([
         // creator_info returns a healthy response — fallback would have silently picked PUBLIC_TO_EVERYONE.
-        'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
                 'creator_nickname' => 'test',
                 'creator_username' => 'test',
@@ -725,10 +727,10 @@ test('tiktok publisher resizes an oversized photo and pulls a hosted compliant c
     app()->instance(MediaOptimizer::class, $mockOptimizer);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+        $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_resize_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
         '*' => Http::response('fake-image-content', 200),
@@ -769,10 +771,10 @@ test('tiktok publisher passes a compliant photo through without hosting a copy',
     ]);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+        $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_passthrough_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
     ]);
@@ -821,10 +823,10 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
     app()->instance(MediaOptimizer::class, $mockOptimizer);
 
     Http::fake([
-        'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+        $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_unknown_123'],
         ], 200),
-        'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
         '*' => Http::response('fake-image-content', 200),
@@ -878,4 +880,162 @@ test('tiktok publisher fails clearly when an oversized photo cannot be downloade
 
     // Nothing should be left hosted when resizing never completes.
     expect(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
+});
+
+test('tiktok publisher resizes only the oversized photos in a mixed carousel', function () {
+    Storage::fake();
+
+    // TikTok carousels can carry many images; here one is oversized, one is compliant.
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'oversized',
+                'path' => 'media/2026-01/big.jpg',
+                'url' => 'https://example.com/media/2026-01/big.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'big.jpg',
+                'meta' => ['width' => 1254, 'height' => 1254],
+            ],
+            [
+                'id' => 'compliant',
+                'path' => 'media/2026-01/small.jpg',
+                'url' => 'https://example.com/media/2026-01/small.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'small.jpg',
+                'meta' => ['width' => 1080, 'height' => 1080],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    // optimizeImage must run exactly once — only for the oversized image.
+    $mockOptimizer->shouldReceive('optimizeImage')->once()->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response([
+            'data' => ['publish_id' => 'pub_mixed_123'],
+        ], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE'],
+        ], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    // Order is preserved: oversized -> hosted derivative, compliant -> original URL untouched.
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/post/publish/content/init/')) {
+            return false;
+        }
+        $images = data_get(json_decode($request->body(), true), 'source_info.photo_images');
+
+        return is_array($images)
+            && count($images) === 2
+            && str_contains($images[0], 'social-tiktok-photos/')
+            && ! str_contains($images[0], 'example.com')
+            && $images[1] === 'https://example.com/media/2026-01/small.jpg';
+    });
+
+    // The compliant image is never downloaded; only the oversized one is fetched for resizing.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'small.jpg'));
+
+    // The single derivative is pruned after publish.
+    expect(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
+});
+
+test('tiktok publisher prunes the hosted derivative even when publishing fails', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'oversized',
+                'path' => 'media/2026-01/big.jpg',
+                'url' => 'https://example.com/media/2026-01/big.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'big.jpg',
+                'meta' => ['width' => 1254, 'height' => 1254],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    // The derivative is hosted first, then TikTok rejects the publish: the finally
+    // must still remove it so a failed post never orphans a file on disk.
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response([
+            'error' => ['code' => 'internal_error', 'message' => 'boom'],
+        ], 500),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TikTokPublishException::class);
+
+    expect(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
+});
+
+test('tiktok publisher still reports success when derivative cleanup throws on the storage disk', function () {
+    // The production default disk (r2) is configured to throw on a failed delete.
+    // Cleanup must never turn an already-published post into a reported failure.
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'oversized',
+                'path' => 'media/2026-01/big.jpg',
+                'url' => 'https://example.com/media/2026-01/big.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'big.jpg',
+                'meta' => ['width' => 1254, 'height' => 1254],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('maxWidthForPlatform')->with(Platform::TikTok)->andReturn(1080);
+    $mockOptimizer->shouldReceive('optimizeImage')->with(Mockery::type('string'), Platform::TikTok)->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'tt_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Storage::shouldReceive('put')->andReturnTrue();
+    Storage::shouldReceive('url')->andReturn('https://cdn.example.com/social-tiktok-photos/x.jpg');
+    Storage::shouldReceive('delete')->andThrow(new RuntimeException('r2 delete failed'));
+
+    Http::fake([
+        $this->api.'/post/publish/content/init/' => Http::response([
+            'data' => ['publish_id' => 'pub_cleanup_throws_123'],
+        ], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE'],
+        ], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('pub_cleanup_throws_123');
 });
