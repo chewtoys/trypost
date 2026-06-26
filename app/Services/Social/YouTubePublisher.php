@@ -167,9 +167,6 @@ class YouTubePublisher
             while (! $uploadStatus && ! feof($handle)) {
                 $chunk = fread($handle, self::CHUNK_SIZE);
                 $uploadStatus = $mediaUpload->nextChunk($chunk);
-
-                unset($chunk);
-                $this->freeChunkMemory();
             }
 
             fclose($handle);
