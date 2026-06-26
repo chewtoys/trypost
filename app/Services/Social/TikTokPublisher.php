@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class TikTokPublisher
 {
@@ -276,9 +277,7 @@ class TikTokPublisher
                 'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
             ];
         } finally {
-            if ($derivatives !== []) {
-                Storage::delete($derivatives);
-            }
+            $this->pruneDerivatives($derivatives);
         }
     }
 
@@ -327,6 +326,22 @@ class TikTokPublisher
                 );
             }
 
+            return $this->hostResizedPhoto($tempInput);
+        } finally {
+            @unlink($tempInput);
+        }
+    }
+
+    /**
+     * Resize the downloaded file to TikTok's spec and host the copy on the public
+     * disk. Decoder/storage failures are surfaced as a categorized publish
+     * exception instead of leaking as an uncategorized error.
+     *
+     * @return array{0: string, 1: string} the derivative's public URL and storage path
+     */
+    private function hostResizedPhoto(string $tempInput): array
+    {
+        try {
             $optimized = app(MediaOptimizer::class)->optimizeImage($tempInput, Platform::TikTok);
 
             try {
@@ -337,8 +352,37 @@ class TikTokPublisher
             }
 
             return [Storage::url($path), $path];
-        } finally {
-            @unlink($tempInput);
+        } catch (Throwable $e) {
+            Log::error('TikTok photo resize/host failed', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            throw new TikTokPublishException(
+                userMessage: 'Failed to prepare image for TikTok.',
+                category: ErrorCategory::ServerError,
+            );
+        }
+    }
+
+    /**
+     * Remove hosted photo derivatives, swallowing storage errors so cleanup can
+     * never mask the publish result.
+     *
+     * @param  list<string>  $paths
+     */
+    private function pruneDerivatives(array $paths): void
+    {
+        if ($paths === []) {
+            return;
+        }
+
+        try {
+            Storage::delete($paths);
+        } catch (Throwable $e) {
+            Log::warning('Failed to prune TikTok photo derivatives', [
+                'paths' => $paths,
+                'exception' => $e->getMessage(),
+            ]);
         }
     }
 
