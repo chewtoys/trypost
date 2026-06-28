@@ -165,7 +165,7 @@ class PublishToSocialPlatform implements ShouldQueue
                     'platform' => $this->postPlatform->platform->value,
                     'error' => $e->getMessage(),
                 ]);
-                $this->postPlatform->markAsFailed($e->getMessage(), [
+                $this->postPlatform->markAsFailed($this->safeFailureMessage($e), [
                     'category' => 'unknown',
                     'failed_at' => now()->toIso8601String(),
                     'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
@@ -221,6 +221,20 @@ class PublishToSocialPlatform implements ShouldQueue
     private function broadcastStatus(): void
     {
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
+    }
+
+    /**
+     * A failure message safe to surface to the user — it ends up in the
+     * post-failure email. Only our own publish exceptions carry a vetted
+     * user-facing message; any other throwable (engine errors like TypeError,
+     * or library exceptions) can embed file paths and internals, so it's
+     * replaced with a generic line. The raw detail stays in the logs.
+     */
+    private function safeFailureMessage(\Throwable $e): string
+    {
+        return $e instanceof SocialPublishException
+            ? $e->userMessage
+            : 'An unexpected error occurred while publishing. Please try again.';
     }
 
     private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
@@ -308,10 +322,13 @@ class PublishToSocialPlatform implements ShouldQueue
         $this->postPlatform->refresh();
 
         if ($this->postPlatform->status !== PostPlatformStatus::Published) {
-            $this->postPlatform->markAsFailed($exception?->getMessage() ?? 'Unknown error', [
-                'category' => 'job_failed',
-                'failed_at' => now()->toIso8601String(),
-            ]);
+            $this->postPlatform->markAsFailed(
+                $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
+                [
+                    'category' => 'job_failed',
+                    'failed_at' => now()->toIso8601String(),
+                ]
+            );
             $this->updatePostStatus();
             $this->broadcastStatus();
         }
