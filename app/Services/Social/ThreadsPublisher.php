@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -41,7 +42,10 @@ class ThreadsPublisher
         // Text only post
         if ($media->isEmpty()) {
             if (empty($content)) {
-                throw new \Exception('Threads text posts require content. Please add text to your post.');
+                throw new ThreadsPublishException(
+                    userMessage: 'Threads text posts require content. Please add text to your post.',
+                    category: ErrorCategory::MediaFormat,
+                );
             }
 
             return $this->publishTextPost($userId, $accessToken, $content);
@@ -83,7 +87,10 @@ class ThreadsPublisher
         $containerId = $containerResponse->json()['id'] ?? null;
 
         if (! $containerId) {
-            throw new \Exception('Threads text container creation failed: no container ID returned');
+            throw new ThreadsPublishException(
+                userMessage: 'Threads did not accept the post. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Step 2: Publish
@@ -111,7 +118,10 @@ class ThreadsPublisher
         $containerId = $containerResponse->json()['id'] ?? null;
 
         if (! $containerId) {
-            throw new \Exception('Threads image container creation failed: no container ID returned');
+            throw new ThreadsPublishException(
+                userMessage: 'Threads did not accept the image. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Step 2: Wait for image processing
@@ -142,7 +152,10 @@ class ThreadsPublisher
         $containerId = $containerResponse->json()['id'] ?? null;
 
         if (! $containerId) {
-            throw new \Exception('Threads video container creation failed: no container ID returned');
+            throw new ThreadsPublishException(
+                userMessage: 'Threads did not accept the video. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Wait for video processing
@@ -198,7 +211,10 @@ class ThreadsPublisher
         }
 
         if (empty($childContainers)) {
-            throw new \Exception('Failed to create any carousel items');
+            throw new ThreadsPublishException(
+                userMessage: 'Failed to create any carousel items',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Step 2: Create carousel container
@@ -219,7 +235,10 @@ class ThreadsPublisher
         $carouselId = $carouselResponse->json()['id'] ?? null;
 
         if (! $carouselId) {
-            throw new \Exception('Threads carousel container creation failed: no container ID returned');
+            throw new ThreadsPublishException(
+                userMessage: 'Threads did not accept the carousel. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Step 3: Publish carousel
@@ -244,7 +263,10 @@ class ThreadsPublisher
         $mediaId = $publishResponse->json()['id'] ?? null;
 
         if (! $mediaId) {
-            throw new \Exception('Threads publish failed: no media ID returned');
+            throw new ThreadsPublishException(
+                userMessage: 'Threads did not accept the post. Please publish again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Get permalink
@@ -289,14 +311,20 @@ class ThreadsPublisher
 
             if ($status === 'ERROR') {
                 $errorMessage = data_get($data, 'error_message', 'Unknown error');
-                throw new \Exception('Threads media processing failed: '.$errorMessage);
+                throw new ThreadsPublishException(
+                    userMessage: 'Threads media processing failed. Please try a different file.',
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             sleep(3);
         }
 
         Log::warning('Threads media processing timeout', ['container_id' => $containerId]);
-        throw new \Exception('Threads media processing timeout after '.$maxAttempts.' attempts');
+        throw new ThreadsPublishException(
+            userMessage: 'Threads took too long to process the media. Please try again.',
+            category: ErrorCategory::ServerError,
+        );
     }
 
     private function handleApiError(Response $response): never

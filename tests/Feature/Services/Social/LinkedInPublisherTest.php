@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -789,7 +790,7 @@ test('linkedin publisher throws when document init response is missing the urn',
     });
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(Exception::class, 'missing uploadUrl or document URN');
+        ->toThrow(LinkedInPublishException::class, 'did not accept the document upload');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });

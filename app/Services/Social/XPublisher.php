@@ -72,7 +72,10 @@ class XPublisher
         }
 
         if (empty($content) && empty($mediaIds)) {
-            throw new \Exception('X posts require either text or media. Please add content to your post.');
+            throw new XPublishException(
+                userMessage: 'X posts require either text or media. Please add content to your post.',
+                category: ErrorCategory::MediaFormat,
+            );
         }
 
         $response = $this->getHttpClient()
@@ -115,7 +118,10 @@ class XPublisher
             $downloadResponse = Http::withOptions(['sink' => $tempFile])->timeout(600)->get($mediaItem->url);
 
             if ($downloadResponse->failed()) {
-                throw new \Exception('Failed to download media: HTTP '.$downloadResponse->status());
+                throw new XPublishException(
+                    userMessage: 'Could not fetch the media to upload to X. Please try again.',
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             // Recover the MIME from the downloaded bytes when the item carries
@@ -215,7 +221,10 @@ class XPublisher
         $mediaId = $initData['data']['id'] ?? $initData['media_id'] ?? null;
 
         if (! $mediaId) {
-            throw new \Exception('No media_id returned from INIT');
+            throw new XPublishException(
+                userMessage: 'X did not accept the media upload. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // APPEND - Read from temp file in 1MB chunks. Matches the
