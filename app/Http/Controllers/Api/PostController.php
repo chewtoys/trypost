@@ -18,6 +18,7 @@ use App\Http\Resources\Api\PostMetricsResource;
 use App\Http\Resources\Api\PostPreviewResource;
 use App\Http\Resources\Api\PostResource;
 use App\Models\Post;
+use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Support\PostStatusRules;
 use Illuminate\Http\JsonResponse;
@@ -49,11 +50,18 @@ class PostController extends Controller
 
     public function store(StorePostRequest $request): JsonResponse
     {
-        $post = CreatePost::execute(
-            $request->user()->currentWorkspace,
-            $request->user()->currentWorkspace->owner,
-            $request->validated()
-        );
+        $workspace = $request->user()->currentWorkspace;
+        $data = $request->validated();
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = $this->hostInlineMedia(
+                $workspace,
+                Post::allowedMediaTypesFor($request->selectedPlatforms()),
+                $data['media'],
+            );
+        }
+
+        $post = CreatePost::execute($workspace, $workspace->owner, $data);
 
         $post->load(['postPlatforms.socialAccount']);
 
@@ -66,7 +74,17 @@ class PostController extends Controller
     {
         $this->authorize('update', $post);
 
-        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $request->validated());
+        $data = $request->validated();
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = $this->hostInlineMedia(
+                $request->user()->currentWorkspace,
+                $post->allowedMediaTypes(),
+                $data['media'],
+            );
+        }
+
+        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $data);
 
         if (data_get($result, 'action') === PostAction::Finalized) {
             return response()->json(
@@ -79,6 +97,36 @@ class PostController extends Controller
         $updated->load(['postPlatforms.socialAccount']);
 
         return new PostResource($updated);
+    }
+
+    /**
+     * Download and host any external media URLs in an inline media array so the
+     * stored post never references a third-party URL (which can 404 or change at
+     * publish time). Items already on our storage pass through. Rejects the
+     * request when any URL can't be fetched, so a post is never persisted with
+     * broken media.
+     *
+     * @param  array<MediaType>  $allowedTypes
+     * @param  array<int, array<string, mixed>>  $media
+     * @return array<int, array<string, mixed>>
+     *
+     * @throws ValidationException
+     */
+    private function hostInlineMedia(Workspace $workspace, array $allowedTypes, array $media): array
+    {
+        if ($media === []) {
+            return $media;
+        }
+
+        $result = app(MediaAttacher::class)->resolveInlineMedia($workspace, $allowedTypes, $media);
+
+        if ($result['failed'] !== []) {
+            throw ValidationException::withMessages([
+                'media' => ['Could not fetch media from URL: '.implode(', ', $result['failed'])],
+            ]);
+        }
+
+        return $result['media'];
     }
 
     public function destroy(Request $request, Post $post): JsonResponse

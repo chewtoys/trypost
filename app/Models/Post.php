@@ -7,6 +7,7 @@ namespace App\Models;
 use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Observers\PostObserver;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -150,12 +151,26 @@ class Post extends Model
             ->pluck('socialAccount.platform')
             ->filter();
 
+        return self::allowedMediaTypesFor($platforms);
+    }
+
+    /**
+     * The media types acceptable across a set of platforms: the intersection of
+     * what each platform allows. With no platform, accept anything. Lets callers
+     * that don't have a persisted Post yet (e.g. the API create flow) compute the
+     * same constraint from the platforms in the request.
+     *
+     * @param  Collection<int, Platform>  $platforms
+     * @return array<Type>
+     */
+    public static function allowedMediaTypesFor(Collection $platforms): array
+    {
         if ($platforms->isEmpty()) {
             return Type::cases();
         }
 
         $sets = $platforms
-            ->map(fn ($platform) => array_map(fn ($type) => $type->value, $platform->allowedMediaTypes()))
+            ->map(fn (Platform $platform) => array_map(fn ($type) => $type->value, $platform->allowedMediaTypes()))
             ->all();
 
         return array_map(

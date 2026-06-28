@@ -6,6 +6,7 @@ namespace App\Services\Post;
 
 use App\Enums\Media\Type as MediaType;
 use App\Models\Post;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -31,7 +32,7 @@ class MediaAttacher
         $failed = [];
 
         foreach ($urls as $url) {
-            ($item = $this->attachOne($post, $url)) === null
+            ($item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url)) === null
                 ? $failed[] = $url
                 : $attached[] = $item;
         }
@@ -44,9 +45,47 @@ class MediaAttacher
     }
 
     /**
+     * Resolve an inline media array (as accepted by the public API on post
+     * create/update) into fully hosted media items. Items already stored on our
+     * disk (they carry a `path`) pass through untouched; every other item is
+     * treated as an external `url` to download and host, so publishing never
+     * depends on a third-party URL staying alive.
+     *
+     * @param  array<Type>  $allowedTypes
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{media: array<int, array<string, mixed>>, failed: array<int, string>}
+     */
+    public function resolveInlineMedia(Workspace $workspace, array $allowedTypes, array $items): array
+    {
+        $media = [];
+        $failed = [];
+
+        foreach ($items as $item) {
+            if (filled(data_get($item, 'path'))) {
+                $media[] = $item;
+
+                continue;
+            }
+
+            $url = (string) data_get($item, 'url', '');
+
+            ($hosted = $this->fetchToWorkspace($workspace, $allowedTypes, $url)) === null
+                ? $failed[] = $url
+                : $media[] = $hosted;
+        }
+
+        return ['media' => $media, 'failed' => $failed];
+    }
+
+    /**
+     * Download a public URL, validate it against the accepted media types, and
+     * store it on the workspace. Returns the media item, or null on any failure
+     * (download error, disallowed type, oversized).
+     *
+     * @param  array<Type>  $allowedTypes
      * @return array<string, mixed>|null
      */
-    private function attachOne(Post $post, string $url): ?array
+    public function fetchToWorkspace(Workspace $workspace, array $allowedTypes, string $url): ?array
     {
         $download = $this->download($url);
 
@@ -57,7 +96,7 @@ class MediaAttacher
         try {
             $type = MediaType::fromMime($download['mime'] ?? '');
 
-            if ($type === null || ! in_array($type, $post->allowedMediaTypes(), true)) {
+            if ($type === null || ! in_array($type, $allowedTypes, true)) {
                 return null;
             }
 
@@ -66,7 +105,7 @@ class MediaAttacher
             }
 
             $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
-            $media = $post->workspace->addMediaFromPath($download['path'], $name, 'assets');
+            $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
 
             return [
                 'id' => $media->id,

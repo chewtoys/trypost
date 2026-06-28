@@ -36,6 +36,14 @@ class StorePostRequest extends FormRequest
                 ),
             ],
             'media' => ['sometimes', 'array'],
+            'media.*.id' => ['sometimes', 'nullable', 'string'],
+            'media.*.path' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'media.*.url' => ['required', 'string', 'max:2048', 'url:http,https'],
+            'media.*.type' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'media.*.mime_type' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'media.*.original_filename' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'media.*.size' => ['sometimes', 'nullable', 'integer'],
+            'media.*.meta' => ['sometimes', 'nullable', 'array'],
             'platforms' => ['required', 'array', 'min:1'],
             'platforms.*.social_account_id' => [
                 'required',
@@ -58,6 +66,17 @@ class StorePostRequest extends FormRequest
                 Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspaceId),
             ],
         ];
+    }
+
+    /**
+     * The distinct platforms selected in this request, used to compute the
+     * media types acceptable for the post being created.
+     *
+     * @return Collection<int, Platform>
+     */
+    public function selectedPlatforms(): Collection
+    {
+        return $this->resolveSelectedPlatforms($this->user()->currentWorkspace->id)->values();
     }
 
     /**
