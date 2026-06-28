@@ -69,9 +69,6 @@ class StorePostRequest extends FormRequest
     }
 
     /**
-     * The distinct platforms selected in this request, used to compute the
-     * media types acceptable for the post being created.
-     *
      * @return Collection<int, Platform>
      */
     public function selectedPlatforms(): Collection

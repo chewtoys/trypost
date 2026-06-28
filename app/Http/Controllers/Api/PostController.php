@@ -100,11 +100,7 @@ class PostController extends Controller
     }
 
     /**
-     * Download and host any external media URLs in an inline media array so the
-     * stored post never references a third-party URL (which can 404 or change at
-     * publish time). Items already on our storage pass through. Rejects the
-     * request when any URL can't be fetched, so a post is never persisted with
-     * broken media.
+     * Download and host external media URLs; reject (422) if one can't be fetched.
      *
      * @param  array<MediaType>  $allowedTypes
      * @param  array<int, array<string, mixed>>  $media

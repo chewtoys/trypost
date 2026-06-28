@@ -181,7 +181,6 @@ test('publish to social platform marks platform as failed on error', function ()
 
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
-    // Untrusted exceptions are genericized — only vetted publish exceptions surface their message.
     expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.');
 });
 
@@ -206,7 +205,6 @@ test('publish keeps the vetted user message from a publish exception', function 
 test('publish never leaks a raw internal error to the failure record (and the email)', function () {
     Event::fake();
 
-    // A PHP TypeError embeds the server file path in its message; it must not reach the user.
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(new TypeError(
         'X::getMediaCategory(): Argument #1 ($mimeType) must be of type string, null given, called in /home/forge/app.trypost.it/releases/72198060/app/Services/Social/XPublisher.php on line 130'
@@ -221,6 +219,19 @@ test('publish never leaks a raw internal error to the failure record (and the em
     expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.')
         ->and($this->postPlatform->error_message)->not->toContain('/home/forge')
         ->and($this->postPlatform->error_message)->not->toContain('getMediaCategory');
+});
+
+test('the job-failed hook also genericizes a raw internal error', function () {
+    Event::fake();
+
+    (new PublishToSocialPlatform($this->postPlatform))->failed(new TypeError(
+        'boom in /home/forge/app.trypost.it/releases/72198060/app/Services/Social/XPublisher.php on line 130'
+    ));
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.')
+        ->and($this->postPlatform->error_message)->not->toContain('/home/forge');
 });
 
 test('publish to social platform marks account as token expired on auth failure', function () {

@@ -124,9 +124,6 @@ class XPublisher
                 );
             }
 
-            // Recover the MIME from the downloaded bytes when the item carries
-            // none (e.g. media attached by URL), and fail cleanly rather than
-            // with a TypeError when it still can't be determined.
             if (blank($mimeType)) {
                 $mimeType = mime_content_type($tempFile) ?: null;
             }
@@ -198,16 +195,21 @@ class XPublisher
         }
     }
 
-    private function chunkedUpload(string $tempFile, int $totalBytes, string $mimeType, string $mediaCategory): array
+    private function chunkedUpload(string $tempFile, int $totalBytes, string $mimeType, ?string $mediaCategory): array
     {
+        $initPayload = [
+            'media_type' => $mimeType,
+            'total_bytes' => $totalBytes,
+        ];
+
+        if ($mediaCategory) {
+            $initPayload['media_category'] = $mediaCategory;
+        }
+
         // INIT
         $initResponse = $this->socialHttp()->withToken($this->accessToken)
             ->timeout(60)
-            ->post("{$this->baseUrl}/media/upload/initialize", [
-                'media_type' => $mimeType,
-                'media_category' => $mediaCategory,
-                'total_bytes' => $totalBytes,
-            ]);
+            ->post("{$this->baseUrl}/media/upload/initialize", $initPayload);
 
         if ($initResponse->failed()) {
             Log::error('X chunked upload INIT error', [

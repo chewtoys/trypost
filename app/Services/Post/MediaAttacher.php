@@ -45,13 +45,10 @@ class MediaAttacher
     }
 
     /**
-     * Resolve an inline media array (as accepted by the public API on post
-     * create/update) into fully hosted media items. Items already stored on our
-     * disk (they carry a `path`) pass through untouched; every other item is
-     * treated as an external `url` to download and host, so publishing never
-     * depends on a third-party URL staying alive.
+     * Resolve an inline media array into hosted items: items with a `path` pass
+     * through, external URLs are downloaded and hosted.
      *
-     * @param  array<Type>  $allowedTypes
+     * @param  array<MediaType>  $allowedTypes
      * @param  array<int, array<string, mixed>>  $items
      * @return array{media: array<int, array<string, mixed>>, failed: array<int, string>}
      */
@@ -78,11 +75,9 @@ class MediaAttacher
     }
 
     /**
-     * Download a public URL, validate it against the accepted media types, and
-     * store it on the workspace. Returns the media item, or null on any failure
-     * (download error, disallowed type, oversized).
+     * Download a URL, validate its type, and store it on the workspace.
      *
-     * @param  array<Type>  $allowedTypes
+     * @param  array<MediaType>  $allowedTypes
      * @return array<string, mixed>|null
      */
     public function fetchToWorkspace(Workspace $workspace, array $allowedTypes, string $url): ?array

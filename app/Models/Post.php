@@ -155,10 +155,7 @@ class Post extends Model
     }
 
     /**
-     * The media types acceptable across a set of platforms: the intersection of
-     * what each platform allows. With no platform, accept anything. Lets callers
-     * that don't have a persisted Post yet (e.g. the API create flow) compute the
-     * same constraint from the platforms in the request.
+     * Media types acceptable across a set of platforms (intersection; empty = all).
      *
      * @param  Collection<int, Platform>  $platforms
      * @return array<Type>

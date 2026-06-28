@@ -224,11 +224,8 @@ class PublishToSocialPlatform implements ShouldQueue
     }
 
     /**
-     * A failure message safe to surface to the user — it ends up in the
-     * post-failure email. Only our own publish exceptions carry a vetted
-     * user-facing message; any other throwable (engine errors like TypeError,
-     * or library exceptions) can embed file paths and internals, so it's
-     * replaced with a generic line. The raw detail stays in the logs.
+     * A user-safe failure message: only our own publish exceptions are shown
+     * verbatim; anything else is genericized so internals never reach the email.
      */
     private function safeFailureMessage(\Throwable $e): string
     {

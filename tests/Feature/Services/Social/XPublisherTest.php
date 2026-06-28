@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -254,16 +255,12 @@ test('x publisher handles gif upload with processing', function () {
 });
 
 test('x publisher recovers a missing mime type from the downloaded bytes', function () {
-    // Media attached by URL can arrive without a mime_type; X must still publish
-    // it instead of crashing with a TypeError in getMediaCategory().
     $this->post->update([
         'media' => [
             ['url' => 'https://cdn.example.com/listing'],
         ],
     ]);
 
-    // The resize itself is covered by MediaOptimizerTest; here we only need the
-    // MIME to be recovered so the upload doesn't crash on a null mime.
     $mockOptimizer = Mockery::mock(MediaOptimizer::class);
     $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
         $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
@@ -284,7 +281,6 @@ test('x publisher recovers a missing mime type from the downloaded bytes', funct
             return Http::response(['data' => ['id' => '1212121212', 'text' => 'Hello from X!']], 200);
         }
 
-        // The media download — real image bytes so the MIME can be sniffed.
         return Http::response(
             file_get_contents(__DIR__.'/../../../fixtures/1x1.png'),
             200,
@@ -398,4 +394,17 @@ test('x publisher uploads a large video in sequential 1MB segments', function ()
     $this->publisher->publish($this->postPlatform);
 
     expect($appendCount)->toBeGreaterThan(1);
+});
+
+test('x publisher fails cleanly when media cannot be downloaded', function () {
+    $this->post->update([
+        'media' => [
+            ['url' => 'https://cdn.example.com/listing', 'mime_type' => 'image/jpeg'],
+        ],
+    ]);
+
+    Http::fake(['cdn.example.com/listing' => Http::response(null, 404)]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'Could not fetch the media to upload to X');
 });
