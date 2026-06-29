@@ -299,6 +299,61 @@ it('rolls back already-hosted media when another url in the batch fails', functi
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
 
+it('rejects creating a post when an external media url is not a supported type', function () {
+    $this->socialAccount->update(['is_active' => true]);
+
+    // Downloads fine (200) but the bytes are not a supported media type.
+    Http::fake(['cdn.example.com/notes.txt' => Http::response('just some text', 200)]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Bad type post',
+            'media' => [['url' => 'https://cdn.example.com/notes.txt']],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['media']);
+
+    expect(Post::where('content', 'Bad type post')->exists())->toBeFalse();
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
+});
+
+it('keeps an already-hosted item and a freshly-hosted url in order', function () {
+    $this->socialAccount->update(['is_active' => true]);
+
+    Http::fake([
+        'cdn.example.com/external.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Mixed media post',
+            'media' => [
+                ['id' => 'hosted-1', 'path' => 'assets/already.jpg', 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
+                ['url' => 'https://cdn.example.com/external.jpg'],
+            ],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertCreated();
+
+    $media = Post::where('content', 'Mixed media post')->firstOrFail()->media;
+
+    expect($media)->toHaveCount(2)
+        ->and(data_get($media, '0.path'))->toBe('assets/already.jpg')
+        ->and(data_get($media, '1.url'))->not->toContain('cdn.example.com')
+        ->and(data_get($media, '1.path'))->not->toBeNull();
+    // Only the external URL is hosted; the passed-through item creates no new row.
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+});
+
 it('passes already-hosted media through on create without downloading', function () {
     $this->socialAccount->update(['is_active' => true]);
     Http::preventStrayRequests();
