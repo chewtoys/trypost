@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeMatchesPlatform;
+use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -35,7 +36,7 @@ class StorePostRequest extends FormRequest
                     [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms($workspaceId))]
                 ),
             ],
-            'media' => ['sometimes', 'array'],
+            ...PostMediaRules::rules(hosted: false),
             'platforms' => ['required', 'array', 'min:1'],
             'platforms.*.social_account_id' => [
                 'required',
@@ -58,6 +59,14 @@ class StorePostRequest extends FormRequest
                 Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspaceId),
             ],
         ];
+    }
+
+    /**
+     * @return Collection<int, Platform>
+     */
+    public function selectedPlatforms(): Collection
+    {
+        return $this->resolveSelectedPlatforms($this->user()->currentWorkspace->id)->values();
     }
 
     /**

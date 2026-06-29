@@ -12,6 +12,7 @@ use App\Models\PostPlatform;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
+use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -44,7 +45,7 @@ class UpdatePostRequest extends FormRequest
                     [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms())]
                 ),
             ],
-            'media' => ['sometimes', 'array'],
+            ...PostMediaRules::rules(hosted: false),
             'platforms' => ['sometimes', 'array'],
             'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post') instanceof Post ? $this->route('post')->id : $this->route('post'))],
             'platforms.*.content_type' => [

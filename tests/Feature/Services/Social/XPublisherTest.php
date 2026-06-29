@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\XPublisher;
 use Illuminate\Support\Facades\Http;
 
@@ -252,6 +254,46 @@ test('x publisher handles gif upload with processing', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/2/media/gif_media_555'));
 });
 
+test('x publisher recovers a missing mime type from the downloaded bytes', function () {
+    $this->post->update([
+        'media' => [
+            ['url' => 'https://cdn.example.com/listing'],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_111']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121212', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(__DIR__.'/../../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('1212121212');
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/media/upload'));
+});
+
 test('x publisher uploads video via chunked upload', function () {
     $this->post->update([
         'media' => [
@@ -352,4 +394,17 @@ test('x publisher uploads a large video in sequential 1MB segments', function ()
     $this->publisher->publish($this->postPlatform);
 
     expect($appendCount)->toBeGreaterThan(1);
+});
+
+test('x publisher fails cleanly when media cannot be downloaded', function () {
+    $this->post->update([
+        'media' => [
+            ['url' => 'https://cdn.example.com/listing', 'mime_type' => 'image/jpeg'],
+        ],
+    ]);
+
+    Http::fake(['cdn.example.com/listing' => Http::response(null, 404)]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'Could not fetch the media to upload to X');
 });

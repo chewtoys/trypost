@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Post;
 
 use App\Enums\Media\Type as MediaType;
+use App\Models\Media;
 use App\Models\Post;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 /**
  * Downloads public URLs and attaches them as media to a post — used by
@@ -31,7 +34,7 @@ class MediaAttacher
         $failed = [];
 
         foreach ($urls as $url) {
-            ($item = $this->attachOne($post, $url)) === null
+            ($item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url)) === null
                 ? $failed[] = $url
                 : $attached[] = $item;
         }
@@ -44,9 +47,54 @@ class MediaAttacher
     }
 
     /**
+     * Resolve an inline media array into hosted items: items with a `path` pass
+     * through, external URLs are downloaded and hosted. Atomic — when any item
+     * fails, media hosted in this call is rolled back so nothing is orphaned.
+     *
+     * @param  array<MediaType>  $allowedTypes
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{media: array<int, array<string, mixed>>, failed: array<int, string>}
+     */
+    public function resolveInlineMedia(Workspace $workspace, array $allowedTypes, array $items): array
+    {
+        $media = [];
+        $failed = [];
+        $hostedIds = [];
+
+        foreach ($items as $item) {
+            if (filled(data_get($item, 'path'))) {
+                $media[] = $item;
+
+                continue;
+            }
+
+            $url = (string) data_get($item, 'url', '');
+            $hosted = $this->fetchToWorkspace($workspace, $allowedTypes, $url);
+
+            if ($hosted === null) {
+                $failed[] = $url;
+
+                continue;
+            }
+
+            $media[] = $hosted;
+            $hostedIds[] = data_get($hosted, 'id');
+        }
+
+        if ($failed !== [] && $hostedIds !== []) {
+            Media::query()->whereKey($hostedIds)->get()->each->delete();
+        }
+
+        return ['media' => $media, 'failed' => $failed];
+    }
+
+    /**
+     * Download a URL, validate its type, and store it on the workspace.
+     *
+     * @param  array<MediaType>  $allowedTypes
      * @return array<string, mixed>|null
      */
-    private function attachOne(Post $post, string $url): ?array
+    private function fetchToWorkspace(Workspace $workspace, array $allowedTypes, string $url): ?array
     {
         $download = $this->download($url);
 
@@ -57,7 +105,7 @@ class MediaAttacher
         try {
             $type = MediaType::fromMime($download['mime'] ?? '');
 
-            if ($type === null || ! in_array($type, $post->allowedMediaTypes(), true)) {
+            if ($type === null || ! in_array($type, $allowedTypes, true)) {
                 return null;
             }
 
@@ -66,7 +114,7 @@ class MediaAttacher
             }
 
             $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
-            $media = $post->workspace->addMediaFromPath($download['path'], $name, 'assets');
+            $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
 
             return [
                 'id' => $media->id,
@@ -106,7 +154,8 @@ class MediaAttacher
                     },
                 ])
                 ->get($url);
-        } catch (RuntimeException) {
+        } catch (Throwable) {
+            // Any fetch failure (timeout, DNS, refused, oversize) is a failed download.
             @unlink($temp);
 
             return null;

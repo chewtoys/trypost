@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
@@ -160,13 +161,19 @@ abstract class AbstractLinkedInPublisher
         $document = $media->first(fn ($item) => $item->isDocument());
 
         if (! $document) {
-            throw new \Exception("No PDF document for {$this->label()} document post");
+            throw new LinkedInPublishException(
+                userMessage: "No PDF document was found for this {$this->label()} document post.",
+                category: ErrorCategory::MediaFormat,
+            );
         }
 
         $documentUrn = $this->uploadDocument($document);
 
         if (! $documentUrn) {
-            throw new \Exception("{$this->label()} document upload failed");
+            throw new LinkedInPublishException(
+                userMessage: "{$this->label()} did not accept the document. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
         }
 
         $payload = $this->basePayload($content);
@@ -262,7 +269,10 @@ abstract class AbstractLinkedInPublisher
         $imageUrn = data_get($initData, 'value.image');
 
         if (! $uploadUrl || ! $imageUrn) {
-            throw new \Exception("{$this->label()} image upload init missing uploadUrl or image URN");
+            throw new LinkedInPublishException(
+                userMessage: "{$this->label()} did not accept the image upload. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
         }
 
         $tempFile = tempnam(sys_get_temp_dir(), 'li_image_');
@@ -337,7 +347,10 @@ abstract class AbstractLinkedInPublisher
         $uploadToken = data_get($initData, 'value.uploadToken', '');
 
         if (! $videoUrn || empty($uploadInstructions)) {
-            throw new \Exception("{$this->label()} video upload init missing video URN or upload instructions");
+            throw new LinkedInPublishException(
+                userMessage: "{$this->label()} did not accept the video upload. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
         }
 
         $uploadedPartIds = [];
@@ -414,7 +427,10 @@ abstract class AbstractLinkedInPublisher
         $documentUrn = data_get($initData, 'value.document');
 
         if (! $uploadUrl || ! $documentUrn) {
-            throw new \Exception("{$this->label()} document upload init missing uploadUrl or document URN");
+            throw new LinkedInPublishException(
+                userMessage: "{$this->label()} did not accept the document upload. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // The Documents API is not chunked — upload the PDF in a single request.
@@ -475,13 +491,19 @@ abstract class AbstractLinkedInPublisher
             }
 
             if ($status === 'PROCESSING_FAILED') {
-                throw new \Exception("{$this->label()} {$label} processing failed");
+                throw new LinkedInPublishException(
+                    userMessage: "{$this->label()} {$label} processing failed.",
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             sleep($this->processingPollSeconds());
         }
 
-        throw new \Exception("{$this->label()} {$label} processing did not complete in time");
+        throw new LinkedInPublishException(
+            userMessage: "{$this->label()} {$label} processing did not complete in time.",
+            category: ErrorCategory::ServerError,
+        );
     }
 
     /**
@@ -505,7 +527,10 @@ abstract class AbstractLinkedInPublisher
         $response = Http::withOptions(['sink' => $tempFile])->timeout(600)->get($url);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to download media: HTTP '.$response->status());
+            throw new LinkedInPublishException(
+                userMessage: "Could not fetch the media to upload to {$this->label()}. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
         }
     }
 

@@ -55,7 +55,10 @@ class FacebookPublisher
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first()),
             ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
-            default => throw new \Exception("Unsupported Facebook content type: {$contentType?->value}"),
+            default => throw new FacebookPublishException(
+                userMessage: "Unsupported Facebook content type: {$contentType?->value}",
+                category: ErrorCategory::MediaFormat,
+            ),
         };
     }
 
@@ -64,7 +67,10 @@ class FacebookPublisher
         // Text only post
         if ($media->isEmpty()) {
             if ($content === null || $content === '') {
-                throw new \Exception('Facebook text posts require content. Please add text to your post.');
+                throw new FacebookPublishException(
+                    userMessage: 'Facebook text posts require content. Please add text to your post.',
+                    category: ErrorCategory::MediaFormat,
+                );
             }
 
             return $this->publishTextPost($pageId, $accessToken, $content);
@@ -87,7 +93,10 @@ class FacebookPublisher
             return $this->publishMultiImagePost($pageId, $accessToken, $content, $media, $aspectRatio);
         }
 
-        throw new \Exception('Unsupported media type for Facebook');
+        throw new FacebookPublishException(
+            userMessage: 'Unsupported media type for Facebook',
+            category: ErrorCategory::MediaFormat,
+        );
     }
 
     private function publishTextPost(string $pageId, string $accessToken, string $content): array
@@ -173,7 +182,10 @@ class FacebookPublisher
         }
 
         if (empty($attachedMedia)) {
-            throw new \Exception('Failed to upload any images to Facebook');
+            throw new FacebookPublishException(
+                userMessage: 'Failed to upload any images to Facebook',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // Create the post with attached media
@@ -360,7 +372,10 @@ class FacebookPublisher
         $videoId = $response->json()['video_id'] ?? null;
 
         if (! $videoId) {
-            throw new \Exception('Facebook story upload failed: no video ID returned');
+            throw new FacebookPublishException(
+                userMessage: 'Facebook did not accept the story video. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         $transferResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$videoId}", [

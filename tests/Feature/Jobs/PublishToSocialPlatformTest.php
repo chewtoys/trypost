@@ -181,7 +181,57 @@ test('publish to social platform marks platform as failed on error', function ()
 
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
-    expect($this->postPlatform->error_message)->toBe('API Error');
+    expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.');
+});
+
+test('publish keeps the vetted user message from a publish exception', function () {
+    Event::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new LinkedInPublishException(
+        userMessage: 'LinkedIn rejected this post.',
+        category: ErrorCategory::ContentPolicy,
+    ));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
+    expect($this->postPlatform->error_message)->toBe('LinkedIn rejected this post.');
+});
+
+test('publish never leaks a raw internal error to the failure record (and the email)', function () {
+    Event::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new TypeError(
+        'X::getMediaCategory(): Argument #1 ($mimeType) must be of type string, null given, called in /home/forge/app.trypost.it/releases/72198060/app/Services/Social/XPublisher.php on line 130'
+    ));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
+    expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.')
+        ->and($this->postPlatform->error_message)->not->toContain('/home/forge')
+        ->and($this->postPlatform->error_message)->not->toContain('getMediaCategory');
+});
+
+test('the job-failed hook also genericizes a raw internal error', function () {
+    Event::fake();
+
+    (new PublishToSocialPlatform($this->postPlatform))->failed(new TypeError(
+        'boom in /home/forge/app.trypost.it/releases/72198060/app/Services/Social/XPublisher.php on line 130'
+    ));
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.')
+        ->and($this->postPlatform->error_message)->not->toContain('/home/forge');
 });
 
 test('publish to social platform marks account as token expired on auth failure', function () {

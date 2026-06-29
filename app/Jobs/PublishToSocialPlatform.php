@@ -165,7 +165,7 @@ class PublishToSocialPlatform implements ShouldQueue
                     'platform' => $this->postPlatform->platform->value,
                     'error' => $e->getMessage(),
                 ]);
-                $this->postPlatform->markAsFailed($e->getMessage(), [
+                $this->postPlatform->markAsFailed($this->safeFailureMessage($e), [
                     'category' => 'unknown',
                     'failed_at' => now()->toIso8601String(),
                     'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
@@ -221,6 +221,17 @@ class PublishToSocialPlatform implements ShouldQueue
     private function broadcastStatus(): void
     {
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
+    }
+
+    /**
+     * A user-safe failure message: only our own publish exceptions are shown
+     * verbatim; anything else is genericized so internals never reach the email.
+     */
+    private function safeFailureMessage(\Throwable $e): string
+    {
+        return $e instanceof SocialPublishException
+            ? $e->userMessage
+            : 'An unexpected error occurred while publishing. Please try again.';
     }
 
     private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
@@ -308,10 +319,13 @@ class PublishToSocialPlatform implements ShouldQueue
         $this->postPlatform->refresh();
 
         if ($this->postPlatform->status !== PostPlatformStatus::Published) {
-            $this->postPlatform->markAsFailed($exception?->getMessage() ?? 'Unknown error', [
-                'category' => 'job_failed',
-                'failed_at' => now()->toIso8601String(),
-            ]);
+            $this->postPlatform->markAsFailed(
+                $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
+                [
+                    'category' => 'job_failed',
+                    'failed_at' => now()->toIso8601String(),
+                ]
+            );
             $this->updatePostStatus();
             $this->broadcastStatus();
         }

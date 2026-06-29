@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
 use App\Models\PostPlatform;
 use App\Services\Media\MediaOptimizer;
@@ -71,7 +72,10 @@ class XPublisher
         }
 
         if (empty($content) && empty($mediaIds)) {
-            throw new \Exception('X posts require either text or media. Please add content to your post.');
+            throw new XPublishException(
+                userMessage: 'X posts require either text or media. Please add content to your post.',
+                category: ErrorCategory::MediaFormat,
+            );
         }
 
         $response = $this->getHttpClient()
@@ -114,11 +118,25 @@ class XPublisher
             $downloadResponse = Http::withOptions(['sink' => $tempFile])->timeout(600)->get($mediaItem->url);
 
             if ($downloadResponse->failed()) {
-                throw new \Exception('Failed to download media: HTTP '.$downloadResponse->status());
+                throw new XPublishException(
+                    userMessage: 'Could not fetch the media to upload to X. Please try again.',
+                    category: ErrorCategory::ServerError,
+                );
+            }
+
+            if (blank($mimeType)) {
+                $mimeType = mime_content_type($tempFile) ?: null;
+            }
+
+            if (blank($mimeType)) {
+                throw new XPublishException(
+                    userMessage: 'Unsupported media type for X.',
+                    category: ErrorCategory::MediaFormat,
+                );
             }
 
             // Optimize images (skip GIFs — they need special handling)
-            if ($mediaItem->isImage() && ! MediaType::isGif($mimeType)) {
+            if (MediaType::classify($mimeType) === MediaType::Image && ! MediaType::isGif($mimeType)) {
                 $optimizer = app(MediaOptimizer::class);
                 $optimizedPath = $optimizer->optimizeImage($tempFile, Platform::X);
                 @unlink($tempFile);
@@ -177,16 +195,21 @@ class XPublisher
         }
     }
 
-    private function chunkedUpload(string $tempFile, int $totalBytes, string $mimeType, string $mediaCategory): array
+    private function chunkedUpload(string $tempFile, int $totalBytes, string $mimeType, ?string $mediaCategory): array
     {
+        $initPayload = [
+            'media_type' => $mimeType,
+            'total_bytes' => $totalBytes,
+        ];
+
+        if ($mediaCategory) {
+            $initPayload['media_category'] = $mediaCategory;
+        }
+
         // INIT
         $initResponse = $this->socialHttp()->withToken($this->accessToken)
             ->timeout(60)
-            ->post("{$this->baseUrl}/media/upload/initialize", [
-                'media_type' => $mimeType,
-                'media_category' => $mediaCategory,
-                'total_bytes' => $totalBytes,
-            ]);
+            ->post("{$this->baseUrl}/media/upload/initialize", $initPayload);
 
         if ($initResponse->failed()) {
             Log::error('X chunked upload INIT error', [
@@ -200,7 +223,10 @@ class XPublisher
         $mediaId = $initData['data']['id'] ?? $initData['media_id'] ?? null;
 
         if (! $mediaId) {
-            throw new \Exception('No media_id returned from INIT');
+            throw new XPublishException(
+                userMessage: 'X did not accept the media upload. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
         }
 
         // APPEND - Read from temp file in 1MB chunks. Matches the

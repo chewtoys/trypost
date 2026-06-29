@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
+use App\Actions\Post\HostInlineMedia;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
@@ -49,11 +50,18 @@ class PostController extends Controller
 
     public function store(StorePostRequest $request): JsonResponse
     {
-        $post = CreatePost::execute(
-            $request->user()->currentWorkspace,
-            $request->user()->currentWorkspace->owner,
-            $request->validated()
-        );
+        $workspace = $request->user()->currentWorkspace;
+        $data = $request->validated();
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = HostInlineMedia::execute(
+                $workspace,
+                Post::allowedMediaTypesFor($request->selectedPlatforms()),
+                $data['media'],
+            );
+        }
+
+        $post = CreatePost::execute($workspace, $workspace->owner, $data);
 
         $post->load(['postPlatforms.socialAccount']);
 
@@ -66,7 +74,17 @@ class PostController extends Controller
     {
         $this->authorize('update', $post);
 
-        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $request->validated());
+        $data = $request->validated();
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = HostInlineMedia::execute(
+                $request->user()->currentWorkspace,
+                $post->allowedMediaTypes(),
+                $data['media'],
+            );
+        }
+
+        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $data);
 
         if (data_get($result, 'action') === PostAction::Finalized) {
             return response()->json(
