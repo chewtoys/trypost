@@ -3,6 +3,7 @@ import { IconDots, IconPhoto } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -214,17 +215,15 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
 
         <!-- ==================== REELS ==================== -->
         <template v-else-if="isReel">
-            <div class="relative flex-1 bg-black overflow-hidden">
+            <div class="relative flex-1 overflow-hidden">
                 <!-- Video/Media - Full screen -->
-                <div class="absolute inset-0">
-                    <PostMediaPreview
-                        :media="media"
-                        :placeholder-icon="IconPhoto"
-                        :show-arrows="false"
-                        :show-dots="false"
-                        placeholder-class="w-full h-full flex items-center justify-center bg-[#18191a]"
-                    />
-                </div>
+                <VerticalMediaCanvas :media="media">
+                    <template #placeholder>
+                        <div class="flex h-full w-full items-center justify-center bg-[#18191a]">
+                            <IconPhoto class="h-12 w-12 text-muted-foreground/40" />
+                        </div>
+                    </template>
+                </VerticalMediaCanvas>
 
                 <!-- Gradient overlay -->
                 <div v-if="media.length > 0"
@@ -353,17 +352,15 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
 
         <!-- ==================== STORIES ==================== -->
         <template v-else-if="isStory">
-            <div class="relative flex-1 bg-black overflow-hidden">
+            <div class="relative flex-1 overflow-hidden">
                 <!-- Media - Full screen -->
-                <div class="absolute inset-0">
-                    <PostMediaPreview
-                        :media="media"
-                        :placeholder-icon="IconPhoto"
-                        :show-arrows="false"
-                        :show-dots="false"
-                        placeholder-class="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#1877f2]/50 to-[#833ab4]/50"
-                    />
-                </div>
+                <VerticalMediaCanvas :media="media">
+                    <template #placeholder>
+                        <div class="flex h-full w-full items-center justify-center bg-gradient-to-b from-[#1877f2]/50 to-[#833ab4]/50">
+                            <IconPhoto class="h-12 w-12 text-muted-foreground/40" />
+                        </div>
+                    </template>
+                </VerticalMediaCanvas>
 
                 <!-- Progress Bars -->
                 <div v-if="media.length > 0" class="absolute top-1 left-2 right-2 flex gap-0.5 z-10">
