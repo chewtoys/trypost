@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -140,11 +141,11 @@ test('instagram publisher can publish reel', function () {
     });
 });
 
-test('instagram publisher can publish image story', function () {
+test('instagram publisher fits an image story to 9:16 and posts the hosted copy', function () {
+    Storage::fake();
     $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
 
     $this->post->update([
-
         'media' => [
             [
                 'id' => 'test-media-story',
@@ -154,8 +155,18 @@ test('instagram publisher can publish image story', function () {
                 'original_filename' => 'story.jpg',
             ],
         ],
-
     ]);
+
+    // The fit itself is covered by MediaOptimizerTest; here we only assert the
+    // story is built from the hosted, fitted copy (9:16 canvas).
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('fitToCanvas')->once()->with(Mockery::type('string'), 1080, 1920)->andReturnUsing(function (string $tempFile) {
+        $out = tempnam(sys_get_temp_dir(), 'ig_fit_');
+        copy($tempFile, $out);
+
+        return $out;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
 
     Http::fake([
         'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response([
@@ -170,6 +181,7 @@ test('instagram publisher can publish image story', function () {
         'https://graph.instagram.com/v25.0/story-123456789*' => Http::response([
             'permalink' => 'https://www.instagram.com/stories/testuser/123/',
         ], 200),
+        '*' => Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200, ['Content-Type' => 'image/png']),
     ]);
 
     $result = $this->publisher->publish($this->postPlatform);
@@ -177,7 +189,12 @@ test('instagram publisher can publish image story', function () {
     expect($result['id'])->toBe('story-123456789');
 
     Http::assertSent(function ($request) {
-        return str_contains($request->url(), '/ig_123456789/media');
+        if (! str_contains($request->url(), '/ig_123456789/media') || str_contains($request->url(), 'media_publish')) {
+            return false;
+        }
+        $imageUrl = (string) data_get($request->data(), 'image_url', '');
+
+        return str_contains($imageUrl, 'social-crops/') && ! str_contains($imageUrl, 'example.com');
     });
 });
 

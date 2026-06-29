@@ -15,6 +15,9 @@ interface Props {
     dotInactiveClass?: string;
     mediaClass?: string;
     placeholderClass?: string;
+    // Fit images inside the frame with a blurred copy filling the gaps (matches
+    // the blurred-background extension applied to story images at publish time).
+    blurBackground?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,6 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
     dotInactiveClass: 'bg-white/50 hover:bg-white/70',
     mediaClass: 'w-full h-full object-cover',
     placeholderClass: 'w-full h-full flex items-center justify-center bg-muted',
+    blurBackground: false,
 });
 
 const currentIndex = ref(0);
@@ -61,12 +65,27 @@ const goToSlide = (index: number) => {
                 :src="item.url"
                 :video-class="mediaClass"
             />
-            <img
-                v-else-if="index === currentIndex"
-                :src="item.url"
-                :alt="item.original_filename"
-                :class="mediaClass"
-            />
+            <template v-else-if="index === currentIndex">
+                <template v-if="blurBackground">
+                    <img
+                        :src="item.url"
+                        alt=""
+                        aria-hidden="true"
+                        class="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-90"
+                    />
+                    <img
+                        :src="item.url"
+                        :alt="item.original_filename"
+                        class="absolute inset-0 h-full w-full object-contain"
+                    />
+                </template>
+                <img
+                    v-else
+                    :src="item.url"
+                    :alt="item.original_filename"
+                    :class="mediaClass"
+                />
+            </template>
         </template>
 
         <template v-if="hasMultiple && showArrows">

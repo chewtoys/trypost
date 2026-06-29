@@ -149,6 +149,40 @@ class MediaOptimizer
     }
 
     /**
+     * Fit an image inside a width×height canvas without cropping: the image is
+     * scaled to fit and centered, and the empty space is filled with a blurred,
+     * slightly darkened copy of the image. When the image already matches the
+     * canvas ratio it's just scaled down (no background). Returns a temp file.
+     */
+    public function fitToCanvas(string $filePath, int $width, int $height): string
+    {
+        $probe = $this->manager->decodePath($filePath);
+        $canvasRatio = $width / $height;
+        $imageRatio = $probe->width() / $probe->height();
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'media_fit_');
+
+        if (abs($imageRatio - $canvasRatio) < 0.01) {
+            $sized = $this->manager->decodePath($filePath)->scaleDown($width, $height);
+            file_put_contents($tempFile, (string) $sized->encodeUsingMediaType('image/jpeg', quality: 100));
+
+            return $tempFile;
+        }
+
+        $canvas = $this->manager->decodePath($filePath)
+            ->cover($width, $height)
+            ->blur(40)
+            ->brightness(-12);
+
+        $foreground = $this->manager->decodePath($filePath)->scaleDown($width, $height);
+        $canvas->insert($foreground, 0, 0, 'center');
+
+        file_put_contents($tempFile, (string) $canvas->encodeUsingMediaType('image/jpeg', quality: 100));
+
+        return $tempFile;
+    }
+
+    /**
      * @return array{max_width: int, max_size: int, format: string, quality: int}
      */
     private function getImageConfig(Platform $platform): array

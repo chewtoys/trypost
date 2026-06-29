@@ -50,6 +50,35 @@ trait CropsImageForAspectRatio
         }
     }
 
+    /**
+     * Fit the image inside a width×height canvas with a blurred-background
+     * extension (no cropping), host it, and return a public URL. Used for
+     * stories so an off-ratio image isn't clipped by the platform.
+     */
+    protected function fitImageToCanvas(string $imageUrl, int $width, int $height): string
+    {
+        $tempInput = tempnam(sys_get_temp_dir(), 'fit_in_');
+
+        try {
+            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
+
+            if ($download->failed()) {
+                throw $this->cropFailureException('Failed to download image for story fitting');
+            }
+
+            $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
+
+            $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            Storage::put($path, file_get_contents($fitted));
+
+            @unlink($fitted);
+
+            return Storage::url($path);
+        } finally {
+            @unlink($tempInput);
+        }
+    }
+
     protected function aspectRatioToFloat(string $ratio): float
     {
         return AspectRatio::tryFrom($ratio)?->toFloat() ?? 1.0;

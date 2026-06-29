@@ -213,3 +213,33 @@ it('returns a copy when image already matches the target ratio', function () use
     expect($cropped->width())->toBe(800);
     expect($cropped->height())->toBe(800);
 });
+
+it('fits a wide image into a 9:16 canvas (blurred background, no crop)', function () use (&$tempFiles) {
+    $source = createTestImage(1200, 900); // 4:3
+    $tempFiles[] = $source;
+
+    $optimizer = new MediaOptimizer;
+    $result = $optimizer->fitToCanvas($source, 1080, 1920);
+    $tempFiles[] = $result;
+
+    $manager = new ImageManager(Driver::class);
+    $out = $manager->decodePath($result);
+
+    expect($out->width())->toBe(1080)
+        ->and($out->height())->toBe(1920);
+});
+
+it('does not letterbox an image that already matches the canvas ratio', function () use (&$tempFiles) {
+    $source = createTestImage(1080, 1920); // already 9:16
+    $tempFiles[] = $source;
+
+    $optimizer = new MediaOptimizer;
+    $result = $optimizer->fitToCanvas($source, 1080, 1920);
+    $tempFiles[] = $result;
+
+    $manager = new ImageManager(Driver::class);
+    $out = $manager->decodePath($result);
+
+    $ratio = $out->width() / $out->height();
+    expect(abs($ratio - 9 / 16))->toBeLessThan(0.01);
+});

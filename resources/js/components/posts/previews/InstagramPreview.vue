@@ -237,6 +237,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                         :placeholder-icon="IconPhoto"
                         :show-arrows="false"
                         :show-dots="false"
+                        :blur-background="true"
                         placeholder-class="w-full h-full flex items-center justify-center"
                     />
                 </div>
