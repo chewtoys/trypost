@@ -32,7 +32,7 @@ class UpdateWorkspaceRequest extends FormRequest
             'text_color' => $hex,
             'brand_font' => ['sometimes', 'required', 'string', Rule::in(BrandFont::values())],
             'image_style' => ['sometimes', 'required', 'string', Rule::in(ImageStyle::values())],
-            'content_language' => ['sometimes', 'string', 'in:en,pt-BR,es'],
+            'content_language' => ['sometimes', 'string', 'in:en,pt-BR,es,fr,de,it,nl,pl,el,ja,ko,zh,ru,tr,ar'],
         ];
     }
 

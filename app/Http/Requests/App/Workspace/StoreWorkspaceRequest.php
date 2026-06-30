@@ -32,7 +32,7 @@ class StoreWorkspaceRequest extends FormRequest
             'text_color' => $hex,
             'brand_font' => ['sometimes', 'string', Rule::in(BrandFont::values())],
             'image_style' => ['sometimes', 'string', Rule::in(ImageStyle::values())],
-            'content_language' => ['nullable', 'string', 'in:en,pt-BR,es'],
+            'content_language' => ['nullable', 'string', 'in:en,pt-BR,es,fr,de,it,nl,pl,el,ja,ko,zh,ru,tr,ar'],
             'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }

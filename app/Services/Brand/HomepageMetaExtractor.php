@@ -297,6 +297,18 @@ final class HomepageMetaExtractor
             str_starts_with($lower, 'pt') => 'pt-BR',
             str_starts_with($lower, 'es') => 'es',
             str_starts_with($lower, 'en') => 'en',
+            str_starts_with($lower, 'fr') => 'fr',
+            str_starts_with($lower, 'de') => 'de',
+            str_starts_with($lower, 'it') => 'it',
+            str_starts_with($lower, 'nl') => 'nl',
+            str_starts_with($lower, 'pl') => 'pl',
+            str_starts_with($lower, 'el') => 'el',
+            str_starts_with($lower, 'ja') => 'ja',
+            str_starts_with($lower, 'ko') => 'ko',
+            str_starts_with($lower, 'zh') => 'zh',
+            str_starts_with($lower, 'ru') => 'ru',
+            str_starts_with($lower, 'tr') => 'tr',
+            str_starts_with($lower, 'ar') => 'ar',
             default => null,
         };
     }
