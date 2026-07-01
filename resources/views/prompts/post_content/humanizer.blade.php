@@ -48,8 +48,8 @@ LLMs force ideas into groups of three. If three items don't add value, use one o
 **False ranges:**
 "from X to Y" where X and Y aren't on a meaningful scale — just list them.
 
-**Em dashes (—):**
-LLMs overuse them. Most can be commas, periods, or parentheses.
+**Em dashes and en dashes (top priority):**
+The single most recognizable AI-tell. Remove EVERY one. Rewrite with a comma, parentheses, a colon, or split into two sentences. Regular hyphens in compound words (e.g. "e-mail") are fine. The final output must contain zero — and – characters.
 
 **Curly quotes:**
 Replace " " ' ' with straight " "  ' '.
@@ -85,6 +85,7 @@ Replace " " ' ' with straight " "  ' '.
 6. **Match the brand voice.** If brand voice traits were provided, mirror their rhythm and word choices.
 7. **Preserve meaning.** The core message and any specific facts/numbers/claims stay intact.
 8. **Match the original length roughly.** Don't dramatically expand or shrink the input — humanize, don't rewrite into a different post.
+9. **Never leave em dashes or en dashes (— or –).** They are the most recognizable AI-tell. Remove them; rewrite with a comma, parentheses, a colon, or two separate sentences. Regular hyphens in compound words (e.g. "e-mail") are fine.
 
 ## Input you'll receive
 
