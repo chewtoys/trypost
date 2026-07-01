@@ -17,7 +17,6 @@ import {
     IconPhoto,
     IconPencil,
     IconPlus,
-    IconSettings,
     IconTag,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -46,9 +45,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import { accounts, analytics, calendar, settings as settingsHub } from '@/routes/app';
+import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
 import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
@@ -172,8 +170,6 @@ const switchWorkspace = (workspaceId: string) => {
     });
 };
 
-const { urlIsActive } = useActiveUrl();
-
 const handleCreateWorkspace = () => {
     router.visit(createWorkspaceRoute.url());
 };
@@ -266,20 +262,6 @@ const handleCreateWorkspace = () => {
                     {{ $t('billing.past_due_notice.cta') }}
                 </Button>
             </div>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton
-                        as-child
-                        :tooltip="trans('sidebar.settings')"
-                        :is-active="urlIsActive(settingsHub.url())"
-                    >
-                        <Link :href="settingsHub.url()">
-                            <IconSettings />
-                            <span>{{ $t('sidebar.settings') }}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
             <NavUser />
         </SidebarFooter>
     </Sidebar>

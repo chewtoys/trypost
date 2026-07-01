@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconLanguage,
     IconLogout,
+    IconSettings,
     IconUser,
 } from '@tabler/icons-vue';
 import { loadLanguageAsync } from 'laravel-vue-i18n';
@@ -23,6 +24,7 @@ import UserInfo from '@/components/UserInfo.vue';
 import dayjs from '@/dayjs';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
+import { settings as settingsHub } from '@/routes/app';
 import { edit } from '@/routes/app/profile';
 import type { User } from '@/types';
 
@@ -75,6 +77,12 @@ const handleLogout = () => {
     </DropdownMenuLabel>
     <DropdownMenuSeparator />
     <DropdownMenuGroup>
+        <DropdownMenuItem :as-child="true">
+            <Link class="block w-full cursor-pointer" :href="settingsHub.url()" prefetch>
+                <IconSettings class="size-4" />
+                {{ $t('sidebar.settings') }}
+            </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem :as-child="true">
             <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
                 <IconUser class="size-4" />
