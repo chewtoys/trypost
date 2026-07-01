@@ -63,6 +63,8 @@ const selectedAccountId = ref<string | null>(null);
 const includeImages = ref(true);
 const imageCount = ref(2);
 const promptText = ref('');
+// true = images use the workspace brand palette; false = the AI picks colors freely.
+const useBrandColors = ref(true);
 
 const submitting = ref(false);
 
@@ -73,7 +75,8 @@ const httpStart = useHttp<{
     prompt: string;
     date: string | null;
     template: string;
-}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card' });
+    apply_brand_visuals: boolean;
+}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card', apply_brand_visuals: true });
 
 const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
     { value: ContentType.InstagramFeed, platforms: ['instagram', 'instagram-facebook'] },
@@ -207,6 +210,7 @@ const startGeneration = async () => {
     httpStart.prompt = promptText.value.trim();
     httpStart.date = props.date;
     httpStart.template = resolvedTemplate.value;
+    httpStart.apply_brand_visuals = useBrandColors.value;
 
     try {
         const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
@@ -345,6 +349,27 @@ const startGeneration = async () => {
                     @click="includeImages = true; imageCount = n"
                 >
                     {{ n }}
+                </Button>
+            </div>
+        </div>
+
+        <!-- Colors: use the brand palette or let the AI decide (only when images are generated) -->
+        <div v-if="selectedFormat && submittedImageCount > 0" class="space-y-2">
+            <Label class="text-sm font-bold">{{ $t('posts.create.steps.brand_colors_label') }}</Label>
+            <div class="flex flex-wrap gap-2">
+                <Button
+                    type="button"
+                    :variant="useBrandColors ? 'default' : 'outline'"
+                    @click="useBrandColors = true"
+                >
+                    {{ $t('posts.create.steps.brand_colors_on') }}
+                </Button>
+                <Button
+                    type="button"
+                    :variant="!useBrandColors ? 'default' : 'outline'"
+                    @click="useBrandColors = false"
+                >
+                    {{ $t('posts.create.steps.brand_colors_off') }}
                 </Button>
             </div>
         </div>

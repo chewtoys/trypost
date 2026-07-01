@@ -36,6 +36,7 @@ class StartPostCreationRequest extends FormRequest
             'prompt' => ['required', 'string', 'max:2000'],
             'date' => ['nullable', 'date_format:Y-m-d'],
             'template' => ['sometimes', 'string', Rule::enum(ContentStyle::class)],
+            'apply_brand_visuals' => ['sometimes', 'boolean'],
         ];
     }
 
