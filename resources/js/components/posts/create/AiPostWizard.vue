@@ -63,6 +63,8 @@ const selectedAccountId = ref<string | null>(null);
 const includeImages = ref(true);
 const imageCount = ref(2);
 const promptText = ref('');
+// Mirrors the backend validation (`prompt` max:2000) so the limit is visible in the UI.
+const PROMPT_MAX = 2000;
 
 const submitting = ref(false);
 
@@ -160,7 +162,8 @@ const submittedImageCount = computed(() => {
 const canSubmit = computed(() =>
     selectedFormat.value !== null &&
     selectedAccountId.value !== null &&
-    promptText.value.trim().length >= 3,
+    promptText.value.trim().length >= 3 &&
+    promptText.value.length <= PROMPT_MAX,
 );
 
 // Auto-pick the only account when format has exactly one match.
@@ -358,6 +361,12 @@ const startGeneration = async () => {
                 :placeholder="$t('posts.create.steps.prompt_placeholder')"
                 class="min-h-[140px] resize-none"
             />
+            <p
+                class="text-right text-xs tabular-nums"
+                :class="promptText.length > PROMPT_MAX ? 'font-semibold text-destructive' : 'text-muted-foreground'"
+            >
+                {{ promptText.length }}/{{ PROMPT_MAX }}
+            </p>
         </div>
 
         <!-- Generate -->
