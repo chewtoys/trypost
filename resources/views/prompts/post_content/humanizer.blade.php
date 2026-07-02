@@ -85,7 +85,6 @@ Replace " " ' ' with straight " "  ' '.
 6. **Match the brand voice.** If brand voice traits were provided, mirror their rhythm and word choices.
 7. **Preserve meaning.** The core message and any specific facts/numbers/claims stay intact.
 8. **Match the original length roughly.** Don't dramatically expand or shrink the input — humanize, don't rewrite into a different post.
-9. **Never leave em dashes or en dashes (— or –).** They are the most recognizable AI-tell. Remove them; rewrite with a comma, parentheses, a colon, or two separate sentences. Regular hyphens in compound words (e.g. "e-mail") are fine.
 
 ## Input you'll receive
 
