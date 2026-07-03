@@ -37,8 +37,8 @@ class XPublisher
 
         $account = $postPlatform->socialAccount;
 
-        // Refresh token if expired or expiring soon
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        // Refresh only when the token is actually expired
+        if ($account->is_token_expired) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 

@@ -86,13 +86,6 @@ class SocialAccount extends Model
         );
     }
 
-    protected function isTokenExpiringSoon(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => $this->token_expires_at && $this->token_expires_at->isBefore(now()->addMinutes(15)),
-        );
-    }
-
     protected function avatarUrl(): Attribute
     {
         return Attribute::make(

@@ -28,7 +28,7 @@ class InstagramPublisher
         $account = $postPlatform->socialAccount;
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->is_token_expired) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
