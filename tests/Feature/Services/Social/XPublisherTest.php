@@ -65,6 +65,31 @@ test('x publisher can publish text-only post', function () {
     });
 });
 
+test('x publisher does NOT rotate the token when it is only expiring soon but still valid', function () {
+    $this->socialAccount->update([
+        'token_expires_at' => now()->addMinutes(5),
+        'refresh_token' => 'original-refresh-token',
+    ]);
+    $originalAccessToken = $this->socialAccount->access_token;
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '999']], 200),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'should-not-be-used',
+            'refresh_token' => 'should-not-be-used',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    // X single-use refresh tokens: a still-valid access_token must NOT be rotated.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+    $this->socialAccount->refresh();
+    expect($this->socialAccount->access_token)->toBe($originalAccessToken);
+    expect($this->socialAccount->refresh_token)->toBe('original-refresh-token');
+});
+
 test('x publisher uses bearer token authentication', function () {
     Http::fake([
         'https://api.x.com/2/tweets' => Http::response([
