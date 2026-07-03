@@ -481,6 +481,33 @@ test('does not disconnect when a concurrent refresh already rotated the token (l
         && $request->header('Authorization')[0] === 'Bearer fresh-token');
 });
 
+test('does not disconnect when the verify after a refresh 401s once but a fresh token is available', function () {
+    Http::fake([
+        // Refresh succeeds and rotates the token...
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'refreshed-token',
+            'refresh_token' => 'new-refresh',
+            'expires_in' => 7200,
+        ], 200),
+        // ...but the verify that follows 401s once (the sub-commit window where a
+        // lock-skipped refresh reloads a not-yet-persisted token) before
+        // succeeding on the reload + retry.
+        config('trypost.platforms.x.api').'/users/me' => Http::sequence()
+            ->push(['error' => 'unauthorized'], 401)
+            ->push(['data' => ['id' => '123']], 200),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'status' => Status::Connected,
+        'access_token' => 'stale-token',
+        'refresh_token' => 'old-refresh',
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue();
+    expect($account->fresh()->status)->toBe(Status::Connected);
+});
+
 test('4xx during refresh keeps raising TokenExpiredException', function () {
     Http::fake([
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),

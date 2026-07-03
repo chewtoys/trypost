@@ -47,11 +47,13 @@ class ConnectionVerifier
     /**
      * Refresh the token, then verify with the new one.
      *
-     * If the refresh is rejected (4xx) but a concurrent refresh has already
-     * rotated the account and persisted a fresh access_token, reload and
-     * verify with that token instead of giving up — X (and other providers
-     * that single-use their refresh_token) otherwise disconnect a still-usable
-     * account whenever two refreshes race and one loses the rotation.
+     * If either the refresh is rejected (4xx) or the verify that follows it hits
+     * a token a concurrent refresh has already rotated — including the sub-commit
+     * window where a lock-skipped refresh reloads a not-yet-persisted token —
+     * reload and, when another process has since persisted a fresh access_token,
+     * verify with that instead of giving up. X (and other providers that
+     * single-use their refresh_token) would otherwise disconnect a still-usable
+     * account whenever two refreshes race and one loses.
      *
      * @throws TokenExpiredException
      * @throws PlatformUnavailableException
@@ -62,6 +64,8 @@ class ConnectionVerifier
 
         try {
             $this->refreshToken($account);
+
+            return $this->callVerifyEndpoint($account);
         } catch (TokenExpiredException $e) {
             $account->refresh();
 
@@ -71,8 +75,6 @@ class ConnectionVerifier
 
             throw $original ?? $e;
         }
-
-        return $this->callVerifyEndpoint($account);
     }
 
     /**
