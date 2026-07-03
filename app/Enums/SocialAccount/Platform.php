@@ -261,6 +261,22 @@ enum Platform: string
         };
     }
 
+    /**
+     * Whether this platform refreshes by extending the access_token itself
+     * (Instagram/Threads long-lived tokens) instead of exchanging a separate
+     * refresh_token. Extension-model tokens cannot be refreshed once expired,
+     * so they must be refreshed proactively while still valid — the opposite
+     * of rotating refresh_token platforms, which we avoid refreshing until
+     * they actually expire so we don't rotate a still-valid single-use token.
+     */
+    public function extendsAccessTokenOnRefresh(): bool
+    {
+        return match ($this) {
+            self::Instagram, self::Threads => true,
+            default => false,
+        };
+    }
+
     public function queue(): string
     {
         return 'social-'.$this->value;

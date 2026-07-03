@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
@@ -58,6 +59,30 @@ test('proactive refresh does NOT rotate the X refresh token while the access tok
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
     expect($this->account->fresh()->refresh_token)->toBe('original-refresh-token');
     expect($this->account->fresh()->status)->toBe(Status::Connected);
+});
+
+test('proactive refresh EXTENDS a still-valid Instagram token (extension-model platform)', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'status' => Status::Connected,
+        'access_token' => 'old-ig-token',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'extended-ig-token',
+            'expires_in' => 5184000,
+        ], 200),
+    ]);
+
+    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
+
+    // Instagram/Threads extend the token itself and can't refresh once expired,
+    // so a still-valid token IS extended proactively — unlike rotating platforms.
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
+    expect($account->fresh()->access_token)->toBe('extended-ig-token');
 });
 
 test('refresh job marks account as TokenExpired when refresh_token is rejected', function () {

@@ -35,7 +35,7 @@ class TikTokAnalytics
 
     private function fetchMetricsFromApi(SocialAccount $account): array
     {
-        if ($account->is_token_expired) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
