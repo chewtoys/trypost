@@ -6,6 +6,8 @@ return [
 
     'back' => 'Back',
 
+    'beta' => 'Beta',
+
     'confirm_modal' => [
         'cannot_be_undone' => 'This cannot be undone.',
         'type' => 'Type',

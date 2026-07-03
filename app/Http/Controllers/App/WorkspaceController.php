@@ -9,6 +9,7 @@ use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
 use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
+use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
 use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
@@ -80,6 +81,7 @@ class WorkspaceController extends Controller
             'availableFonts' => BrandFont::values(),
             'availableImageStyles' => ImageStyle::values(),
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
+            'availableContentLanguages' => ContentLanguage::options(),
         ]);
     }
 
@@ -163,6 +165,7 @@ class WorkspaceController extends Controller
             'availableFonts' => BrandFont::values(),
             'availableImageStyles' => ImageStyle::values(),
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
+            'availableContentLanguages' => ContentLanguage::options(),
         ]);
     }
 

@@ -102,7 +102,7 @@ const clear = () => {
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-[--reka-popover-trigger-width] min-w-[220px] p-0" align="start">
+        <PopoverContent class="w-(--reka-popover-trigger-width) min-w-[220px] p-0" align="start">
             <Command>
                 <CommandInput :placeholder="trans('posts.label_search_placeholder')" />
                 <CommandList>
