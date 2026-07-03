@@ -697,3 +697,26 @@ test('store attaches logo when logo_url is provided', function () {
         'logo_url' => 'https://example.com/logo.png',
     ])->assertRedirect();
 });
+
+test('update settings attaches the autofilled logo when logo_url is provided', function () {
+    $logoAttacher = $this->mock(LogoAttacher::class);
+    $logoAttacher->shouldReceive('attach')->once();
+
+    $this->actingAs($this->user)
+        ->from(route('app.workspace.brand'))
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'logo_url' => 'https://example.com/logo.png',
+        ])->assertRedirect(route('app.workspace.brand'))
+        ->assertSessionHasNoErrors();
+});
+
+test('update settings does not touch the logo when no logo_url is provided', function () {
+    $logoAttacher = $this->mock(LogoAttacher::class);
+    $logoAttacher->shouldReceive('attach')->never();
+
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+        ])->assertRedirect();
+});
