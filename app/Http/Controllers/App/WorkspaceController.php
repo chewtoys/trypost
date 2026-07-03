@@ -21,12 +21,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Throwable;
 
 class WorkspaceController extends Controller
 {
@@ -105,15 +103,7 @@ class WorkspaceController extends Controller
         $workspace = CreateWorkspace::execute($user, $validated);
 
         if ($logoUrl = data_get($validated, 'logo_url')) {
-            try {
-                $logoAttacher->attach($workspace, $logoUrl);
-            } catch (Throwable $e) {
-                Log::warning('Logo attach failed during workspace creation', [
-                    'workspace_id' => $workspace->id,
-                    'logo_url' => $logoUrl,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $logoAttacher->attach($workspace, $logoUrl);
         }
 
         return redirect()->route('app.accounts')
@@ -217,15 +207,7 @@ class WorkspaceController extends Controller
         $workspace->update($validated);
 
         if ($logoUrl) {
-            try {
-                $logoAttacher->attach($workspace, $logoUrl);
-            } catch (Throwable $e) {
-                Log::warning('Logo attach failed during workspace update', [
-                    'workspace_id' => $workspace->id,
-                    'logo_url' => $logoUrl,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $logoAttacher->attach($workspace, $logoUrl);
         }
 
         return back()->with('flash.success', __('settings.flash.workspace_updated'));
