@@ -28,6 +28,11 @@ createInertiaApp({
         // Set dayjs locale based on user's language
         dayjs.locale(locale.toLowerCase());
 
+        // Mirror the layout for right-to-left locales on SPA navigations, where
+        // the server-rendered <html dir> from the initial load does not re-run.
+        const dir = (props.initialPage.props as { dir?: string })?.dir || 'ltr';
+        document.documentElement.dir = dir;
+
         const auth = props.initialPage.props.auth as Auth | undefined;
         const flash = props.initialPage.props.flash as
             | { conversion_event?: string; [key: string]: unknown }

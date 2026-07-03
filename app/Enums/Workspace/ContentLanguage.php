@@ -84,24 +84,41 @@ enum ContentLanguage: string
     }
 
     /**
-     * Resolve a raw `<html lang>` value (e.g. "pt-PT", "en-US") to a supported
-     * language by matching its two-letter primary subtag, or null if none fits.
+     * Whether the language is written right-to-left, which drives the `dir`
+     * attribute on the document root so the whole UI mirrors for the locale.
+     */
+    public function isRtl(): bool
+    {
+        return $this === self::Arabic;
+    }
+
+    /**
+     * Resolve a raw `<html lang>` value (e.g. "pt-PT", "zh-Hans") to a supported
+     * language by matching its primary subtag, or null if none is supported.
      */
     public static function fromHtmlLang(string $lang): ?self
     {
-        $prefix = strtolower(substr(trim($lang), 0, 2));
+        $subtag = self::primarySubtag($lang);
 
-        if (strlen($prefix) < 2) {
+        if (strlen($subtag) < 2) {
             return null;
         }
 
         foreach (self::cases() as $language) {
-            if (str_starts_with($language->value, $prefix)) {
+            if (self::primarySubtag($language->value) === $subtag) {
                 return $language;
             }
         }
 
         return null;
+    }
+
+    /**
+     * The lowercased primary subtag of a BCP 47 language tag ("pt-BR" => "pt").
+     */
+    private static function primarySubtag(string $tag): string
+    {
+        return strtolower(explode('-', trim($tag), 2)[0]);
     }
 
     /**
