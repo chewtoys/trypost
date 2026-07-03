@@ -85,6 +85,28 @@ test('proactive refresh EXTENDS a still-valid Instagram token (extension-model p
     expect($account->fresh()->access_token)->toBe('extended-ig-token');
 });
 
+test('proactive refresh EXTENDS a still-valid Threads token (extension-model platform)', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+        'status' => Status::Connected,
+        'access_token' => 'old-threads-token',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'extended-threads-token',
+            'expires_in' => 5184000,
+        ], 200),
+    ]);
+
+    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
+    expect($account->fresh()->access_token)->toBe('extended-threads-token');
+});
+
 test('refresh job marks account as TokenExpired when refresh_token is rejected', function () {
     Queue::fake();
 
