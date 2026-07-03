@@ -40,6 +40,7 @@ const form = useForm({
     brand_font: props.workspace.brand_font ?? 'Inter',
     image_style: props.workspace.image_style ?? 'cinematic',
     content_language: props.workspace.content_language ?? 'en',
+    logo_url: '' as string | null,
 });
 
 const submit = () => {

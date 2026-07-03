@@ -34,6 +34,7 @@ class UpdateWorkspaceRequest extends FormRequest
             'brand_font' => ['sometimes', 'required', 'string', Rule::in(BrandFont::values())],
             'image_style' => ['sometimes', 'required', 'string', Rule::in(ImageStyle::values())],
             'content_language' => ['sometimes', 'string', Rule::in(ContentLanguage::values())],
+            'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }
 

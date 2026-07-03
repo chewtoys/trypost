@@ -198,7 +198,7 @@ class WorkspaceController extends Controller
         return back()->with('flash.success', __('settings.flash.logo_deleted'));
     }
 
-    public function updateSettings(UpdateWorkspaceRequest $request): RedirectResponse
+    public function updateSettings(UpdateWorkspaceRequest $request, LogoAttacher $logoAttacher): RedirectResponse
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
@@ -209,7 +209,24 @@ class WorkspaceController extends Controller
 
         $this->authorize('update', $workspace);
 
-        $workspace->update($request->validated());
+        $validated = $request->validated();
+
+        $logoUrl = data_get($validated, 'logo_url');
+        unset($validated['logo_url']);
+
+        $workspace->update($validated);
+
+        if ($logoUrl) {
+            try {
+                $logoAttacher->attach($workspace, $logoUrl);
+            } catch (Throwable $e) {
+                Log::warning('Logo attach failed during workspace update', [
+                    'workspace_id' => $workspace->id,
+                    'logo_url' => $logoUrl,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return back()->with('flash.success', __('settings.flash.workspace_updated'));
     }
