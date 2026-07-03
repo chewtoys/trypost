@@ -106,14 +106,17 @@ class ThreadsController extends SocialController
                 'access_token' => $shortLivedToken,
             ]);
 
-            $longLivedToken = $shortLivedToken;
-            $expiresIn = null;
-
-            if ($longLivedResponse->successful()) {
-                $longLivedData = $longLivedResponse->json();
-                $longLivedToken = $longLivedData['access_token'] ?? $shortLivedToken;
-                $expiresIn = $longLivedData['expires_in'] ?? null;
+            if ($longLivedResponse->failed()) {
+                Log::error('Threads long-lived token exchange failed', [
+                    'status' => $longLivedResponse->status(),
+                    'body' => $longLivedResponse->body(),
+                ]);
+                throw new \Exception('Failed to exchange long-lived token');
             }
+
+            $longLivedData = $longLivedResponse->json();
+            $longLivedToken = $longLivedData['access_token'] ?? $shortLivedToken;
+            $expiresIn = $longLivedData['expires_in'] ?? 5184000;
 
             // Fetch user profile
             $profileResponse = Http::get(config('trypost.platforms.threads.graph_api')."/{$userId}", [
@@ -142,7 +145,7 @@ class ThreadsController extends SocialController
                     'avatar_url' => $avatarPath,
                     'access_token' => $longLivedToken,
                     'refresh_token' => null,
-                    'token_expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+                    'token_expires_at' => now()->addSeconds($expiresIn),
                     'scopes' => $this->scopes,
                     'status' => Status::Connected,
                     'error_message' => null,

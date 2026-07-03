@@ -284,6 +284,42 @@ test('refreshes instagram token when expired', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
 });
 
+test('threads refresh records a 60-day expiry when the response omits expires_in', function () {
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'new-threads-token',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    (new ConnectionVerifier)->refreshToken($account);
+
+    $account->refresh();
+    expect($account->token_expires_at)->not->toBeNull();
+    expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});
+
+test('instagram refresh records a 60-day expiry when the response omits expires_in', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'new-instagram-token',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    (new ConnectionVerifier)->refreshToken($account);
+
+    $account->refresh();
+    expect($account->token_expires_at)->not->toBeNull();
+    expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});
+
 test('does NOT refresh proactively when token still works (lazy refresh)', function () {
     Http::fake([
         'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
