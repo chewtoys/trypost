@@ -22,9 +22,10 @@ class SetLocale
         $locale = $request->cookie('locale');
         $isValid = $locale && array_key_exists($locale, $available);
         $activeLocale = $isValid ? $locale : config('languages.default');
+        $language = ContentLanguage::tryFrom($activeLocale) ?? ContentLanguage::DEFAULT;
 
         App::setLocale($activeLocale);
-        View::share('htmlDir', ContentLanguage::tryFrom($activeLocale)?->isRtl() ? 'rtl' : 'ltr');
+        View::share('htmlDir', $language->direction());
 
         $response = $next($request);
 

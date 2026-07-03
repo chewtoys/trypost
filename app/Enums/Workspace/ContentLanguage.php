@@ -12,7 +12,7 @@ namespace App\Enums\Workspace;
  *
  * The string value is the language code stored on the workspace and passed
  * straight to the content prompts (`content_language`); the same codes also back
- * the application's UI locales, so `isRtl()` drives the document `dir` attribute.
+ * the application's UI locales, so `direction()` drives the document `dir` attribute.
  */
 enum ContentLanguage: string
 {
@@ -84,12 +84,12 @@ enum ContentLanguage: string
     }
 
     /**
-     * Whether the language is written right-to-left, which drives the `dir`
-     * attribute on the document root so the whole UI mirrors for the locale.
+     * The text direction (`ltr` or `rtl`) for the document root when this is the
+     * active UI locale — only Arabic is written right to left.
      */
-    public function isRtl(): bool
+    public function direction(): string
     {
-        return $this === self::Arabic;
+        return $this === self::Arabic ? 'rtl' : 'ltr';
     }
 
     /**

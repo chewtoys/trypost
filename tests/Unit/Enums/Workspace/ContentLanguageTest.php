@@ -71,12 +71,12 @@ test('label returns the native name for every language', function (ContentLangua
     [ContentLanguage::Arabic, 'العربية'],
 ]);
 
-test('isRtl is true only for Arabic', function () {
-    expect(ContentLanguage::Arabic->isRtl())->toBeTrue();
+test('direction is rtl only for Arabic', function () {
+    expect(ContentLanguage::Arabic->direction())->toBe('rtl');
 
     foreach (ContentLanguage::cases() as $language) {
         if ($language !== ContentLanguage::Arabic) {
-            expect($language->isRtl())->toBeFalse();
+            expect($language->direction())->toBe('ltr');
         }
     }
 });
