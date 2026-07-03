@@ -91,7 +91,7 @@ const select = (font: string) => {
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-[--reka-popover-trigger-width] p-0" align="start">
+        <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start">
             <Command>
                 <CommandInput :placeholder="searchPlaceholder" />
                 <CommandList>
