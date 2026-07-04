@@ -21,6 +21,11 @@ return [
         'uploading' => 'Subiendo...',
         'remove' => 'Eliminar foto',
         'hint' => 'Recomendado: imagen cuadrada, máximo 2 MB.',
+        'crop_title' => 'Recortar imagen',
+        'crop_description' => 'Arrastra y haz zoom para encuadrarla.',
+        'crop_hint' => 'Arrastra para reposicionar',
+        'crop_save' => 'Guardar',
+        'crop_cancel' => 'Cancelar',
     ],
 
     'timezone' => [

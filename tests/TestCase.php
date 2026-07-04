@@ -21,6 +21,17 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        $this->withoutVite();
+        if (! $this->isBrowserTest()) {
+            $this->withoutVite();
+        }
+    }
+
+    /**
+     * Browser tests drive a real browser and need the built Vite assets, so the
+     * Vite manifest must not be faked away for them.
+     */
+    private function isBrowserTest(): bool
+    {
+        return str_contains(static::class, '\\Browser\\');
     }
 }

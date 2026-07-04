@@ -21,6 +21,11 @@ return [
         'uploading' => 'Przesyłanie...',
         'remove' => 'Usuń zdjęcie',
         'hint' => 'Zalecane: kwadratowe zdjęcie, maks. 2 MB.',
+        'crop_title' => 'Przytnij obraz',
+        'crop_description' => 'Przeciągnij i powiększ, aby wykadrować.',
+        'crop_hint' => 'Przeciągnij, aby zmienić położenie',
+        'crop_save' => 'Zapisz',
+        'crop_cancel' => 'Anuluj',
     ],
 
     'timezone' => [

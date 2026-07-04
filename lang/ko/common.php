@@ -21,6 +21,11 @@ return [
         'uploading' => '업로드 중...',
         'remove' => '사진 제거',
         'hint' => '권장: 정사각형 이미지, 최대 2MB.',
+        'crop_title' => '이미지 자르기',
+        'crop_description' => '드래그하고 확대/축소하여 맞추세요.',
+        'crop_hint' => '드래그하여 위치 조정',
+        'crop_save' => '저장',
+        'crop_cancel' => '취소',
     ],
 
     'timezone' => [

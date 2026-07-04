@@ -21,6 +21,11 @@ return [
         'uploading' => 'Yükleniyor...',
         'remove' => 'Fotoğrafı kaldır',
         'hint' => 'Önerilen: kare görsel, en fazla 2 MB.',
+        'crop_title' => 'Görseli kırp',
+        'crop_description' => 'Çerçevelemek için sürükleyip yakınlaştırın.',
+        'crop_hint' => 'Yeniden konumlandırmak için sürükleyin',
+        'crop_save' => 'Kaydet',
+        'crop_cancel' => 'İptal',
     ],
 
     'timezone' => [

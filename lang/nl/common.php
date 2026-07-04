@@ -21,6 +21,11 @@ return [
         'uploading' => 'Uploaden...',
         'remove' => 'Foto verwijderen',
         'hint' => 'Aanbevolen: vierkante afbeelding, max. 2 MB.',
+        'crop_title' => 'Afbeelding bijsnijden',
+        'crop_description' => 'Sleep en zoom om uit te lijnen.',
+        'crop_hint' => 'Sleep om te verplaatsen',
+        'crop_save' => 'Opslaan',
+        'crop_cancel' => 'Annuleren',
     ],
 
     'timezone' => [

@@ -21,6 +21,11 @@ return [
         'uploading' => 'Caricamento in corso...',
         'remove' => 'Rimuovi foto',
         'hint' => 'Consigliato: immagine quadrata, max 2 MB.',
+        'crop_title' => 'Ritaglia immagine',
+        'crop_description' => 'Trascina e ingrandisci per inquadrarla.',
+        'crop_hint' => 'Trascina per riposizionare',
+        'crop_save' => 'Salva',
+        'crop_cancel' => 'Annulla',
     ],
 
     'timezone' => [

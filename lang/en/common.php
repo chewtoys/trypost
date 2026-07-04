@@ -21,6 +21,11 @@ return [
         'uploading' => 'Uploading...',
         'remove' => 'Remove photo',
         'hint' => 'Recommended: square image, max 2 MB.',
+        'crop_title' => 'Crop image',
+        'crop_description' => 'Drag and zoom to frame it.',
+        'crop_hint' => 'Drag to reposition',
+        'crop_save' => 'Save',
+        'crop_cancel' => 'Cancel',
     ],
 
     'timezone' => [
