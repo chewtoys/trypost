@@ -2,7 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -40,7 +40,11 @@ const cropSrc = ref<string | null>(null);
 const cropFileName = ref('image.png');
 const cropMime = ref('image/png');
 
-const cropShape = computed<'circle' | 'square'>(() => (props.rounded === 'full' ? 'circle' : 'square'));
+watch(cropOpen, (isOpen) => {
+    if (!isOpen) {
+        cropSrc.value = null;
+    }
+});
 
 const sizeClasses = {
     sm: 'size-16',
@@ -96,7 +100,6 @@ const uploadCropped = (file: File) => {
             forceFormData: true,
             onFinish: () => {
                 uploading.value = false;
-                cropSrc.value = null;
             },
         },
     );
@@ -168,7 +171,6 @@ const handleDelete = () => {
             :src="cropSrc"
             :file-name="cropFileName"
             :mime-type="cropMime"
-            :shape="cropShape"
             @cropped="uploadCropped"
         />
     </div>

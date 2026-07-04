@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { IconZoomIn, IconZoomOut } from '@tabler/icons-vue';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -12,11 +11,14 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import {
-    centerTransform,
-    clampTransform,
-    type CropTransform,
-    viewportToSource,
-    zoomTransform,
+    clampSelection,
+    containScale,
+    type Corner,
+    defaultSelection,
+    resizeSelection,
+    resolveOutputFileName,
+    resolveOutputMime,
+    type SourceRect,
 } from '@/lib/imageCrop';
 
 type Props = {
@@ -24,14 +26,12 @@ type Props = {
     src: string | null;
     fileName?: string;
     mimeType?: string;
-    shape?: 'circle' | 'square';
     outputSize?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     fileName: 'image.png',
     mimeType: 'image/png',
-    shape: 'circle',
     outputSize: 512,
 });
 
@@ -44,40 +44,61 @@ const viewportEl = ref<HTMLElement | null>(null);
 const imageEl = ref<HTMLImageElement | null>(null);
 const viewportSize = ref(0);
 const natural = ref({ width: 0, height: 0 });
-const transform = ref<CropTransform>({ scale: 1, x: 0, y: 0 });
+const selection = ref<SourceRect>({ sx: 0, sy: 0, sw: 0, sh: 0 });
 const processing = ref(false);
 const initialized = ref(false);
 const imageError = ref(false);
 
-let dragPointerId: number | null = null;
-let dragStart = { pointerX: 0, pointerY: 0, x: 0, y: 0 };
-let resizeObserver: ResizeObserver | null = null;
+const MIN_SELECTION_RATIO = 0.1;
 
-const encodableMimes = ['image/jpeg', 'image/png', 'image/webp'];
-const extensions: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+let dragMode: 'move' | Corner | null = null;
+let activePointerId: number | null = null;
+let dragStart = { pointerX: 0, pointerY: 0, selection: { sx: 0, sy: 0, sw: 0, sh: 0 } as SourceRect };
+let resizeObserver: ResizeObserver | null = null;
 
 const ready = computed(() => viewportSize.value > 0 && natural.value.width > 0);
 
-const maskClass = computed(() => (props.shape === 'square' ? 'rounded-lg' : 'rounded-full'));
+const scale = computed(() => containScale(natural.value.width, natural.value.height, viewportSize.value));
 
-const outputMime = computed(() => (encodableMimes.includes(props.mimeType) ? props.mimeType : 'image/png'));
+const minSourceSize = computed(() => Math.min(natural.value.width, natural.value.height) * MIN_SELECTION_RATIO);
 
-const outputFileName = computed(
-    () => `${props.fileName.replace(/\.[^./]+$/, '') || 'image'}.${extensions[outputMime.value]}`,
-);
+const imageDisplay = computed(() => {
+    const width = natural.value.width * scale.value;
+    const height = natural.value.height * scale.value;
+
+    return {
+        width,
+        height,
+        left: (viewportSize.value - width) / 2,
+        top: (viewportSize.value - height) / 2,
+    };
+});
 
 const imageStyle = computed(() => ({
-    width: `${natural.value.width * transform.value.scale}px`,
-    height: `${natural.value.height * transform.value.scale}px`,
-    transform: `translate(${transform.value.x}px, ${transform.value.y}px)`,
+    left: `${imageDisplay.value.left}px`,
+    top: `${imageDisplay.value.top}px`,
+    width: `${imageDisplay.value.width}px`,
+    height: `${imageDisplay.value.height}px`,
 }));
+
+const selectionStyle = computed(() => ({
+    left: `${imageDisplay.value.left + selection.value.sx * scale.value}px`,
+    top: `${imageDisplay.value.top + selection.value.sy * scale.value}px`,
+    width: `${selection.value.sw * scale.value}px`,
+    height: `${selection.value.sh * scale.value}px`,
+    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+}));
+
+const outputMime = computed(() => resolveOutputMime(props.mimeType));
+
+const outputFileName = computed(() => resolveOutputFileName(props.fileName, outputMime.value));
 
 const maybeInitialize = () => {
     if (!ready.value || initialized.value) {
         return;
     }
 
-    transform.value = centerTransform(natural.value.width, natural.value.height, viewportSize.value);
+    selection.value = defaultSelection(natural.value.width, natural.value.height);
     initialized.value = true;
 };
 
@@ -89,12 +110,7 @@ const measure = () => {
     }
 
     viewportSize.value = el.clientWidth;
-
-    if (initialized.value) {
-        transform.value = clampTransform(transform.value, natural.value.width, natural.value.height, viewportSize.value);
-    } else {
-        maybeInitialize();
-    }
+    maybeInitialize();
 };
 
 const onImageLoad = () => {
@@ -118,60 +134,82 @@ const onImageError = () => {
     imageError.value = true;
 };
 
-const onPointerDown = (event: PointerEvent) => {
-    if (!ready.value) {
+const sourcePoint = (clientX: number, clientY: number): { px: number; py: number } => {
+    const box = viewportEl.value!.getBoundingClientRect();
+
+    return {
+        px: (clientX - box.left - imageDisplay.value.left) / scale.value,
+        py: (clientY - box.top - imageDisplay.value.top) / scale.value,
+    };
+};
+
+const beginDrag = (mode: 'move' | Corner, event: PointerEvent) => {
+    if (!ready.value || dragMode) {
         return;
     }
 
-    dragPointerId = event.pointerId;
-    dragStart = { pointerX: event.clientX, pointerY: event.clientY, x: transform.value.x, y: transform.value.y };
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    dragMode = mode;
+    activePointerId = event.pointerId;
+    dragStart = { pointerX: event.clientX, pointerY: event.clientY, selection: { ...selection.value } };
+    viewportEl.value?.setPointerCapture(event.pointerId);
+};
+
+const endDrag = (event: PointerEvent) => {
+    dragMode = null;
+    activePointerId = null;
+
+    if (viewportEl.value?.hasPointerCapture(event.pointerId)) {
+        viewportEl.value.releasePointerCapture(event.pointerId);
+    }
+};
+
+const onSelectionPointerDown = (event: PointerEvent) => {
+    beginDrag('move', event);
+};
+
+const onHandlePointerDown = (corner: Corner, event: PointerEvent) => {
+    beginDrag(corner, event);
 };
 
 const onPointerMove = (event: PointerEvent) => {
-    if (dragPointerId !== event.pointerId) {
+    if (!dragMode || event.pointerId !== activePointerId) {
         return;
     }
 
-    transform.value = clampTransform(
-        {
-            scale: transform.value.scale,
-            x: dragStart.x + (event.clientX - dragStart.pointerX),
-            y: dragStart.y + (event.clientY - dragStart.pointerY),
-        },
+    if (dragMode === 'move') {
+        selection.value = clampSelection(
+            {
+                sx: dragStart.selection.sx + (event.clientX - dragStart.pointerX) / scale.value,
+                sy: dragStart.selection.sy + (event.clientY - dragStart.pointerY) / scale.value,
+                sw: dragStart.selection.sw,
+                sh: dragStart.selection.sh,
+            },
+            natural.value.width,
+            natural.value.height,
+            minSourceSize.value,
+        );
+
+        return;
+    }
+
+    const { px, py } = sourcePoint(event.clientX, event.clientY);
+    selection.value = resizeSelection(
+        dragStart.selection,
+        dragMode,
+        px,
+        py,
         natural.value.width,
         natural.value.height,
-        viewportSize.value,
+        minSourceSize.value,
     );
 };
 
 const onPointerUp = (event: PointerEvent) => {
-    if (dragPointerId === event.pointerId) {
-        dragPointerId = null;
-    }
-};
-
-const onWheel = (event: WheelEvent) => {
-    if (!ready.value) {
+    if (!dragMode || event.pointerId !== activePointerId) {
         return;
     }
 
-    event.preventDefault();
-    transform.value = zoomTransform(
-        transform.value,
-        event.deltaY < 0 ? 1.06 : 0.94,
-        natural.value.width,
-        natural.value.height,
-        viewportSize.value,
-    );
-};
-
-const zoomBy = (factor: number) => {
-    if (!ready.value) {
-        return;
-    }
-
-    transform.value = zoomTransform(transform.value, factor, natural.value.width, natural.value.height, viewportSize.value);
+    endDrag(event);
 };
 
 const close = () => {
@@ -195,24 +233,28 @@ const save = () => {
         return;
     }
 
-    const rect = viewportToSource(transform.value, viewportSize.value);
-    context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, props.outputSize, props.outputSize);
-
+    const rect = selection.value;
     processing.value = true;
-    canvas.toBlob(
-        (blob) => {
-            processing.value = false;
 
-            if (!blob) {
-                return;
-            }
+    try {
+        context.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, props.outputSize, props.outputSize);
+        canvas.toBlob(
+            (blob) => {
+                processing.value = false;
 
-            emit('cropped', new File([blob], outputFileName.value, { type: outputMime.value }));
-            close();
-        },
-        outputMime.value,
-        0.92,
-    );
+                if (!blob) {
+                    return;
+                }
+
+                emit('cropped', new File([blob], outputFileName.value, { type: outputMime.value }));
+                close();
+            },
+            outputMime.value,
+            0.92,
+        );
+    } catch {
+        processing.value = false;
+    }
 };
 
 watch(
@@ -222,6 +264,8 @@ watch(
             initialized.value = false;
             processing.value = false;
             imageError.value = false;
+            dragMode = null;
+            activePointerId = null;
             await nextTick();
             measure();
 
@@ -230,6 +274,8 @@ watch(
                 resizeObserver.observe(viewportEl.value);
             }
         } else {
+            dragMode = null;
+            activePointerId = null;
             resizeObserver?.disconnect();
             resizeObserver = null;
         }
@@ -258,12 +304,11 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
 
             <div
                 ref="viewportEl"
-                class="relative aspect-square w-full cursor-grab touch-none select-none overflow-hidden rounded-xl border-2 border-foreground bg-muted active:cursor-grabbing"
-                @pointerdown="onPointerDown"
+                class="relative aspect-square w-full touch-none select-none overflow-hidden rounded-xl border-2 border-foreground bg-muted"
                 @pointermove="onPointerMove"
                 @pointerup="onPointerUp"
                 @pointercancel="onPointerUp"
-                @wheel="onWheel"
+                @wheel.prevent
             >
                 <img
                     v-if="src && !imageError"
@@ -271,7 +316,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     :src="src"
                     alt=""
                     draggable="false"
-                    class="absolute left-0 top-0 max-w-none"
+                    class="pointer-events-none absolute max-w-none"
                     :style="imageStyle"
                     @load="onImageLoad"
                     @error="onImageError"
@@ -283,22 +328,32 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     {{ $t('common.photo_upload.crop_error') }}
                 </div>
                 <div
-                    v-else
-                    class="pointer-events-none absolute inset-0"
-                    :class="maskClass"
-                    style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.7)"
-                />
+                    v-else-if="ready"
+                    class="absolute cursor-move"
+                    :style="selectionStyle"
+                    @pointerdown="onSelectionPointerDown"
+                >
+                    <div class="pointer-events-none absolute inset-0 border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)]" />
+                    <span
+                        class="absolute left-0 top-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        @pointerdown.stop="onHandlePointerDown('nw', $event)"
+                    />
+                    <span
+                        class="absolute right-0 top-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        @pointerdown.stop="onHandlePointerDown('ne', $event)"
+                    />
+                    <span
+                        class="absolute bottom-0 left-0 size-3 cursor-nesw-resize rounded-sm border border-foreground bg-white"
+                        @pointerdown.stop="onHandlePointerDown('sw', $event)"
+                    />
+                    <span
+                        class="absolute bottom-0 right-0 size-3 cursor-nwse-resize rounded-sm border border-foreground bg-white"
+                        @pointerdown.stop="onHandlePointerDown('se', $event)"
+                    />
+                </div>
             </div>
 
-            <div class="flex items-center justify-center gap-3">
-                <Button type="button" variant="outline" size="icon" class="size-9" @click="zoomBy(0.9)">
-                    <IconZoomOut class="size-4" />
-                </Button>
-                <span class="text-xs text-muted-foreground">{{ $t('common.photo_upload.crop_hint') }}</span>
-                <Button type="button" variant="outline" size="icon" class="size-9" @click="zoomBy(1.1)">
-                    <IconZoomIn class="size-4" />
-                </Button>
-            </div>
+            <p class="text-center text-xs text-muted-foreground">{{ $t('common.photo_upload.crop_hint') }}</p>
 
             <DialogFooter>
                 <Button type="button" data-testid="crop-save" :disabled="processing || !ready" @click="save">

@@ -1,9 +1,3 @@
-export type CropTransform = {
-    scale: number;
-    x: number;
-    y: number;
-};
-
 export type SourceRect = {
     sx: number;
     sy: number;
@@ -11,74 +5,72 @@ export type SourceRect = {
     sh: number;
 };
 
-const MAX_ZOOM = 8;
+export type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
-export const coverScale = (naturalWidth: number, naturalHeight: number, viewport: number): number => {
+const DEFAULT_SELECTION_RATIO = 0.8;
+
+const ENCODABLE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const EXTENSIONS: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+export const resolveOutputMime = (mimeType: string): string =>
+    ENCODABLE_MIMES.includes(mimeType) ? mimeType : 'image/png';
+
+export const resolveOutputFileName = (fileName: string, mime: string): string =>
+    `${fileName.replace(/\.[^./]*$/, '') || 'image'}.${EXTENSIONS[mime] ?? 'png'}`;
+
+export const containScale = (naturalWidth: number, naturalHeight: number, viewport: number): number => {
     if (naturalWidth <= 0 || naturalHeight <= 0) {
         return 1;
     }
 
-    return Math.max(viewport / naturalWidth, viewport / naturalHeight);
+    return Math.min(viewport / naturalWidth, viewport / naturalHeight);
 };
 
-export const clampTransform = (
-    transform: CropTransform,
-    naturalWidth: number,
-    naturalHeight: number,
-    viewport: number,
-): CropTransform => {
-    const scale = Math.max(transform.scale, coverScale(naturalWidth, naturalHeight, viewport));
-    const displayWidth = naturalWidth * scale;
-    const displayHeight = naturalHeight * scale;
-
-    const x = Math.min(0, Math.max(viewport - displayWidth, transform.x));
-    const y = Math.min(0, Math.max(viewport - displayHeight, transform.y));
-
-    return { scale, x, y };
-};
-
-export const centerTransform = (naturalWidth: number, naturalHeight: number, viewport: number): CropTransform => {
-    const scale = coverScale(naturalWidth, naturalHeight, viewport);
+export const defaultSelection = (naturalWidth: number, naturalHeight: number): SourceRect => {
+    const size = Math.min(naturalWidth, naturalHeight) * DEFAULT_SELECTION_RATIO;
 
     return {
-        scale,
-        x: (viewport - naturalWidth * scale) / 2,
-        y: (viewport - naturalHeight * scale) / 2,
-    };
-};
-
-export const zoomTransform = (
-    transform: CropTransform,
-    factor: number,
-    naturalWidth: number,
-    naturalHeight: number,
-    viewport: number,
-): CropTransform => {
-    const minScale = coverScale(naturalWidth, naturalHeight, viewport);
-    const nextScale = Math.min(minScale * MAX_ZOOM, Math.max(transform.scale * factor, minScale));
-    const center = viewport / 2;
-    const sourceX = (center - transform.x) / transform.scale;
-    const sourceY = (center - transform.y) / transform.scale;
-
-    return clampTransform(
-        {
-            scale: nextScale,
-            x: center - sourceX * nextScale,
-            y: center - sourceY * nextScale,
-        },
-        naturalWidth,
-        naturalHeight,
-        viewport,
-    );
-};
-
-export const viewportToSource = (transform: CropTransform, viewport: number): SourceRect => {
-    const size = viewport / transform.scale;
-
-    return {
-        sx: -transform.x / transform.scale,
-        sy: -transform.y / transform.scale,
+        sx: (naturalWidth - size) / 2,
+        sy: (naturalHeight - size) / 2,
         sw: size,
         sh: size,
     };
+};
+
+export const clampSelection = (
+    selection: SourceRect,
+    naturalWidth: number,
+    naturalHeight: number,
+    minSize: number,
+): SourceRect => {
+    const maxSize = Math.min(naturalWidth, naturalHeight);
+    const size = Math.min(Math.max(selection.sw, minSize), maxSize);
+    const sx = Math.min(Math.max(selection.sx, 0), naturalWidth - size);
+    const sy = Math.min(Math.max(selection.sy, 0), naturalHeight - size);
+
+    return { sx, sy, sw: size, sh: size };
+};
+
+export const resizeSelection = (
+    selection: SourceRect,
+    corner: Corner,
+    px: number,
+    py: number,
+    naturalWidth: number,
+    naturalHeight: number,
+    minSize: number,
+): SourceRect => {
+    const right = selection.sx + selection.sw;
+    const bottom = selection.sy + selection.sh;
+
+    const anchorX = corner === 'nw' || corner === 'sw' ? right : selection.sx;
+    const anchorY = corner === 'nw' || corner === 'ne' ? bottom : selection.sy;
+    const horizontal = corner === 'ne' || corner === 'se' ? 1 : -1;
+    const vertical = corner === 'sw' || corner === 'se' ? 1 : -1;
+
+    const size = Math.max(horizontal * (px - anchorX), vertical * (py - anchorY), minSize);
+    const sx = horizontal === 1 ? anchorX : anchorX - size;
+    const sy = vertical === 1 ? anchorY : anchorY - size;
+
+    return clampSelection({ sx, sy, sw: size, sh: size }, naturalWidth, naturalHeight, minSize);
 };
