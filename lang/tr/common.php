@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'Yeniden konumlandırmak için sürükleyin',
         'crop_save' => 'Kaydet',
         'crop_cancel' => 'İptal',
+        'crop_error' => 'Bu görsel yüklenemedi. Başka bir dosya deneyin.',
     ],
 
     'timezone' => [

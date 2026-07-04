@@ -26,6 +26,7 @@ return [
         'crop_hint' => '拖动以重新定位',
         'crop_save' => '保存',
         'crop_cancel' => '取消',
+        'crop_error' => '无法加载此图片。请尝试其他文件。',
     ],
 
     'timezone' => [

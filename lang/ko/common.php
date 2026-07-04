@@ -26,6 +26,7 @@ return [
         'crop_hint' => '드래그하여 위치 조정',
         'crop_save' => '저장',
         'crop_cancel' => '취소',
+        'crop_error' => '이 이미지를 불러올 수 없습니다. 다른 파일을 사용해 보세요.',
     ],
 
     'timezone' => [

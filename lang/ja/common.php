@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'ドラッグして移動',
         'crop_save' => '保存',
         'crop_cancel' => 'キャンセル',
+        'crop_error' => 'この画像を読み込めませんでした。別のファイルをお試しください。',
     ],
 
     'timezone' => [

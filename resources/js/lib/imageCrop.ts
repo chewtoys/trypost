@@ -11,6 +11,8 @@ export type SourceRect = {
     sh: number;
 };
 
+const MAX_ZOOM = 8;
+
 export const coverScale = (naturalWidth: number, naturalHeight: number, viewport: number): number => {
     if (naturalWidth <= 0 || naturalHeight <= 0) {
         return 1;
@@ -52,7 +54,8 @@ export const zoomTransform = (
     naturalHeight: number,
     viewport: number,
 ): CropTransform => {
-    const nextScale = Math.max(transform.scale * factor, coverScale(naturalWidth, naturalHeight, viewport));
+    const minScale = coverScale(naturalWidth, naturalHeight, viewport);
+    const nextScale = Math.min(minScale * MAX_ZOOM, Math.max(transform.scale * factor, minScale));
     const center = viewport / 2;
     const sourceX = (center - transform.x) / transform.scale;
     const sourceY = (center - transform.y) / transform.scale;

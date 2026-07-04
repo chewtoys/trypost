@@ -47,14 +47,24 @@ const natural = ref({ width: 0, height: 0 });
 const transform = ref<CropTransform>({ scale: 1, x: 0, y: 0 });
 const processing = ref(false);
 const initialized = ref(false);
+const imageError = ref(false);
 
 let dragPointerId: number | null = null;
 let dragStart = { pointerX: 0, pointerY: 0, x: 0, y: 0 };
 let resizeObserver: ResizeObserver | null = null;
 
+const encodableMimes = ['image/jpeg', 'image/png', 'image/webp'];
+const extensions: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
 const ready = computed(() => viewportSize.value > 0 && natural.value.width > 0);
 
 const maskClass = computed(() => (props.shape === 'square' ? 'rounded-lg' : 'rounded-full'));
+
+const outputMime = computed(() => (encodableMimes.includes(props.mimeType) ? props.mimeType : 'image/png'));
+
+const outputFileName = computed(
+    () => `${props.fileName.replace(/\.[^./]+$/, '') || 'image'}.${extensions[outputMime.value]}`,
+);
 
 const imageStyle = computed(() => ({
     width: `${natural.value.width * transform.value.scale}px`,
@@ -94,8 +104,18 @@ const onImageLoad = () => {
         return;
     }
 
+    if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+        imageError.value = true;
+
+        return;
+    }
+
     natural.value = { width: img.naturalWidth, height: img.naturalHeight };
     maybeInitialize();
+};
+
+const onImageError = () => {
+    imageError.value = true;
 };
 
 const onPointerDown = (event: PointerEvent) => {
@@ -187,10 +207,10 @@ const save = () => {
                 return;
             }
 
-            emit('cropped', new File([blob], props.fileName, { type: props.mimeType }));
+            emit('cropped', new File([blob], outputFileName.value, { type: outputMime.value }));
             close();
         },
-        props.mimeType,
+        outputMime.value,
         0.92,
     );
 };
@@ -201,6 +221,7 @@ watch(
         if (isOpen) {
             initialized.value = false;
             processing.value = false;
+            imageError.value = false;
             await nextTick();
             measure();
 
@@ -219,6 +240,7 @@ watch(
     () => props.src,
     () => {
         initialized.value = false;
+        imageError.value = false;
         natural.value = { width: 0, height: 0 };
     },
 );
@@ -244,7 +266,7 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                 @wheel="onWheel"
             >
                 <img
-                    v-if="src"
+                    v-if="src && !imageError"
                     ref="imageEl"
                     :src="src"
                     alt=""
@@ -252,8 +274,16 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     class="absolute left-0 top-0 max-w-none"
                     :style="imageStyle"
                     @load="onImageLoad"
+                    @error="onImageError"
                 />
                 <div
+                    v-if="imageError"
+                    class="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-muted-foreground"
+                >
+                    {{ $t('common.photo_upload.crop_error') }}
+                </div>
+                <div
+                    v-else
                     class="pointer-events-none absolute inset-0"
                     :class="maskClass"
                     style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.7)"

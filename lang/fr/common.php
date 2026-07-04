@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'Faites glisser pour repositionner',
         'crop_save' => 'Enregistrer',
         'crop_cancel' => 'Annuler',
+        'crop_error' => 'Impossible de charger cette image. Essayez un autre fichier.',
     ],
 
     'timezone' => [

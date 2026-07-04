@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'Sleep om te verplaatsen',
         'crop_save' => 'Opslaan',
         'crop_cancel' => 'Annuleren',
+        'crop_error' => 'Kan deze afbeelding niet laden. Probeer een ander bestand.',
     ],
 
     'timezone' => [

@@ -17,21 +17,18 @@ abstract class TestCase extends BaseTestCase
      */
     protected $seed = true;
 
+    /**
+     * Whether to fake the Vite manifest. Browser tests drive a real browser and
+     * need the built assets, so they opt out via BrowserTestCase.
+     */
+    protected bool $fakesVite = true;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (! $this->isBrowserTest()) {
+        if ($this->fakesVite) {
             $this->withoutVite();
         }
-    }
-
-    /**
-     * Browser tests drive a real browser and need the built Vite assets, so the
-     * Vite manifest must not be faked away for them.
-     */
-    private function isBrowserTest(): bool
-    {
-        return str_contains(static::class, '\\Browser\\');
     }
 }

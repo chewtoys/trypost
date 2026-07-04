@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'Zum Verschieben ziehen',
         'crop_save' => 'Speichern',
         'crop_cancel' => 'Abbrechen',
+        'crop_error' => 'Dieses Bild konnte nicht geladen werden. Versuchen Sie eine andere Datei.',
     ],
 
     'timezone' => [

@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'اسحب لإعادة التموضع',
         'crop_save' => 'حفظ',
         'crop_cancel' => 'إلغاء',
+        'crop_error' => 'تعذّر تحميل هذه الصورة. جرّب ملفًا آخر.',
     ],
 
     'timezone' => [

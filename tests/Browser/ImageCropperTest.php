@@ -32,10 +32,11 @@ function selectPhoto(mixed $page): void
 }
 
 /**
- * Capture the next multipart request the page sends. The Pest browser server
- * does not parse multipart bodies (its file handling is an open TODO), so we
- * assert the crop dispatches the right upload rather than that it persists —
- * server-side persistence is covered by ProfileUpdateTest.
+ * Capture the next multipart upload the page sends, keeping the uploaded File so
+ * the test can decode it. The Pest browser server does not parse multipart
+ * bodies (its file handling is an open TODO), so we assert the crop dispatches
+ * a valid image rather than that it persists — persistence is covered by
+ * ProfileUpdateTest.
  */
 function recordUpload(mixed $page): void
 {
@@ -51,7 +52,14 @@ function recordUpload(mixed $page): void
             };
             XMLHttpRequest.prototype.send = function (body) {
                 if (body instanceof FormData) {
-                    window.__uploadRequest = { method: this.__method, url: this.__url, keys: [...body.keys()] };
+                    const photo = body.get('photo');
+                    window.__uploadFile = photo;
+                    window.__uploadRequest = {
+                        method: this.__method,
+                        url: this.__url,
+                        keys: [...body.keys()],
+                        size: photo instanceof File ? photo.size : 0,
+                    };
                 }
                 return send.apply(this, arguments);
             };
@@ -59,7 +67,7 @@ function recordUpload(mixed $page): void
     JS);
 }
 
-test('cropping a selected photo dispatches a cropped avatar upload', function () {
+test('cropping a selected photo dispatches a valid 512x512 avatar upload', function () {
     $this->actingAs(User::factory()->create());
 
     $page = visit(route('app.profile.edit'));
@@ -67,9 +75,6 @@ test('cropping a selected photo dispatches a cropped avatar upload', function ()
     selectPhoto($page);
     recordUpload($page);
 
-    // Auto-waits for the cropper dialog to open and its Save button to become
-    // enabled — the button only enables once the image has loaded and been
-    // measured inside the modal, which is exactly what a broken cropper fails.
     $page->click('@crop-save')
         ->assertNoJavaScriptErrors();
 
@@ -78,12 +83,19 @@ test('cropping a selected photo dispatches a cropped avatar upload', function ()
             for (let attempt = 0; attempt < 80 && !window.__uploadRequest; attempt++) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
             }
-            return JSON.stringify(window.__uploadRequest);
+            if (!window.__uploadRequest) {
+                return 'null';
+            }
+            const bitmap = await createImageBitmap(window.__uploadFile);
+            return JSON.stringify({ ...window.__uploadRequest, width: bitmap.width, height: bitmap.height });
         })();
     JS), true);
 
     expect($request)->not->toBeNull()
         ->and($request['method'])->toBe('POST')
-        ->and($request['url'])->toContain('/settings/profile/photo')
-        ->and($request['keys'])->toContain('photo');
+        ->and($request['url'])->toContain(route('app.profile.upload-photo', absolute: false))
+        ->and($request['keys'])->toContain('photo')
+        ->and($request['size'])->toBeGreaterThan(0)
+        ->and($request['width'])->toBe(512)
+        ->and($request['height'])->toBe(512);
 });

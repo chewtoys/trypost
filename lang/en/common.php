@@ -26,6 +26,7 @@ return [
         'crop_hint' => 'Drag to reposition',
         'crop_save' => 'Save',
         'crop_cancel' => 'Cancel',
+        'crop_error' => 'Couldn\'t load this image. Try another file.',
     ],
 
     'timezone' => [
