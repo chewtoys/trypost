@@ -804,11 +804,12 @@ test('linkedin publisher treats a 401 response without an error code as a token 
         ->toThrow(TokenExpiredException::class);
 });
 
-test('linkedin publisher refreshes the token when it is expiring soon', function () {
+test('linkedin publisher does NOT rotate the token when it is only expiring soon but still valid', function () {
     $this->socialAccount->update([
         'token_expires_at' => now()->addMinutes(5),
         'refresh_token' => 'refresh-token-123',
     ]);
+    $originalAccessToken = $this->socialAccount->access_token;
 
     Http::fake([
         config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
@@ -822,8 +823,11 @@ test('linkedin publisher refreshes the token when it is expiring soon', function
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('urn:li:share:soon');
+
+    // A still-valid token is used as-is — the single-use refresh_token is not rotated.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'oauth/v2/accessToken'));
     $this->socialAccount->refresh();
-    expect($this->socialAccount->access_token)->toBe('new-access-token');
+    expect($this->socialAccount->access_token)->toBe($originalAccessToken);
 });
 
 test('linkedin publisher falls back to an empty id and null url when the post id header is missing', function () {

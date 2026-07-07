@@ -5,7 +5,6 @@ import {
     IconLogout,
     IconUser,
 } from '@tabler/icons-vue';
-import { loadLanguageAsync } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
@@ -20,7 +19,6 @@ import {
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import UserInfo from '@/components/UserInfo.vue';
-import dayjs from '@/dayjs';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
 import { edit } from '@/routes/app/profile';
@@ -42,18 +40,8 @@ const languages = computed<Language[]>(() => page.props.languages as Language[])
 const currentLanguage = computed(() => languages.value?.find((l: Language) => l.code === page.props.locale));
 
 const switchLanguage = (code: string) => {
-    const previousCode = currentLanguage.value?.code || 'en';
-
-    loadLanguageAsync(code);
-    dayjs.locale(code.toLowerCase());
-
     router.put(updateLanguage.url(), { locale: code }, {
-        preserveScroll: true,
-        preserveState: false,
-        onError: () => {
-            loadLanguageAsync(previousCode);
-            dayjs.locale(previousCode.toLowerCase());
-        },
+        onSuccess: () => window.location.reload(),
     });
 };
 

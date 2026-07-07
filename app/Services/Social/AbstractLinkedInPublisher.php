@@ -66,7 +66,7 @@ abstract class AbstractLinkedInPublisher
         $this->account = $postPlatform->socialAccount;
         $this->hasRetried = false;
 
-        if ($this->account->is_token_expired || $this->account->is_token_expiring_soon) {
+        if ($this->account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($this->account);
         }
 
