@@ -7,6 +7,7 @@ namespace App\Support\Billing;
 use App\Models\Account;
 use Laravel\Cashier\SubscriptionBuilder;
 use RuntimeException;
+use Stripe\Subscription as StripeSubscription;
 
 final class FirstMonthCheckoutDiscount
 {
@@ -44,7 +45,9 @@ final class FirstMonthCheckoutDiscount
      * customer checking out a single workspace: the fixed `amount_off` is only
      * correct for a quantity of one, and the $1 offer is for first-time signups
      * — not a returning account re-subscribing with workspaces it kept from a
-     * lapsed subscription.
+     * lapsed subscription. A subscription that never left `incomplete` never
+     * became real, so a new customer retrying after a failed first attempt
+     * still qualifies; any started subscription (even canceled) does not.
      */
     private static function qualifiesForPaidFirstMonth(Account $account): bool
     {
@@ -53,6 +56,11 @@ final class FirstMonthCheckoutDiscount
         }
 
         return $account->workspaces()->count() === 1
-            && ! $account->subscriptions()->exists();
+            && ! $account->subscriptions()
+                ->whereNotIn('stripe_status', [
+                    StripeSubscription::STATUS_INCOMPLETE,
+                    StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
+                ])
+                ->exists();
     }
 }

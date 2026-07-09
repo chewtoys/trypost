@@ -24,12 +24,12 @@ function firstMonthSubscription(Account $account): SubscriptionBuilder
     return $account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
 }
 
-function givePriorSubscription(Account $account): void
+function givePriorSubscription(Account $account, string $status = 'canceled'): void
 {
     $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'canceled',
+        'stripe_status' => $status,
         'stripe_price' => 'price_monthly_test',
     ]);
 }
@@ -69,7 +69,7 @@ test('skips the coupon when more than one workspace is billed', function () {
         ->and($subscription->couponId)->toBeNull();
 });
 
-test('skips the coupon when the account has subscribed before', function () {
+test('skips the coupon when the account has a prior canceled subscription', function () {
     Workspace::factory()->create(['account_id' => $this->account->id]);
     givePriorSubscription($this->account);
 
@@ -79,6 +79,18 @@ test('skips the coupon when the account has subscribed before', function () {
 
     expect($subscription->allowPromotionCodes)->toBeTrue()
         ->and($subscription->couponId)->toBeNull();
+});
+
+test('still applies the coupon when the only prior subscription never left incomplete', function () {
+    Workspace::factory()->create(['account_id' => $this->account->id]);
+    givePriorSubscription($this->account, 'incomplete_expired');
+
+    $subscription = firstMonthSubscription($this->account);
+
+    FirstMonthCheckoutDiscount::apply($subscription, $this->account);
+
+    expect($subscription->couponId)->toBe('TRIAL1USD')
+        ->and($subscription->allowPromotionCodes)->toBeFalse();
 });
 
 test('throws instead of charging full price when a qualifying checkout has no coupon', function () {
