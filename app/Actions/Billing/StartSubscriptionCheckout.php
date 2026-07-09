@@ -27,7 +27,7 @@ class StartSubscriptionCheckout
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId)
             ->quantity(max(1, $account->workspaces()->count()));
 
-        FirstMonthCheckoutDiscount::apply($subscription);
+        FirstMonthCheckoutDiscount::apply($subscription, $account);
 
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',

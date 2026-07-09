@@ -3,50 +3,91 @@
 declare(strict_types=1);
 
 use App\Models\Account;
+use App\Models\Workspace;
 use App\Support\Billing\FirstMonthCheckoutDiscount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Cashier\SubscriptionBuilder;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->account = Account::factory()->create();
-});
 
-test('applies the first month coupon when a card is required for trial', function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.first_month_coupon_id' => 'TRIAL1USD',
     ]);
+});
 
-    $subscription = $this->account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
+function firstMonthSubscription(Account $account): SubscriptionBuilder
+{
+    return $account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
+}
 
-    FirstMonthCheckoutDiscount::apply($subscription);
+function givePriorSubscription(Account $account): void
+{
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_monthly_test',
+    ]);
+}
+
+test('applies the first month coupon for a first-time single-workspace checkout', function () {
+    Workspace::factory()->create(['account_id' => $this->account->id]);
+
+    $subscription = firstMonthSubscription($this->account);
+
+    FirstMonthCheckoutDiscount::apply($subscription, $this->account);
 
     expect($subscription->couponId)->toBe('TRIAL1USD')
         ->and($subscription->promotionCodeId)->toBeNull()
         ->and($subscription->allowPromotionCodes)->toBeFalse();
 });
 
-test('allows promotion codes instead of a coupon when a card is not required for trial', function () {
+test('skips the coupon and allows promotion codes when a card is not required', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
+    Workspace::factory()->create(['account_id' => $this->account->id]);
 
-    $subscription = $this->account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
+    $subscription = firstMonthSubscription($this->account);
 
-    FirstMonthCheckoutDiscount::apply($subscription);
+    FirstMonthCheckoutDiscount::apply($subscription, $this->account);
 
     expect($subscription->allowPromotionCodes)->toBeTrue()
         ->and($subscription->couponId)->toBeNull();
 });
 
-test('throws instead of charging full price when the coupon is missing but a card is required', function () {
-    config([
-        'trypost.billing.require_card_for_trial' => true,
-        'cashier.first_month_coupon_id' => '',
-    ]);
+test('skips the coupon when more than one workspace is billed', function () {
+    Workspace::factory()->count(2)->create(['account_id' => $this->account->id]);
 
-    $subscription = $this->account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
+    $subscription = firstMonthSubscription($this->account);
 
-    expect(fn () => FirstMonthCheckoutDiscount::apply($subscription))
+    FirstMonthCheckoutDiscount::apply($subscription, $this->account);
+
+    expect($subscription->allowPromotionCodes)->toBeTrue()
+        ->and($subscription->couponId)->toBeNull();
+});
+
+test('skips the coupon when the account has subscribed before', function () {
+    Workspace::factory()->create(['account_id' => $this->account->id]);
+    givePriorSubscription($this->account);
+
+    $subscription = firstMonthSubscription($this->account);
+
+    FirstMonthCheckoutDiscount::apply($subscription, $this->account);
+
+    expect($subscription->allowPromotionCodes)->toBeTrue()
+        ->and($subscription->couponId)->toBeNull();
+});
+
+test('throws instead of charging full price when a qualifying checkout has no coupon', function () {
+    config(['cashier.first_month_coupon_id' => '']);
+    Workspace::factory()->create(['account_id' => $this->account->id]);
+
+    $subscription = firstMonthSubscription($this->account);
+
+    expect(fn () => FirstMonthCheckoutDiscount::apply($subscription, $this->account))
         ->toThrow(RuntimeException::class);
 
     expect($subscription->couponId)->toBeNull();
