@@ -15,6 +15,7 @@ use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
 use Illuminate\Http\JsonResponse;
@@ -66,13 +67,8 @@ class WorkspaceController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
-
-        if (! config('trypost.self_hosted')
-            && $user->ownedWorkspacesCount() > 0
-            && ! $user->account?->hasActiveSubscription()) {
-            return redirect()->route('app.billing.index')
-                ->with('message', 'Subscribe to create more workspaces.');
+        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($request->user())) {
+            return $redirect;
         }
 
         return Inertia::render('workspaces/Create', [
@@ -81,6 +77,24 @@ class WorkspaceController extends Controller
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
             'availableContentLanguages' => ContentLanguage::options(),
         ]);
+    }
+
+    /**
+     * Block creating a paid additional workspace without an active subscription.
+     * Guards both the form (`create`) and the write (`store`) so a direct POST
+     * can't bootstrap a second billable workspace — which would also inflate the
+     * checkout quantity past the fixed first-month coupon.
+     */
+    private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
+    {
+        if (! config('trypost.self_hosted')
+            && $user->ownedWorkspacesCount() > 0
+            && ! $user->account?->hasActiveSubscription()) {
+            return redirect()->route('app.billing.index')
+                ->with('message', 'Subscribe to create more workspaces.');
+        }
+
+        return null;
     }
 
     public function autofillBrand(AutofillBrandRequest $request, AutofillBrand $autofill): JsonResponse
@@ -97,6 +111,10 @@ class WorkspaceController extends Controller
     public function store(StoreWorkspaceRequest $request, LogoAttacher $logoAttacher): RedirectResponse
     {
         $user = $request->user();
+
+        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($user)) {
+            return $redirect;
+        }
 
         $validated = $request->validated();
 
