@@ -37,3 +37,17 @@ test('allows promotion codes instead of a coupon when a card is not required for
     expect($subscription->allowPromotionCodes)->toBeTrue()
         ->and($subscription->couponId)->toBeNull();
 });
+
+test('throws instead of charging full price when the coupon is missing but a card is required', function () {
+    config([
+        'trypost.billing.require_card_for_trial' => true,
+        'cashier.first_month_coupon_id' => '',
+    ]);
+
+    $subscription = $this->account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
+
+    expect(fn () => FirstMonthCheckoutDiscount::apply($subscription))
+        ->toThrow(RuntimeException::class);
+
+    expect($subscription->couponId)->toBeNull();
+});

@@ -677,6 +677,26 @@ test('store redirects additional workspace to /accounts', function () {
     expect(Workspace::where('account_id', $account->id)->count())->toBe(2);
 });
 
+test('store blocks a second workspace without an active subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    // The account already owns one workspace and has no subscription, so a
+    // direct POST must not bootstrap a second (billable) workspace.
+    $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
+    $existing->members()->attach($user->id, ['role' => Role::Member->value]);
+
+    $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
+        'name' => 'Second Workspace',
+    ]);
+
+    $response->assertRedirect(route('app.billing.index'));
+    expect(Workspace::where('account_id', $account->id)->count())->toBe(1);
+});
+
 test('store attaches logo when logo_url is provided', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
