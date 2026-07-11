@@ -378,6 +378,15 @@ return [
             'add_count' => '添加 :count 个',
         ],
 
+        'alt_text' => [
+            'label' => '替代文本',
+            'edit' => '编辑替代文本',
+            'placeholder' => '为使用屏幕阅读器的用户描述此图片',
+            'hint' => '发布到支持图片描述的平台。',
+            'badge' => 'ALT',
+            'save' => '保存',
+        ],
+
         'emoji_picker' => [
             'search' => '搜索表情',
             'empty' => '未找到表情',

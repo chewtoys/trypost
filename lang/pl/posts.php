@@ -378,6 +378,15 @@ return [
             'add_count' => 'Dodaj :count',
         ],
 
+        'alt_text' => [
+            'label' => 'Tekst alternatywny',
+            'edit' => 'Edytuj tekst alternatywny',
+            'placeholder' => 'Opisz ten obraz dla osób korzystających z czytników ekranu',
+            'hint' => 'Publikowany na platformach obsługujących opisy obrazów.',
+            'badge' => 'ALT',
+            'save' => 'Zapisz',
+        ],
+
         'emoji_picker' => [
             'search' => 'Szukaj emoji',
             'empty' => 'Nie znaleziono emoji',
