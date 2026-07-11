@@ -83,6 +83,7 @@ const openPreview = (item: MediaItem) => {
         media.value.map((m) => ({
             url: m.url,
             type: classify(m) ?? MediaType.Image,
+            altText: m.meta?.alt_text,
         })),
         idx,
     );
@@ -244,6 +245,7 @@ const onAltTextSave = (value: string): void => {
                         v-for="(item, index) in media"
                         :key="item.id"
                         :ref="(el) => { if (el) mediaThumbRefs[index] = el as HTMLElement; }"
+                        data-testid="media-thumbnail"
                         class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2"
                         :class="[
                             dragMediaIndex === index ? 'opacity-40' : '',

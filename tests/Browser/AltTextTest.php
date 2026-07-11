@@ -51,6 +51,29 @@ function waitForAutosave(mixed $page): void
     JS);
 }
 
+/**
+ * Poll on the browser side until the lightbox alt-text caption has mounted and
+ * laid out. The lightbox is a Radix dialog with an open animation, so the
+ * element is not present the instant the thumbnail is clicked; the harness
+ * assertions do not auto-wait, so we wait here first.
+ */
+function waitForLightboxAltText(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (async () => {
+            const visible = () => {
+                const el = document.querySelector('[data-testid="lightbox-alt-text"]');
+                if (! el) return false;
+                const rect = el.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+            };
+            for (let attempt = 0; attempt < 100 && ! visible(); attempt++) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+}
+
 test('editing alt text on an attached image persists it to the post media', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -84,4 +107,10 @@ test('editing alt text on an attached image persists it to the post media', func
 
     expect($post->fresh()->media[0]['meta']['alt_text'])
         ->toBe('a golden retriever on a beach');
+
+    $page->click('@media-thumbnail');
+
+    waitForLightboxAltText($page);
+
+    $page->assertSeeIn('@lightbox-alt-text', 'a golden retriever on a beach');
 });
