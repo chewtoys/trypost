@@ -383,7 +383,6 @@ return [
             'edit' => 'Alt-tekst bewerken',
             'placeholder' => 'Beschrijf deze afbeelding voor mensen die schermlezers gebruiken',
             'hint' => 'Wordt gepubliceerd op platforms die afbeeldingsbeschrijvingen ondersteunen.',
-            'badge' => 'ALT',
             'save' => 'Opslaan',
         ],
 

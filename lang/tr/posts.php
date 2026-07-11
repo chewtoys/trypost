@@ -385,7 +385,6 @@ return [
             'edit' => 'Alternatif metni düzenle',
             'placeholder' => 'Ekran okuyucu kullanan kişiler için bu görseli açıklayın',
             'hint' => 'Görsel açıklamalarını destekleyen platformlarda yayınlanır.',
-            'badge' => 'ALT',
             'save' => 'Kaydet',
         ],
 

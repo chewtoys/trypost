@@ -385,7 +385,6 @@ return [
             'edit' => 'Alternativtext bearbeiten',
             'placeholder' => 'Beschreibe dieses Bild für Menschen, die Screenreader verwenden',
             'hint' => 'Wird auf Plattformen veröffentlicht, die Bildbeschreibungen unterstützen.',
-            'badge' => 'ALT',
             'save' => 'Speichern',
         ],
 

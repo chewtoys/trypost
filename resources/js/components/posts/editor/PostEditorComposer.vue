@@ -23,7 +23,6 @@ import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
 import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatBytes } from '@/composables/useMedia';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { classify, isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
@@ -283,7 +282,7 @@ const onAltTextSave = (value: string): void => {
 
                         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
-                        <div class="absolute bottom-1.5 left-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white">
+                        <div class="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white">
                             <span
                                 v-if="isVideo(item) && item.meta?.duration"
                                 class="inline-flex items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
@@ -292,17 +291,12 @@ const onAltTextSave = (value: string): void => {
                                 {{ date.formatClock(item.meta.duration) }}
                             </span>
                             <span
-                                v-if="item.size"
-                                class="inline-flex rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
-                            >
-                                {{ formatBytes(item.size) }}
-                            </span>
-                            <span
                                 v-if="isImage(item) && item.meta?.alt_text"
-                                class="inline-flex rounded-md bg-black/65 px-1.5 py-0.5 font-bold tracking-wider backdrop-blur-sm"
+                                class="inline-flex max-w-full items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
                                 data-testid="alt-text-badge"
                             >
-                                {{ $t('posts.edit.alt_text.badge') }}
+                                <IconAlt class="size-2.5 shrink-0" />
+                                <span class="truncate">{{ item.meta.alt_text }}</span>
                             </span>
                         </div>
 

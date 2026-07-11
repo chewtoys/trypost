@@ -383,7 +383,6 @@ return [
             'edit' => 'Modifica testo alternativo',
             'placeholder' => 'Descrivi questa immagine per le persone che usano screen reader',
             'hint' => 'Pubblicato sulle piattaforme che supportano le descrizioni delle immagini.',
-            'badge' => 'ALT',
             'save' => 'Salva',
         ],
 

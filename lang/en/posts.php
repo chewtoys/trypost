@@ -383,7 +383,6 @@ return [
             'edit' => 'Edit alt text',
             'placeholder' => 'Describe this image for people using screen readers',
             'hint' => 'Published to platforms that support image descriptions.',
-            'badge' => 'ALT',
             'save' => 'Save',
         ],
 
