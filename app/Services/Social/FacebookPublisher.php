@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\DataTransferObjects\MediaItem;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -134,6 +136,10 @@ class FacebookPublisher
             $payload['message'] = $content;
         }
 
+        if ($alt = $this->altFor($media)) {
+            $payload['alt_text_custom'] = $alt;
+        }
+
         $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $payload);
 
         if ($response->failed()) {
@@ -163,11 +169,17 @@ class FacebookPublisher
                 continue;
             }
 
-            $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+            $uploadPayload = [
                 'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
                 'published' => 'false',
                 'access_token' => $accessToken,
-            ]);
+            ];
+
+            if ($alt = $this->altFor($media)) {
+                $uploadPayload['alt_text_custom'] = $alt;
+            }
+
+            $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $uploadPayload);
 
             if ($uploadResponse->failed()) {
                 Log::error('Facebook image upload failed', [
@@ -410,6 +422,16 @@ class FacebookPublisher
     private function handleApiError(Response $response): never
     {
         throw FacebookPublishException::fromApiResponse($response);
+    }
+
+    /**
+     * User-provided alt text for the image, capped to Facebook's accepted length.
+     */
+    private function altFor(MediaItem $media): ?string
+    {
+        $alt = $media->altText();
+
+        return $alt === null ? null : mb_substr($alt, 0, Platform::Facebook->altTextMaxLength());
     }
 
     protected function cropFailureException(string $message): SocialPublishException
