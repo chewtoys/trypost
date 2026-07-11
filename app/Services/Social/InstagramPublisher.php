@@ -89,7 +89,9 @@ class InstagramPublisher
             'access_token' => $accessToken,
         ];
 
-        if ($alt = $this->altFor($media)) {
+        $alt = $this->altFor($media);
+
+        if ($alt !== null) {
             $params['alt_text'] = $alt;
         }
 
@@ -215,7 +217,9 @@ class InstagramPublisher
             } else {
                 $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
-                if ($alt = $this->altFor($media)) {
+                $alt = $this->altFor($media);
+
+                if ($alt !== null) {
                     $params['alt_text'] = $alt;
                 }
             }

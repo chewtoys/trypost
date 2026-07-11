@@ -149,6 +149,10 @@ enum Platform: string
         };
     }
 
+    /**
+     * Whether the platform's API accepts image alt text (accessibility
+     * description) on published media.
+     */
     public function supportsAltText(): bool
     {
         return $this->altTextMaxLength() !== null;

@@ -109,7 +109,9 @@ class ThreadsPublisher
             'access_token' => $accessToken,
         ];
 
-        if ($alt = $this->altFor($media)) {
+        $alt = $this->altFor($media);
+
+        if ($alt !== null) {
             $params['alt_text'] = $alt;
         }
 
@@ -193,7 +195,9 @@ class ThreadsPublisher
                 $params['media_type'] = 'IMAGE';
                 $params['image_url'] = $media->url;
 
-                if ($alt = $this->altFor($media)) {
+                $alt = $this->altFor($media);
+
+                if ($alt !== null) {
                     $params['alt_text'] = $alt;
                 }
             }

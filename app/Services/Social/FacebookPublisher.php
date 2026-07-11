@@ -136,7 +136,9 @@ class FacebookPublisher
             $payload['message'] = $content;
         }
 
-        if ($alt = $this->altFor($media)) {
+        $alt = $this->altFor($media);
+
+        if ($alt !== null) {
             $payload['alt_text_custom'] = $alt;
         }
 
@@ -175,7 +177,9 @@ class FacebookPublisher
                 'access_token' => $accessToken,
             ];
 
-            if ($alt = $this->altFor($media)) {
+            $alt = $this->altFor($media);
+
+            if ($alt !== null) {
                 $uploadPayload['alt_text_custom'] = $alt;
             }
 

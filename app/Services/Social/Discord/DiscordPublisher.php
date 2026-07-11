@@ -129,7 +129,9 @@ class DiscordPublisher
 
                 $attachment = ['id' => $index, 'filename' => $filename];
 
-                if ($alt = $item->altText()) {
+                $alt = $item->altText();
+
+                if ($alt !== null) {
                     $attachment['description'] = mb_substr($alt, 0, Platform::Discord->altTextMaxLength());
                 }
 
