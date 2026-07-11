@@ -35,6 +35,7 @@ class PostMediaRules
             'media.*.original_filename' => ['sometimes', 'nullable', 'string', 'max:500'],
             'media.*.size' => ['sometimes', 'nullable', 'integer'],
             'media.*.meta' => ['sometimes', 'nullable', 'array'],
+            'media.*.meta.alt_text' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'media.*.source' => ['sometimes', 'nullable', 'string', Rule::in(array_column(Source::cases(), 'value'))],
             'media.*.source_meta' => ['sometimes', 'nullable', 'array'],
         ];
