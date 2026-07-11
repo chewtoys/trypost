@@ -319,6 +319,166 @@ test('x publisher recovers a missing mime type from the downloaded bytes', funct
     Http::assertSent(fn ($request) => str_contains($request->url(), '/media/upload'));
 });
 
+test('x publisher sends image alt text to the media metadata endpoint', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'a red bike'],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/metadata')) {
+            return Http::response([], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_1']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121212', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(__DIR__.'/../../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/media/metadata')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'id') === 'media_id_alt_1'
+            && data_get($request->data(), 'metadata.alt_text.text') === 'a red bike';
+    });
+});
+
+test('x publisher truncates alt text to the platform max length', function () {
+    $longAlt = str_repeat('a', 1200);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/metadata')) {
+            return Http::response([], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_2']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121213', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(__DIR__.'/../../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/media/metadata')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'metadata.alt_text.text') === str_repeat('a', 1000);
+    });
+});
+
+test('x publisher does not call media metadata when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_3']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121214', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(__DIR__.'/../../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media/metadata'));
+});
+
 test('x publisher uploads video via chunked upload', function () {
     $this->post->update([
         'media' => [

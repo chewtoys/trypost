@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -60,6 +61,7 @@ class XPublisher
                 $mediaId = data_get($uploadedMedia, 'data.id', data_get($uploadedMedia, 'media_id'));
                 if ($mediaId) {
                     $mediaIds[] = $mediaId;
+                    $this->uploadAltText($mediaId, $mediaItem);
                 }
             }
         }
@@ -104,6 +106,28 @@ class XPublisher
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ]);
+    }
+
+    /**
+     * Sets the image's accessibility description on X via the v2 media
+     * metadata endpoint. Skipped entirely when no alt text was provided.
+     */
+    private function uploadAltText(string $mediaId, MediaItem $mediaItem): void
+    {
+        $alt = $mediaItem->altText();
+
+        if ($alt === null) {
+            return;
+        }
+
+        $this->getHttpClient()->post("{$this->baseUrl}/media/metadata", [
+            'id' => $mediaId,
+            'metadata' => [
+                'alt_text' => [
+                    'text' => mb_substr($alt, 0, Platform::X->altTextMaxLength()),
+                ],
+            ],
+        ]);
     }
 
     private function uploadMedia($mediaItem): ?array
