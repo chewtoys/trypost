@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\DataTransferObjects\MediaItem;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\PostPlatform;
@@ -100,12 +102,18 @@ class ThreadsPublisher
     private function publishImagePost(string $userId, string $accessToken, ?string $content, $media): array
     {
         // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
+        $params = [
             'media_type' => 'IMAGE',
             'image_url' => $media->url,
             'text' => $content,
             'access_token' => $accessToken,
-        ]);
+        ];
+
+        if ($alt = $this->altFor($media)) {
+            $params['alt_text'] = $alt;
+        }
+
+        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
 
         if ($containerResponse->failed()) {
             Log::error('Threads image container creation failed', [
@@ -184,6 +192,10 @@ class ThreadsPublisher
             } else {
                 $params['media_type'] = 'IMAGE';
                 $params['image_url'] = $media->url;
+
+                if ($alt = $this->altFor($media)) {
+                    $params['alt_text'] = $alt;
+                }
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
@@ -330,5 +342,16 @@ class ThreadsPublisher
     private function handleApiError(Response $response): never
     {
         throw ThreadsPublishException::fromApiResponse($response);
+    }
+
+    /**
+     * User-provided alt text for the image, capped to Threads' accepted
+     * length. Scoped to image containers/children only.
+     */
+    private function altFor(MediaItem $media): ?string
+    {
+        $alt = $media->altText();
+
+        return $alt === null ? null : mb_substr($alt, 0, Platform::Threads->altTextMaxLength());
     }
 }
