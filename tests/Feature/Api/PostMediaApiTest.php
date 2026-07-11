@@ -446,3 +446,69 @@ it('rejects updating a post when an external media url cannot be fetched', funct
 
     expect($this->post->fresh()->media)->toBe($original);
 });
+
+it('accepts and persists media alt text on create', function () {
+    $this->socialAccount->update(['is_active' => true]);
+    Http::preventStrayRequests();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Alt text post',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => 'A description of the photo'],
+            ]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertCreated();
+
+    $media = Post::where('content', 'Alt text post')->firstOrFail()->media;
+
+    expect(data_get($media, '0.meta.alt_text'))->toBe('A description of the photo');
+});
+
+it('accepts and persists media alt text on update', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $this->post), [
+            'status' => 'draft',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => 'Updated alt text'],
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('Updated alt text');
+});
+
+it('rejects media alt text over 2000 characters', function () {
+    $this->socialAccount->update(['is_active' => true]);
+    Http::preventStrayRequests();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Alt text too long post',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => str_repeat('a', 2001)],
+            ]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['media.0.meta.alt_text']);
+
+    expect(Post::where('content', 'Alt text too long post')->exists())->toBeFalse();
+});

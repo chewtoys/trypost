@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsPublishException;
@@ -109,7 +108,7 @@ class ThreadsPublisher
             'access_token' => $accessToken,
         ];
 
-        $alt = $this->altFor($media);
+        $alt = $media->altTextFor(Platform::Threads);
 
         if ($alt !== null) {
             $params['alt_text'] = $alt;
@@ -195,7 +194,7 @@ class ThreadsPublisher
                 $params['media_type'] = 'IMAGE';
                 $params['image_url'] = $media->url;
 
-                $alt = $this->altFor($media);
+                $alt = $media->altTextFor(Platform::Threads);
 
                 if ($alt !== null) {
                     $params['alt_text'] = $alt;
@@ -346,16 +345,5 @@ class ThreadsPublisher
     private function handleApiError(Response $response): never
     {
         throw ThreadsPublishException::fromApiResponse($response);
-    }
-
-    /**
-     * User-provided alt text for the image, capped to Threads' accepted
-     * length. Scoped to image containers/children only.
-     */
-    private function altFor(MediaItem $media): ?string
-    {
-        $alt = $media->altText();
-
-        return $alt === null ? null : mb_substr($alt, 0, Platform::Threads->altTextMaxLength());
     }
 }

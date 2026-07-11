@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -127,7 +126,7 @@ abstract class AbstractLinkedInPublisher
             if ($mediaUrn) {
                 $payload['content'] = ['media' => array_filter([
                     'id' => $mediaUrn,
-                    'altText' => $this->altFor($media->first()),
+                    'altText' => $media->first()->altTextFor($this->platform()),
                 ], fn ($v) => $v !== null)];
             }
         }
@@ -149,7 +148,7 @@ abstract class AbstractLinkedInPublisher
             if ($imageUrn) {
                 $images[] = array_filter([
                     'id' => $imageUrn,
-                    'altText' => $this->altFor($item),
+                    'altText' => $item->altTextFor($this->platform()),
                 ], fn ($v) => $v !== null);
             }
         }
@@ -245,18 +244,6 @@ abstract class AbstractLinkedInPublisher
         }
 
         return $postPlatform->post->mediaItems->first(fn ($media) => $media->isDocument())?->original_filename ?? 'Document';
-    }
-
-    /**
-     * The accessibility description to send for an uploaded image, capped to
-     * what the platform accepts. Null when the user hasn't set one, so the
-     * caller can omit the `altText` key entirely rather than sending it empty.
-     */
-    private function altFor(MediaItem $media): ?string
-    {
-        $alt = $media->altText();
-
-        return $alt === null ? null : mb_substr($alt, 0, $this->platform()->altTextMaxLength());
     }
 
     private function uploadMedia($mediaItem): ?string

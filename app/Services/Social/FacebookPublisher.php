@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -136,7 +135,7 @@ class FacebookPublisher
             $payload['message'] = $content;
         }
 
-        $alt = $this->altFor($media);
+        $alt = $media->altTextFor(Platform::Facebook);
 
         if ($alt !== null) {
             $payload['alt_text_custom'] = $alt;
@@ -177,7 +176,7 @@ class FacebookPublisher
                 'access_token' => $accessToken,
             ];
 
-            $alt = $this->altFor($media);
+            $alt = $media->altTextFor(Platform::Facebook);
 
             if ($alt !== null) {
                 $uploadPayload['alt_text_custom'] = $alt;
@@ -426,16 +425,6 @@ class FacebookPublisher
     private function handleApiError(Response $response): never
     {
         throw FacebookPublishException::fromApiResponse($response);
-    }
-
-    /**
-     * User-provided alt text for the image, capped to Facebook's accepted length.
-     */
-    private function altFor(MediaItem $media): ?string
-    {
-        $alt = $media->altText();
-
-        return $alt === null ? null : mb_substr($alt, 0, Platform::Facebook->altTextMaxLength());
     }
 
     protected function cropFailureException(string $message): SocialPublishException

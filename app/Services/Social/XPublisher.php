@@ -114,7 +114,7 @@ class XPublisher
      */
     private function uploadAltText(string $mediaId, MediaItem $mediaItem): void
     {
-        $alt = $mediaItem->altText();
+        $alt = $mediaItem->altTextFor(Platform::X);
 
         if ($alt === null) {
             return;
@@ -124,7 +124,7 @@ class XPublisher
             'id' => $mediaId,
             'metadata' => [
                 'alt_text' => [
-                    'text' => mb_substr($alt, 0, Platform::X->altTextMaxLength()),
+                    'text' => $alt,
                 ],
             ],
         ]);

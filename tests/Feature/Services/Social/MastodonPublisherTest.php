@@ -196,6 +196,71 @@ test('mastodon publisher sends capped alt text as media description', function (
     @unlink($optimizedFile);
 });
 
+test('mastodon publisher sends no description part when image has no alt text', function () {
+    // Minimal 1x1 JPEG bytes so mime_content_type() detects image/jpeg
+    $minimalJpeg = "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        ."\xFF\xDB\x00\x43\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\x09\x09\x08\x0A\x0C"
+        ."\x14\x0D\x0C\x0B\x0B\x0C\x19\x12\x13\x0F\x14\x1D\x1A\x1F\x1E\x1D\x1A\x1C\x1C\x20"
+        ."\xFF\xC0\x00\x0B\x08\x00\x01\x00\x01\x01\x01\x11\x00\xFF\xC4\x00\x1F\x00\x00\x01"
+        ."\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04\x05"
+        ."\xFF\xDA\x00\x08\x01\x01\x00\x00\x3F\x00\xFB\xD3\xFF\xD9";
+
+    $optimizedFile = tempnam(sys_get_temp_dir(), 'masto_no_alt_opt_');
+    file_put_contents($optimizedFile, str_repeat('x', 1024));
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->once()
+        ->with(Mockery::any(), Platform::Mastodon)
+        ->andReturn($optimizedFile);
+
+    Http::fake(function ($request) use ($minimalJpeg) {
+        $url = $request->url();
+
+        if (str_contains($url, '/api/v1/media')) {
+            return Http::response([
+                'id' => 'media-no-alt-123',
+                'type' => 'image',
+                'url' => 'https://mastodon.social/media/image.jpg',
+            ], 200);
+        }
+
+        if (str_contains($url, '/api/v1/statuses')) {
+            return Http::response([
+                'id' => '109876543210',
+                'url' => 'https://mastodon.social/@testuser/109876543210',
+            ], 200);
+        }
+
+        // Media download: return valid JPEG so mime_content_type() detects image/jpeg
+        return Http::response($minimalJpeg, 200, ['Content-Type' => 'image/jpeg']);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/v1/media')) {
+            return false;
+        }
+
+        return collect($request->data())->firstWhere('name', 'description') === null;
+    });
+
+    @unlink($optimizedFile);
+});
+
 test('mastodon publisher includes media ids in post', function () {
     Http::fake([
         'https://mastodon.social/api/v1/statuses' => Http::response([

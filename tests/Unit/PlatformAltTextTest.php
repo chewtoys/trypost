@@ -9,7 +9,9 @@ test('altTextMaxLength returns the documented cap for supporting platforms', fun
         ->and(Platform::X->altTextMaxLength())->toBe(1000)
         ->and(Platform::Mastodon->altTextMaxLength())->toBe(1500)
         ->and(Platform::LinkedIn->altTextMaxLength())->toBe(4086)
+        ->and(Platform::LinkedInPage->altTextMaxLength())->toBe(4086)
         ->and(Platform::Instagram->altTextMaxLength())->toBe(1000)
+        ->and(Platform::InstagramFacebook->altTextMaxLength())->toBe(1000)
         ->and(Platform::Pinterest->altTextMaxLength())->toBe(500)
         ->and(Platform::Discord->altTextMaxLength())->toBe(1024)
         ->and(Platform::Facebook->altTextMaxLength())->toBe(1000)
@@ -24,5 +26,7 @@ test('altTextMaxLength is null for platforms without alt-text support', function
 
 test('supportsAltText mirrors altTextMaxLength', function () {
     expect(Platform::Bluesky->supportsAltText())->toBeTrue()
+        ->and(Platform::LinkedInPage->supportsAltText())->toBeTrue()
+        ->and(Platform::InstagramFacebook->supportsAltText())->toBeTrue()
         ->and(Platform::TikTok->supportsAltText())->toBeFalse();
 });

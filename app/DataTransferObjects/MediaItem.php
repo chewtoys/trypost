@@ -6,6 +6,7 @@ namespace App\DataTransferObjects;
 
 use App\Enums\Media\Source;
 use App\Enums\Media\Type;
+use App\Enums\SocialAccount\Platform;
 
 class MediaItem
 {
@@ -73,6 +74,23 @@ class MediaItem
         $alt = trim($alt);
 
         return $alt === '' ? null : $alt;
+    }
+
+    /**
+     * The alt text truncated to the given platform's cap, or null when no alt
+     * text is set or the platform doesn't support it. Single place that applies
+     * the per-platform cap so publishers don't each repeat the truncation.
+     */
+    public function altTextFor(Platform $platform): ?string
+    {
+        $alt = $this->altText();
+        $max = $platform->altTextMaxLength();
+
+        if ($alt === null || $max === null) {
+            return null;
+        }
+
+        return mb_substr($alt, 0, $max);
     }
 
     /**

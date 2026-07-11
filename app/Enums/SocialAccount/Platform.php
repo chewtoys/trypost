@@ -129,9 +129,11 @@ enum Platform: string
 
     /**
      * Character cap the platform's API accepts for image alt text (accessibility
-     * description), or null when the platform has no alt-text field. Facebook and
-     * Threads document no limit, so a defensive 1000 is used. Single source of
-     * truth — publishers truncate to this value, never a literal.
+     * description), or null when the platform has no alt-text field. X, LinkedIn,
+     * Instagram, Pinterest, and Discord use documented API maxes. Facebook,
+     * Threads, Mastodon, and Bluesky document no limit, so a defensive cap is
+     * used instead. Single source of truth — publishers truncate to this value,
+     * never a literal.
      */
     public function altTextMaxLength(): ?int
     {

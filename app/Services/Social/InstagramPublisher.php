@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -89,7 +88,7 @@ class InstagramPublisher
             'access_token' => $accessToken,
         ];
 
-        $alt = $this->altFor($media);
+        $alt = $media->altTextFor(Platform::Instagram);
 
         if ($alt !== null) {
             $params['alt_text'] = $alt;
@@ -217,7 +216,7 @@ class InstagramPublisher
             } else {
                 $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
-                $alt = $this->altFor($media);
+                $alt = $media->altTextFor(Platform::Instagram);
 
                 if ($alt !== null) {
                     $params['alt_text'] = $alt;
@@ -370,17 +369,5 @@ class InstagramPublisher
     private function handleApiError(Response $response): never
     {
         throw InstagramPublishException::fromApiResponse($response);
-    }
-
-    /**
-     * User-provided alt text for the image, capped to Instagram's accepted
-     * length. Instagram only accepts `alt_text` on image containers/children,
-     * never on video/reel containers.
-     */
-    private function altFor(MediaItem $media): ?string
-    {
-        $alt = $media->altText();
-
-        return $alt === null ? null : mb_substr($alt, 0, Platform::Instagram->altTextMaxLength());
     }
 }

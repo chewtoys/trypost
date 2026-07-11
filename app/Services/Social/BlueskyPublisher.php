@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -64,7 +63,7 @@ class BlueskyPublisher
                     $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
                     if ($blob) {
                         $images[] = [
-                            'alt' => $this->altFor($media),
+                            'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
                             'image' => $blob,
                         ];
                     }
@@ -700,21 +699,6 @@ class BlueskyPublisher
         $webApp = (string) config('trypost.platforms.bluesky.web_app');
 
         return "{$webApp}/profile/{$handle}/post/{$postId}";
-    }
-
-    /**
-     * Bluesky requires `alt` on every image, so this returns '' (never null)
-     * when the user set no description, and the capped description otherwise.
-     */
-    private function altFor(MediaItem $media): string
-    {
-        $alt = $media->altText();
-
-        if ($alt === null) {
-            return '';
-        }
-
-        return mb_substr($alt, 0, Platform::Bluesky->altTextMaxLength());
     }
 
     private function handleApiError(Response $response): never

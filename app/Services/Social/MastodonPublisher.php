@@ -33,7 +33,7 @@ class MastodonPublisher
 
         // Upload media first (max 4)
         foreach ($medias->take(4) as $media) {
-            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->altText());
+            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->altTextFor(Platform::Mastodon));
             if ($mediaId) {
                 $mediaIds[] = $mediaId;
             }
@@ -105,7 +105,7 @@ class MastodonPublisher
                 ->attach('file', $stream, $name);
 
             if ($altText !== null) {
-                $request = $request->attach('description', mb_substr($altText, 0, Platform::Mastodon->altTextMaxLength()));
+                $request = $request->attach('description', $altText);
             }
 
             $response = $request->post("{$instance}/api/v1/media");
