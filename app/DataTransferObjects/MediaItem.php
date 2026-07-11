@@ -60,6 +60,22 @@ class MediaItem
     }
 
     /**
+     * User-provided accessibility description for this image, when set.
+     */
+    public function altText(): ?string
+    {
+        $alt = data_get($this->meta, 'alt_text');
+
+        if (! is_string($alt)) {
+            return null;
+        }
+
+        $alt = trim($alt);
+
+        return $alt === '' ? null : $alt;
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self
