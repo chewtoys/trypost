@@ -119,8 +119,10 @@ class PinterestPublisher
             $payload['link'] = data_get($postPlatform->meta, 'link');
         }
 
-        if (! empty(data_get($postPlatform->meta, 'alt_text'))) {
-            $payload['alt_text'] = substr(data_get($postPlatform->meta, 'alt_text'), 0, 500);
+        $alt = $postPlatform->post->mediaItems->first(fn ($m) => $m->isImage())?->altText();
+
+        if ($alt !== null) {
+            $payload['alt_text'] = mb_substr($alt, 0, Platform::Pinterest->altTextMaxLength());
         }
 
         $response = $this->socialHttp()->withToken($account->access_token)
