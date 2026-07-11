@@ -128,6 +128,33 @@ enum Platform: string
     }
 
     /**
+     * Character cap the platform's API accepts for image alt text (accessibility
+     * description), or null when the platform has no alt-text field. Facebook and
+     * Threads document no limit, so a defensive 1000 is used. Single source of
+     * truth — publishers truncate to this value, never a literal.
+     */
+    public function altTextMaxLength(): ?int
+    {
+        return match ($this) {
+            self::Bluesky => 2000,
+            self::X => 1000,
+            self::Mastodon => 1500,
+            self::LinkedIn, self::LinkedInPage => 4086,
+            self::Facebook => 1000,
+            self::Instagram, self::InstagramFacebook => 1000,
+            self::Threads => 1000,
+            self::Pinterest => 500,
+            self::Discord => 1024,
+            self::TikTok, self::YouTube, self::Telegram => null,
+        };
+    }
+
+    public function supportsAltText(): bool
+    {
+        return $this->altTextMaxLength() !== null;
+    }
+
+    /**
      * Hard cap (in characters) the platform's API will accept. Going over this
      * means the post can't be published. Values are the documented API maxes:
      *
