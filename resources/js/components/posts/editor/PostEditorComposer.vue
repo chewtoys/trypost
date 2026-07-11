@@ -292,11 +292,10 @@ const onAltTextSave = (value: string): void => {
                             </span>
                             <span
                                 v-if="isImage(item) && item.meta?.alt_text"
-                                class="inline-flex max-w-full items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
+                                class="inline-block max-w-full truncate rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
                                 data-testid="alt-text-badge"
                             >
-                                <IconAlt class="size-2.5 shrink-0" />
-                                <span class="truncate">{{ item.meta.alt_text }}</span>
+                                {{ item.meta.alt_text }}
                             </span>
                         </div>
 
