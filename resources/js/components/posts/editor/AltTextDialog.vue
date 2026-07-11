@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { MediaItem } from '@/types/media';
 
+const MAX_ALT_TEXT_LENGTH = 2000;
+
 const props = defineProps<{
     mediaItem: MediaItem | null;
 }>();
@@ -48,7 +50,7 @@ const save = () => {
                     rows="4"
                     data-testid="alt-text-input"
                 />
-                <p class="text-right text-xs tabular-nums text-foreground/60">{{ value.length }}</p>
+                <p class="text-right text-xs tabular-nums text-foreground/60">{{ value.length }} / {{ MAX_ALT_TEXT_LENGTH }}</p>
             </div>
 
             <DialogFooter>
