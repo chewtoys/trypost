@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\DataTransferObjects\MediaItem;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -81,12 +83,18 @@ class InstagramPublisher
     {
         $imageUrl = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
-        // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        $params = [
             'image_url' => $imageUrl,
             'caption' => $content,
             'access_token' => $accessToken,
-        ]);
+        ];
+
+        if ($alt = $this->altFor($media)) {
+            $params['alt_text'] = $alt;
+        }
+
+        // Step 1: Create container
+        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
 
         if ($containerResponse->failed()) {
             Log::error('Instagram container creation failed', [
@@ -206,6 +214,10 @@ class InstagramPublisher
                 $params['media_type'] = 'VIDEO';
             } else {
                 $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
+
+                if ($alt = $this->altFor($media)) {
+                    $params['alt_text'] = $alt;
+                }
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
@@ -354,5 +366,17 @@ class InstagramPublisher
     private function handleApiError(Response $response): never
     {
         throw InstagramPublishException::fromApiResponse($response);
+    }
+
+    /**
+     * User-provided alt text for the image, capped to Instagram's accepted
+     * length. Instagram only accepts `alt_text` on image containers/children,
+     * never on video/reel containers.
+     */
+    private function altFor(MediaItem $media): ?string
+    {
+        $alt = $media->altText();
+
+        return $alt === null ? null : mb_substr($alt, 0, Platform::Instagram->altTextMaxLength());
     }
 }
