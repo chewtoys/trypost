@@ -219,19 +219,16 @@ const openAltText = (index: number) => {
     altDialogOpen.value = true;
 };
 
-const setAltText = (index: number, alt: string): void => {
+const onAltTextSave = (alt: string): void => {
+    if (altDialogIndex.value === null) return;
+
     const next = [...media.value];
     const trimmed = alt.trim();
-    next[index] = {
-        ...next[index],
-        meta: { ...(next[index].meta ?? {}), alt_text: trimmed || undefined },
+    next[altDialogIndex.value] = {
+        ...next[altDialogIndex.value],
+        meta: { ...(next[altDialogIndex.value].meta ?? {}), alt_text: trimmed || undefined },
     };
     media.value = next;
-};
-
-const onAltTextSave = (value: string): void => {
-    if (altDialogIndex.value === null) return;
-    setAltText(altDialogIndex.value, value);
 };
 </script>
 
