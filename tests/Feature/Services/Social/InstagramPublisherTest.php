@@ -912,3 +912,121 @@ test('carousel applies the chosen aspect ratio crop to every image', function (s
     '1:1' => ['1:1', 1.0],
     '4:5' => ['4:5', 4 / 5],
 ]);
+
+test('instagram publisher sends capped alt text on single image container', function () {
+    $longAlt = str_repeat('a', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        '*/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'media-alt-123'], 200),
+        '*/media-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/ALT123/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Instagram->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($request->data(), 'alt_text') === $expectedAlt
+            && strlen($expectedAlt) === Platform::Instagram->altTextMaxLength();
+    });
+});
+
+test('instagram publisher omits alt_text from single image container when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        '*/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'media-no-alt-123'], 200),
+        '*/media-no-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/NOALT123/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && ! array_key_exists('alt_text', $request->data());
+    });
+});
+
+test('instagram publisher sends alt text on image carousel children but never on video children', function () {
+    $imageAlt = str_repeat('x', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $imageAlt],
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+                'meta' => ['alt_text' => 'video alt text must never be sent'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::sequence()
+            ->push(['id' => 'child-1'], 200)
+            ->push(['id' => 'child-2'], 200)
+            ->push(['id' => 'carousel-container-123'], 200),
+        '*/child-2*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/carousel-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'carousel-alt-123'], 200),
+        '*/carousel-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/CAROUSELALT/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($imageAlt, 0, Platform::Instagram->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'image_url') !== null
+            && data_get($data, 'alt_text') === $expectedAlt;
+    });
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'video_url') !== null
+            && ! array_key_exists('alt_text', $data);
+    });
+});

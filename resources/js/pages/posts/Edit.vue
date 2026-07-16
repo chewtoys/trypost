@@ -268,10 +268,12 @@ const save = () => {
         ...data,
     }, {
         preserveScroll: true,
-        onFinish: () => {
-            isSaving.value = false;
+        onSuccess: () => {
             showSaved.value = true;
             setTimeout(() => { showSaved.value = false; }, 2000);
+        },
+        onFinish: () => {
+            isSaving.value = false;
         },
     });
 };

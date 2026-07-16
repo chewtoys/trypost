@@ -63,7 +63,7 @@ class BlueskyPublisher
                     $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
                     if ($blob) {
                         $images[] = [
-                            'alt' => '',
+                            'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
                             'image' => $blob,
                         ];
                     }

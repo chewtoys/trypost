@@ -380,6 +380,14 @@ return [
             'add_count' => ':count tane ekle',
         ],
 
+        'alt_text' => [
+            'label' => 'Alternatif metin',
+            'edit' => 'Alternatif metni düzenle',
+            'placeholder' => 'Ekran okuyucu kullanan kişiler için bu görseli açıklayın',
+            'hint' => 'Görsel açıklamalarını destekleyen platformlarda yayınlanır.',
+            'save' => 'Kaydet',
+        ],
+
         'emoji_picker' => [
             'search' => 'Emoji ara',
             'empty' => 'Emoji bulunamadı',

@@ -380,6 +380,14 @@ return [
             'add_count' => ':count hinzufügen',
         ],
 
+        'alt_text' => [
+            'label' => 'Alternativtext',
+            'edit' => 'Alternativtext bearbeiten',
+            'placeholder' => 'Beschreibe dieses Bild für Menschen, die Screenreader verwenden',
+            'hint' => 'Wird auf Plattformen veröffentlicht, die Bildbeschreibungen unterstützen.',
+            'save' => 'Speichern',
+        ],
+
         'emoji_picker' => [
             'search' => 'Emoji suchen',
             'empty' => 'Keine Emojis gefunden',
