@@ -33,7 +33,7 @@ class MastodonPublisher
 
         // Upload media first (max 4)
         foreach ($medias->take(4) as $media) {
-            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->altTextFor(Platform::Mastodon));
+            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->isImage() ? $media->altTextFor(Platform::Mastodon) : null);
             if ($mediaId) {
                 $mediaIds[] = $mediaId;
             }

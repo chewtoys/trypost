@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +21,9 @@ const emit = defineEmits<{
 
 const value = ref('');
 
+const length = computed(() => [...value.value.trim()].length);
+const isOverLimit = computed(() => length.value > MAX_ALT_TEXT_LENGTH);
+
 watch(open, (isOpen) => {
     if (isOpen) {
         value.value = props.mediaItem?.meta?.alt_text ?? '';
@@ -28,6 +31,10 @@ watch(open, (isOpen) => {
 });
 
 const save = () => {
+    if (isOverLimit.value) {
+        return;
+    }
+
     emit('save', value.value);
     open.value = false;
 };
@@ -50,11 +57,17 @@ const save = () => {
                     rows="4"
                     data-testid="alt-text-input"
                 />
-                <p class="text-right text-xs tabular-nums text-foreground/60">{{ value.length }} / {{ MAX_ALT_TEXT_LENGTH }}</p>
+                <p
+                    class="text-right text-xs tabular-nums"
+                    :class="isOverLimit ? 'text-destructive' : 'text-foreground/60'"
+                    data-testid="alt-text-counter"
+                >
+                    {{ length }} / {{ MAX_ALT_TEXT_LENGTH }}
+                </p>
             </div>
 
             <DialogFooter>
-                <Button data-testid="alt-text-save" @click="save">
+                <Button data-testid="alt-text-save" :disabled="isOverLimit" @click="save">
                     {{ $t('posts.edit.alt_text.save') }}
                 </Button>
                 <Button variant="outline" @click="open = false">

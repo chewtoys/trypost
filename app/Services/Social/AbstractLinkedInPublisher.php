@@ -121,12 +121,13 @@ abstract class AbstractLinkedInPublisher
         $payload = $this->basePayload($content);
 
         if ($media->isNotEmpty()) {
-            $mediaUrn = $this->uploadMedia($media->first());
+            $item = $media->first();
+            $mediaUrn = $this->uploadMedia($item);
 
             if ($mediaUrn) {
                 $payload['content'] = ['media' => array_filter([
                     'id' => $mediaUrn,
-                    'altText' => $media->first()->altTextFor($this->platform()),
+                    'altText' => $item->isImage() ? $item->altTextFor($this->platform()) : null,
                 ], fn ($v) => $v !== null)];
             }
         }

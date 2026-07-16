@@ -25,7 +25,7 @@ use Throwable;
 class MediaAttacher
 {
     /**
-     * @param  array<int, string>  $urls
+     * @param  array<int, array{url: string, alt?: ?string}>  $urls
      * @return array{attached: array<int, array<string, mixed>>, failed: array<int, string>}
      */
     public function attachFromUrls(Post $post, array $urls): array
@@ -33,10 +33,22 @@ class MediaAttacher
         $attached = [];
         $failed = [];
 
-        foreach ($urls as $url) {
-            ($item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url)) === null
-                ? $failed[] = $url
-                : $attached[] = $item;
+        foreach ($urls as $entry) {
+            $url = (string) data_get($entry, 'url', '');
+            $item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url);
+
+            if ($item === null) {
+                $failed[] = $url;
+
+                continue;
+            }
+
+            if (($alt = data_get($entry, 'alt')) !== null
+                && MediaType::classify(data_get($item, 'mime_type'), data_get($item, 'path')) === MediaType::Image) {
+                $item['meta'] = ['alt_text' => $alt];
+            }
+
+            $attached[] = $item;
         }
 
         if ($attached !== []) {
@@ -75,6 +87,10 @@ class MediaAttacher
                 $failed[] = $url;
 
                 continue;
+            }
+
+            if (($meta = data_get($item, 'meta')) !== null) {
+                $hosted['meta'] = $meta;
             }
 
             $media[] = $hosted;

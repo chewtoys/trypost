@@ -74,6 +74,29 @@ function waitForLightboxAltText(mixed $page): void
     JS);
 }
 
+/**
+ * Poll on the browser side until the alt-text Save button reaches the desired
+ * disabled state. The `:disabled` binding is driven by a Vue computed that
+ * flushes on nextTick, and these Pest browser assertions do not auto-wait, so
+ * we settle the reactive state here before asserting.
+ */
+function waitForSaveButton(mixed $page, bool $disabled): void
+{
+    $want = $disabled ? 'true' : 'false';
+
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                const el = document.querySelector('[data-testid="alt-text-save"]');
+                if (el && el.disabled === {$want}) {
+                    return;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
 test('editing alt text on an attached image persists it to the post media', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -113,4 +136,108 @@ test('editing alt text on an attached image persists it to the post media', func
     waitForLightboxAltText($page);
 
     $page->assertSeeIn('@lightbox-alt-text', 'a golden retriever on a beach');
+});
+
+test('lightbox shows no alt overlay for a non-image even when meta carries alt text', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'hello',
+        'media' => [[
+            'id' => 'v1',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'path' => 'uploads/clip.mp4',
+            'url' => 'https://cdn.test/clip.mp4',
+            'meta' => ['alt_text' => 'alt that must never overlay a video'],
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post));
+
+    $page->click('@media-thumbnail');
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.querySelector('[data-testid="lightbox-video"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
+    $page->assertPresent('@lightbox-video')
+        ->assertMissing('@lightbox-alt-text');
+});
+
+test('alt text dialog blocks saving when the description exceeds the limit', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'hello',
+        'media' => [[
+            'id' => 'm1',
+            'type' => 'image',
+            'mime_type' => 'image/png',
+            'path' => 'uploads/x.png',
+            'url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post));
+
+    $page->click('@alt-text-button')
+        ->fill('@alt-text-input', str_repeat('a', 2001));
+    waitForSaveButton($page, disabled: true);
+    $page->assertDisabled('@alt-text-save')
+        ->fill('@alt-text-input', 'a short and valid description');
+    waitForSaveButton($page, disabled: false);
+    $page->assertEnabled('@alt-text-save');
+
+    $page->fill('@alt-text-input', str_repeat('a', 1999).str_repeat(' ', 100));
+    waitForSaveButton($page, disabled: false);
+    $page->assertEnabled('@alt-text-save');
+});
+
+test('alt text dialog counts emoji by code point, not UTF-16 units', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'hello',
+        'media' => [[
+            'id' => 'm1',
+            'type' => 'image',
+            'mime_type' => 'image/png',
+            'path' => 'uploads/x.png',
+            'url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post));
+
+    $page->click('@alt-text-button')
+        ->fill('@alt-text-input', str_repeat('😀', 1500));
+    waitForSaveButton($page, disabled: false);
+    $page->assertEnabled('@alt-text-save');
 });

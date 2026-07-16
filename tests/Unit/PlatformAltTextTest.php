@@ -30,3 +30,11 @@ test('supportsAltText mirrors altTextMaxLength', function () {
         ->and(Platform::InstagramFacebook->supportsAltText())->toBeTrue()
         ->and(Platform::TikTok->supportsAltText())->toBeFalse();
 });
+
+test('altTextMaxLength is defined for every platform so a new case cannot slip through', function () {
+    foreach (Platform::cases() as $platform) {
+        $max = $platform->altTextMaxLength();
+
+        expect($max === null || (is_int($max) && $max > 0))->toBeTrue();
+    }
+});

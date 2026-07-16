@@ -672,6 +672,71 @@ test('linkedin publisher can publish post with video', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });
 
+test('linkedin publisher never sends altText on a single video post even if the video carries alt text', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test-video.mp4',
+                'meta' => ['alt_text' => 'alt text must not be sent on a video payload'],
+            ],
+        ],
+    ]);
+
+    $chunkUploadUrl = 'https://www.linkedin.com/dms/upload/v2/chunk/video/1';
+
+    Http::fake(function ($request) use ($chunkUploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, 'initializeUpload') && str_contains($url, '/rest/videos')) {
+            return Http::response([
+                'value' => [
+                    'video' => 'urn:li:video:FakeVideoUrn',
+                    'uploadToken' => 'upload-token-abc',
+                    'uploadInstructions' => [
+                        ['uploadUrl' => $chunkUploadUrl, 'firstByte' => 0, 'lastByte' => 1023],
+                    ],
+                ],
+            ], 200);
+        }
+
+        if ($url === $chunkUploadUrl) {
+            return Http::response(null, 200, ['etag' => '"etag-abc123"']);
+        }
+
+        if (str_contains($url, 'finalizeUpload') && str_contains($url, '/rest/videos')) {
+            return Http::response(null, 200);
+        }
+
+        if (str_contains($url, '/rest/videos/')) {
+            return Http::response(['status' => 'AVAILABLE'], 200);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:videonoalt']);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        $media = data_get($request->data(), 'content.media');
+
+        return is_array($media)
+            && data_get($media, 'id') === 'urn:li:video:FakeVideoUrn'
+            && ! array_key_exists('altText', $media);
+    });
+});
+
 test('linkedin publisher uploads a video across multiple chunks', function () {
     $this->post->update([
         'media' => [

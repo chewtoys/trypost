@@ -16,6 +16,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class XPublisher
 {
@@ -110,24 +111,37 @@ class XPublisher
 
     /**
      * Sets the image's accessibility description on X via the v2 media
-     * metadata endpoint. Skipped entirely when no alt text was provided.
+     * metadata endpoint. Best-effort: only images carry alt text, and a failure
+     * here never blocks the tweet — the media already uploaded and the post
+     * should still go out without the description.
      */
     private function uploadAltText(string $mediaId, MediaItem $mediaItem): void
     {
+        if (! $mediaItem->isImage()) {
+            return;
+        }
+
         $alt = $mediaItem->altTextFor(Platform::X);
 
         if ($alt === null) {
             return;
         }
 
-        $this->getHttpClient()->post("{$this->baseUrl}/media/metadata", [
-            'id' => $mediaId,
-            'metadata' => [
-                'alt_text' => [
-                    'text' => $alt,
+        try {
+            $this->getHttpClient()->post("{$this->baseUrl}/media/metadata", [
+                'id' => $mediaId,
+                'metadata' => [
+                    'alt_text' => [
+                        'text' => $alt,
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('X alt text upload failed; posting the tweet without it', [
+                'media_id' => $mediaId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function uploadMedia($mediaItem): ?array

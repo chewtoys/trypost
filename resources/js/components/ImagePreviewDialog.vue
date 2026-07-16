@@ -100,6 +100,7 @@ defineExpose({ open, openCollection, close });
                     v-else-if="currentItem && currentItem.type === 'video'"
                     :key="currentItem.url"
                     :src="currentItem.url"
+                    data-testid="lightbox-video"
                     class="max-h-[85vh] max-w-full rounded-2xl bg-black"
                     controls
                     autoplay

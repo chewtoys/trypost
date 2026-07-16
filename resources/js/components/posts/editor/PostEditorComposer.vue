@@ -83,7 +83,7 @@ const openPreview = (item: MediaItem) => {
         media.value.map((m) => ({
             url: m.url,
             type: classify(m) ?? MediaType.Image,
-            altText: m.meta?.alt_text,
+            altText: isImage(m) ? m.meta?.alt_text : undefined,
         })),
         idx,
     );

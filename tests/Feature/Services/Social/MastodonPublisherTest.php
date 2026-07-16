@@ -261,6 +261,52 @@ test('mastodon publisher sends no description part when image has no alt text', 
     @unlink($optimizedFile);
 });
 
+test('mastodon publisher does not send a description for a non-image even if it carries alt text', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+                'meta' => ['alt_text' => 'alt must not be sent for a video'],
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/api/v1/media')) {
+            return Http::response([
+                'id' => 'media-video-123',
+                'type' => 'video',
+                'url' => 'https://mastodon.social/media/clip.mp4',
+            ], 200);
+        }
+
+        if (str_contains($url, '/api/v1/statuses')) {
+            return Http::response([
+                'id' => '109876543211',
+                'url' => 'https://mastodon.social/@testuser/109876543211',
+            ], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/v1/media')) {
+            return false;
+        }
+
+        return collect($request->data())->firstWhere('name', 'description') === null;
+    });
+});
+
 test('mastodon publisher includes media ids in post', function () {
     Http::fake([
         'https://mastodon.social/api/v1/statuses' => Http::response([
