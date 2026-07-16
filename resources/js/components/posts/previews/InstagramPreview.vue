@@ -168,7 +168,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                 <!-- Video/Media - Full screen -->
                 <VerticalMediaCanvas :media="media">
                     <template #placeholder>
-                        <div class="flex h-full w-full items-center justify-center">
+                        <div class="flex h-full w-full items-center justify-center bg-[#fafafa] dark:bg-black">
                             <IconPlayerPlayFilled class="h-12 w-12 text-muted-foreground/40" />
                         </div>
                     </template>
@@ -232,7 +232,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                 <!-- Media - Full screen -->
                 <VerticalMediaCanvas :media="media">
                     <template #placeholder>
-                        <div class="flex h-full w-full items-center justify-center">
+                        <div class="flex h-full w-full items-center justify-center bg-[#fafafa] dark:bg-black">
                             <IconPhoto class="h-12 w-12 text-muted-foreground/40" />
                         </div>
                     </template>

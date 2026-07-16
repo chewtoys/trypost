@@ -17,8 +17,6 @@ export interface MediaRules {
     maxVideoDurationSec?: number;
     aspectRatioMin?: number;
     aspectRatioMax?: number;
-    // Images off the target ratio are auto-fitted with a blurred background at
-    // publish time, so the aspect-ratio warning is suppressed for images.
     autoFitsImage?: boolean;
 }
 

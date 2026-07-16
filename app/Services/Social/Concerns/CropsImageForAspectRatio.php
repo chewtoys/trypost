@@ -37,14 +37,20 @@ trait CropsImageForAspectRatio
                 throw $this->cropFailureException('Failed to download image for cropping');
             }
 
-            $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
+            try {
+                $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
+            } catch (\Throwable) {
+                throw $this->cropFailureException('Failed to process image for cropping');
+            }
 
-            $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-            Storage::put($path, file_get_contents($cropped));
+            try {
+                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+                Storage::put($path, file_get_contents($cropped));
 
-            @unlink($cropped);
-
-            return Storage::url($path);
+                return Storage::url($path);
+            } finally {
+                @unlink($cropped);
+            }
         } finally {
             @unlink($tempInput);
         }
@@ -66,14 +72,20 @@ trait CropsImageForAspectRatio
                 throw $this->cropFailureException('Failed to download image for story fitting');
             }
 
-            $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
+            try {
+                $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
+            } catch (\Throwable) {
+                throw $this->cropFailureException('Failed to process image for story fitting');
+            }
 
-            $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-            Storage::put($path, file_get_contents($fitted));
+            try {
+                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+                Storage::put($path, file_get_contents($fitted));
 
-            @unlink($fitted);
-
-            return Storage::url($path);
+                return Storage::url($path);
+            } finally {
+                @unlink($fitted);
+            }
         } finally {
             @unlink($tempInput);
         }

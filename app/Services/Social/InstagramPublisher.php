@@ -159,7 +159,7 @@ class InstagramPublisher
             $params['video_url'] = $media->url;
         } else {
             $dimensions = ContentType::InstagramStory->aiImageDimensions();
-            $params['image_url'] = $this->fitImageToCanvas($media->url, $dimensions['width'], $dimensions['height']);
+            $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
         }
 
         // Step 1: Create story container

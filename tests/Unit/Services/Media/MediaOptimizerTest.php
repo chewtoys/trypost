@@ -7,13 +7,28 @@ use App\Services\Media\MediaOptimizer;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
-function createTestImage(int $width, int $height, string $format = 'image/jpeg'): string
+function createTestImage(int $width, int $height, string $format = 'image/jpeg', string $fill = 'cccccc'): string
 {
     $manager = new ImageManager(Driver::class);
-    $image = $manager->createImage($width, $height)->fill('cccccc');
+    $image = $manager->createImage($width, $height)->fill($fill);
     $tempFile = tempnam(sys_get_temp_dir(), 'test_img_');
     $encoded = $image->encodeUsingMediaType($format);
     file_put_contents($tempFile, (string) $encoded);
+
+    return $tempFile;
+}
+
+/**
+ * A valid PNG header declaring huge dimensions with no pixel data: getimagesize
+ * reads the size cheaply, so the memory-budget guard fires without allocating a
+ * multi-gigabyte GD buffer.
+ */
+function createHugeHeaderImage(int $width, int $height): string
+{
+    $ihdr = pack('N', $width).pack('N', $height)."\x08\x02\x00\x00\x00";
+    $png = "\x89PNG\r\n\x1a\n".pack('N', 13).'IHDR'.$ihdr.pack('N', 0);
+    $tempFile = tempnam(sys_get_temp_dir(), 'huge_hdr_');
+    file_put_contents($tempFile, $png);
 
     return $tempFile;
 }
@@ -214,8 +229,8 @@ it('returns a copy when image already matches the target ratio', function () use
     expect($cropped->height())->toBe(800);
 });
 
-it('fits a wide image into a 9:16 canvas (blurred background, no crop)', function () use (&$tempFiles) {
-    $source = createTestImage(1200, 900); // 4:3
+it('fills the gaps with a darkened image-derived background, never a black letterbox', function () use (&$tempFiles) {
+    $source = createTestImage(1200, 900, 'image/jpeg', 'ff0000'); // 4:3 red, wider than 9:16
     $tempFiles[] = $source;
 
     $optimizer = new MediaOptimizer;
@@ -227,10 +242,20 @@ it('fits a wide image into a 9:16 canvas (blurred background, no crop)', functio
 
     expect($out->width())->toBe(1080)
         ->and($out->height())->toBe(1920);
+
+    // A 4:3 image is letterboxed top & bottom on a 9:16 canvas. The band must be
+    // a darkened copy of the red image, not a black bar, and darker than the
+    // centered foreground on top of it.
+    $band = $out->colorAt(540, 40);        // top background band
+    $foreground = $out->colorAt(540, 960); // centered image
+
+    expect($band->red()->value())->toBeGreaterThan(120)
+        ->and($band->red()->value())->toBeGreaterThan($band->green()->value() + 60)
+        ->and($foreground->red()->value())->toBeGreaterThan($band->red()->value());
 });
 
-it('does not letterbox an image that already matches the canvas ratio', function () use (&$tempFiles) {
-    $source = createTestImage(1080, 1920); // already 9:16
+it('scales an already-9:16 image down to the canvas with no letterbox band', function () use (&$tempFiles) {
+    $source = createTestImage(2160, 3840, 'image/jpeg', 'ff0000'); // already 9:16, larger than canvas
     $tempFiles[] = $source;
 
     $optimizer = new MediaOptimizer;
@@ -240,6 +265,42 @@ it('does not letterbox an image that already matches the canvas ratio', function
     $manager = new ImageManager(Driver::class);
     $out = $manager->decodePath($result);
 
-    $ratio = $out->width() / $out->height();
-    expect(abs($ratio - 9 / 16))->toBeLessThan(0.01);
+    // Scaled down to the exact canvas, and no darkened band was added: a corner
+    // (background region for the fit path) matches the centre.
+    $corner = $out->colorAt(0, 0);
+    $center = $out->colorAt(540, 960);
+
+    expect($out->width())->toBe(1080)
+        ->and($out->height())->toBe(1920)
+        ->and(abs($corner->red()->value() - $center->red()->value()))->toBeLessThan(10);
+});
+
+it('throws when the source bytes are not a decodable image', function () use (&$tempFiles) {
+    $bad = tempnam(sys_get_temp_dir(), 'bad_fit_');
+    file_put_contents($bad, '<html>404 not found</html>');
+    $tempFiles[] = $bad;
+
+    $optimizer = new MediaOptimizer;
+
+    expect(fn () => $optimizer->fitToCanvas($bad, 1080, 1920))->toThrow(Exception::class);
+});
+
+it('refuses to fit an image whose dimensions exceed the memory budget', function () use (&$tempFiles) {
+    $huge = createHugeHeaderImage(20000, 20000);
+    $tempFiles[] = $huge;
+
+    $optimizer = new MediaOptimizer;
+
+    expect(fn () => $optimizer->fitToCanvas($huge, 1080, 1920))
+        ->toThrow(RuntimeException::class, 'exceed the safe processing budget');
+});
+
+it('refuses to crop an image whose dimensions exceed the memory budget', function () use (&$tempFiles) {
+    $huge = createHugeHeaderImage(20000, 20000);
+    $tempFiles[] = $huge;
+
+    $optimizer = new MediaOptimizer;
+
+    expect(fn () => $optimizer->cropToAspectRatio($huge, 0.8))
+        ->toThrow(RuntimeException::class, 'exceed the safe processing budget');
 });

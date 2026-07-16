@@ -108,6 +108,15 @@ test('instagram publisher publishes story', function () {
     $result = $publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('story-123');
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/12345678/media') || str_contains($request->url(), 'media_publish')) {
+            return false;
+        }
+        $imageUrl = (string) data_get($request->data(), 'image_url', '');
+
+        return str_contains($imageUrl, 'social-crops/') && ! str_contains($imageUrl, 'example.com');
+    });
 });
 
 test('instagram publisher throws token expired exception on oauth error', function () {

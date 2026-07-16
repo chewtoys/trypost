@@ -198,6 +198,131 @@ test('instagram publisher fits an image story to 9:16 and posts the hosted copy'
     });
 });
 
+test('instagram publisher fits a real off-ratio story image to a 1080x1920 jpeg', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/2026-01/story.jpg',
+                'url' => 'https://example.com/media/2026-01/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/2026-01/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+        'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123456789'], 200),
+        'https://graph.instagram.com/v25.0/story-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/123/'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('story-123456789');
+
+    $hosted = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'social-crops/'));
+    expect($hosted)->not->toBeNull();
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'verify_story_');
+    file_put_contents($tempFile, Storage::get($hosted));
+    $fitted = (new ImageManager(Driver::class))->decodePath($tempFile);
+    expect($fitted->width())->toBe(1080)
+        ->and($fitted->height())->toBe(1920);
+    @unlink($tempFile);
+});
+
+test('instagram publisher throws a clean exception when the story image is not decodable', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to process image for story fitting');
+});
+
+test('instagram publisher surfaces a publish exception when the story container fails to create', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['error' => ['message' => 'Invalid media', 'code' => 100]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class);
+});
+
+test('instagram publisher does not leak the fitted temp file when hosting the story image fails', function () {
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+    ]);
+
+    $fittedPath = null;
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('fitToCanvas')->once()->andReturnUsing(function (string $tempFile) use (&$fittedPath) {
+        $fittedPath = tempnam(sys_get_temp_dir(), 'media_fit_');
+        copy($tempFile, $fittedPath);
+
+        return $fittedPath;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(RuntimeException::class);
+
+    expect($fittedPath)->not->toBeNull()
+        ->and(file_exists($fittedPath))->toBeFalse();
+});
+
 test('instagram publisher can publish video story', function () {
     $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
 
@@ -812,6 +937,42 @@ test('feed image throws when the source image cannot be downloaded for cropping'
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(InstagramPublishException::class, 'Failed to download image for cropping');
+});
+
+test('story image throws when the source image cannot be downloaded for fitting', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('', 404),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to download image for story fitting');
+});
+
+test('feed image throws a clean exception when the crop source is not decodable', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to process image for cropping');
 });
 
 test('feed image with original aspect ratio bypasses crop', function () {

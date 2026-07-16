@@ -163,7 +163,7 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
 
     const width = item.meta?.width ?? 0;
     const height = item.meta?.height ?? 0;
-    if (width > 0 && height > 0 && ! (rules.autoFitsImage && ! itemIsVideo)) {
+    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item))) {
         const ratio = width / height;
         if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) return 'aspect_ratio_too_narrow';
         if (rules.aspectRatioMax && ratio > rules.aspectRatioMax) return 'aspect_ratio_too_wide';

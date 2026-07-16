@@ -2,7 +2,7 @@
 import { IconPlus } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import VerticalMediaCanvas from "@/components/posts/previews/VerticalMediaCanvas.vue";
+import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {

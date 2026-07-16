@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use Illuminate\Support\Facades\Log;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
+use RuntimeException;
 
 class MediaOptimizer
 {
@@ -113,6 +114,8 @@ class MediaOptimizer
      */
     public function cropToAspectRatio(string $filePath, float $ratio): string
     {
+        $this->assertWithinMemoryBudget($filePath);
+
         $image = $this->manager->decodePath($filePath);
 
         $width = $image->width();
@@ -156,6 +159,8 @@ class MediaOptimizer
      */
     public function fitToCanvas(string $filePath, int $width, int $height): string
     {
+        $this->assertWithinMemoryBudget($filePath);
+
         $foreground = $this->manager->decodePath($filePath);
         $canvasRatio = $width / $height;
         $imageRatio = $foreground->width() / $foreground->height();
@@ -179,6 +184,27 @@ class MediaOptimizer
         file_put_contents($tempFile, (string) $canvas->encodeUsingMediaType('image/jpeg', quality: 100));
 
         return $tempFile;
+    }
+
+    /**
+     * Reject a source whose pixel dimensions would blow the GD memory budget,
+     * before it is decoded — a small-byte, huge-dimension image would otherwise
+     * exhaust memory with an uncatchable fatal. Transforms that can't fall back
+     * to the original (crop, fit) call this; `optimizeImage` skips instead.
+     */
+    private function assertWithinMemoryBudget(string $filePath): void
+    {
+        $imageInfo = @getimagesize($filePath);
+
+        if ($imageInfo === false) {
+            return;
+        }
+
+        $estimatedMemory = $imageInfo[0] * $imageInfo[1] * ($imageInfo['channels'] ?? 4) * 1.5;
+
+        if ($estimatedMemory > 256 * 1024 * 1024) {
+            throw new RuntimeException("Image dimensions ({$imageInfo[0]}x{$imageInfo[1]}) exceed the safe processing budget.");
+        }
     }
 
     /**
