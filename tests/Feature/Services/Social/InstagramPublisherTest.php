@@ -975,6 +975,37 @@ test('feed image throws a clean exception when the crop source is not decodable'
         ->toThrow(InstagramPublishException::class, 'Failed to process image for cropping');
 });
 
+test('instagram publisher does not leak the cropped temp file when hosting the feed image fails', function () {
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+    ]);
+
+    $croppedPath = null;
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('cropToAspectRatio')->once()->andReturnUsing(function (string $tempFile) use (&$croppedPath) {
+        $croppedPath = tempnam(sys_get_temp_dir(), 'media_crop_');
+        copy($tempFile, $croppedPath);
+
+        return $croppedPath;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(RuntimeException::class);
+
+    expect($croppedPath)->not->toBeNull()
+        ->and(file_exists($croppedPath))->toBeFalse();
+});
+
 test('feed image with original aspect ratio bypasses crop', function () {
     Storage::fake();
 

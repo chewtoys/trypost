@@ -12,6 +12,8 @@ use RuntimeException;
 
 class MediaOptimizer
 {
+    private const MAX_DECODE_MEMORY_BYTES = 256 * 1024 * 1024;
+
     private ImageManager $manager;
 
     public function __construct()
@@ -27,29 +29,18 @@ class MediaOptimizer
     {
         $config = $this->getImageConfig($platform);
 
-        // Check image dimensions to prevent GD memory overflow
         $imageInfo = @getimagesize($filePath);
-        if ($imageInfo) {
-            $width = $imageInfo[0];
-            $height = $imageInfo[1];
-            $channels = $imageInfo['channels'] ?? 4;
-            $estimatedMemory = $width * $height * $channels * 1.5; // 1.5x safety margin
+        if ($imageInfo !== false && $this->estimatedDecodeMemory($imageInfo) > self::MAX_DECODE_MEMORY_BYTES) {
+            Log::warning('MediaOptimizer: Image too large for GD processing', [
+                'width' => $imageInfo[0],
+                'height' => $imageInfo[1],
+                'platform' => $platform->value,
+            ]);
 
-            // If image would use more than 256MB of RAM, skip optimization and return as-is
-            if ($estimatedMemory > 256 * 1024 * 1024) {
-                Log::warning('MediaOptimizer: Image too large for GD processing', [
-                    'width' => $width,
-                    'height' => $height,
-                    'estimated_memory' => $estimatedMemory,
-                    'platform' => $platform->value,
-                ]);
+            $tempFile = tempnam(sys_get_temp_dir(), 'media_opt_');
+            copy($filePath, $tempFile);
 
-                // Copy original file to temp location and return
-                $tempFile = tempnam(sys_get_temp_dir(), 'media_opt_');
-                copy($filePath, $tempFile);
-
-                return $tempFile;
-            }
+            return $tempFile;
         }
 
         $image = $this->manager->decodePath($filePath);
@@ -187,6 +178,17 @@ class MediaOptimizer
     }
 
     /**
+     * Estimated GD memory (bytes) needed to decode an image, from its
+     * getimagesize() metadata.
+     *
+     * @param  array{0: int, 1: int, channels?: int}  $imageInfo
+     */
+    private function estimatedDecodeMemory(array $imageInfo): float
+    {
+        return $imageInfo[0] * $imageInfo[1] * ($imageInfo['channels'] ?? 4) * 1.5;
+    }
+
+    /**
      * Reject a source whose pixel dimensions would blow the GD memory budget,
      * before it is decoded — a small-byte, huge-dimension image would otherwise
      * exhaust memory with an uncatchable fatal. Transforms that can't fall back
@@ -200,9 +202,7 @@ class MediaOptimizer
             return;
         }
 
-        $estimatedMemory = $imageInfo[0] * $imageInfo[1] * ($imageInfo['channels'] ?? 4) * 1.5;
-
-        if ($estimatedMemory > 256 * 1024 * 1024) {
+        if ($this->estimatedDecodeMemory($imageInfo) > self::MAX_DECODE_MEMORY_BYTES) {
             throw new RuntimeException("Image dimensions ({$imageInfo[0]}x{$imageInfo[1]}) exceed the safe processing budget.");
         }
     }

@@ -97,8 +97,8 @@ trait CropsImageForAspectRatio
     }
 
     /**
-     * The platform-specific exception thrown when the source image cannot be
-     * downloaded for cropping.
+     * The platform-specific exception thrown when an image can't be prepared for
+     * publishing — a download, crop, or story-fit failure.
      */
     abstract protected function cropFailureException(string $message): SocialPublishException;
 }
