@@ -403,6 +403,97 @@ test('bluesky publisher attaches an uploaded image as an embed', function () {
     });
 });
 
+test('bluesky publisher includes image alt text in the embed', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'a red bike'],
+            ],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'record.embed.images.0.alt') === 'a red bike';
+    });
+});
+
+test('bluesky publisher sends empty-string alt when none is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'record.embed.images.0.alt') === '';
+    });
+});
+
 test('bluesky publisher refreshes token when expired', function () {
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
 

@@ -378,6 +378,14 @@ return [
             'add_count' => ':count toevoegen',
         ],
 
+        'alt_text' => [
+            'label' => 'Alt-tekst',
+            'edit' => 'Alt-tekst bewerken',
+            'placeholder' => 'Beschrijf deze afbeelding voor mensen die schermlezers gebruiken',
+            'hint' => 'Wordt gepubliceerd op platforms die afbeeldingsbeschrijvingen ondersteunen.',
+            'save' => 'Opslaan',
+        ],
+
         'emoji_picker' => [
             'search' => 'Emoji zoeken',
             'empty' => 'Geen emoji\'s gevonden',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     IconAlertTriangle,
+    IconAlt,
     IconFileTypePdf,
     IconGripVertical,
     IconHash,
@@ -16,15 +17,15 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
 
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
+import AltTextDialog from '@/components/posts/editor/AltTextDialog.vue';
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
 import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
 import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatBytes } from '@/composables/useMedia';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { classify, isDocument, isVideo, MediaType } from '@/lib/mediaType';
+import { classify, isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
 interface Signature {
@@ -82,6 +83,7 @@ const openPreview = (item: MediaItem) => {
         media.value.map((m) => ({
             url: m.url,
             type: classify(m) ?? MediaType.Image,
+            altText: isImage(m) ? m.meta?.alt_text : undefined,
         })),
         idx,
     );
@@ -205,6 +207,29 @@ const onMediaKeydown = async (event: KeyboardEvent, index: number) => {
 
 const issueLabel = (reason: string): string => trans(`posts.form.warnings.${reason}`);
 const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerate && item.source === 'ai';
+
+const altDialogOpen = ref(false);
+const altDialogIndex = ref<number | null>(null);
+const altDialogItem = computed<MediaItem | null>(() =>
+    altDialogIndex.value !== null ? (media.value[altDialogIndex.value] ?? null) : null,
+);
+
+const openAltText = (index: number) => {
+    altDialogIndex.value = index;
+    altDialogOpen.value = true;
+};
+
+const onAltTextSave = (alt: string): void => {
+    if (altDialogIndex.value === null) return;
+
+    const next = [...media.value];
+    const trimmed = alt.trim();
+    next[altDialogIndex.value] = {
+        ...next[altDialogIndex.value],
+        meta: { ...(next[altDialogIndex.value].meta ?? {}), alt_text: trimmed || undefined },
+    };
+    media.value = next;
+};
 </script>
 
 <template>
@@ -217,6 +242,7 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
                         v-for="(item, index) in media"
                         :key="item.id"
                         :ref="(el) => { if (el) mediaThumbRefs[index] = el as HTMLElement; }"
+                        data-testid="media-thumbnail"
                         class="group relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-2xs transition-all focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2"
                         :class="[
                             dragMediaIndex === index ? 'opacity-40' : '',
@@ -255,7 +281,7 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
 
                         <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
-                        <div class="absolute bottom-1.5 left-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white">
+                        <div class="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-col items-start gap-1 text-[10px] font-medium text-white">
                             <span
                                 v-if="isVideo(item) && item.meta?.duration"
                                 class="inline-flex items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
@@ -264,10 +290,11 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
                                 {{ date.formatClock(item.meta.duration) }}
                             </span>
                             <span
-                                v-if="item.size"
-                                class="inline-flex rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
+                                v-if="isImage(item) && item.meta?.alt_text"
+                                class="inline-block max-w-full truncate rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
+                                data-testid="alt-text-badge"
                             >
-                                {{ formatBytes(item.size) }}
+                                {{ item.meta.alt_text }}
                             </span>
                         </div>
 
@@ -306,6 +333,18 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
                         >
                             <IconRefresh class="size-3" />
                             {{ $t('posts.ai.image_regenerate.button') }}
+                        </button>
+
+                        <button
+                            v-if="!readOnly && isImage(item)"
+                            type="button"
+                            :title="$t('posts.edit.alt_text.edit')"
+                            :aria-label="$t('posts.edit.alt_text.edit')"
+                            class="absolute right-9 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:bg-violet-100 group-hover:opacity-100 group-focus:opacity-100"
+                            data-testid="alt-text-button"
+                            @click.stop="openAltText(index)"
+                        >
+                            <IconAlt class="size-3.5" />
                         </button>
 
                         <button
@@ -449,5 +488,6 @@ const canRegenerateWithAi = (item: MediaItem): boolean => props.allowAiRegenerat
         <SignaturesModal ref="signaturesModal" :signatures="signatures" @select="appendSignature" />
         <MediaPickerDialog ref="mediaPickerDialog" @select="addMediaFromGallery" />
         <ImagePreviewDialog ref="lightbox" />
+        <AltTextDialog v-model:open="altDialogOpen" :media-item="altDialogItem" @save="onAltTextSave" />
     </div>
 </template>
