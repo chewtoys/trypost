@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'オートメーションエディタは大きな画面での利用に最適です。ワークフローを作成するにはデスクトップで開いてください。',
     'title' => 'オートメーション',
     'default_name' => '新しいオートメーション',
 

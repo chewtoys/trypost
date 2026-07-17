@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { IconBolt, IconLifebuoy } from '@tabler/icons-vue';
+import { IconBolt, IconDeviceDesktop, IconLifebuoy } from '@tabler/icons-vue';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import {
@@ -475,7 +475,7 @@ const defaultEdgeOptions = {
                 </template>
             </AutomationHeader>
 
-            <div class="flex flex-1 overflow-hidden">
+            <div class="hidden flex-1 overflow-hidden lg:flex">
                 <main
                     class="automations-canvas-host relative flex-1"
                     @drop="onDrop"
@@ -546,6 +546,16 @@ const defaultEdgeOptions = {
                         class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-[3px_3px_0_var(--foreground)]"
                     />
                 </aside>
+            </div>
+
+            <div
+                data-testid="automation-mobile-notice"
+                class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center lg:hidden"
+            >
+                <div class="inline-flex size-14 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs">
+                    <IconDeviceDesktop class="size-7 text-foreground" stroke-width="2" />
+                </div>
+                <p class="max-w-sm text-sm text-foreground/70">{{ $t('automations.mobile_notice') }}</p>
             </div>
         </div>
     </AppLayout>

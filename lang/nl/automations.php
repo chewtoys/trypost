@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'De automatiserings-editor werkt het best op een groter scherm. Open het op een desktop om je workflow te bouwen.',
     'title' => 'Automatiseringen',
     'default_name' => 'Nieuwe automatisering',
 

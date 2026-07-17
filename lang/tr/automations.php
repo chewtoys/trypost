@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'Otomasyon düzenleyicisi daha büyük bir ekranda en iyi şekilde çalışır. İş akışınızı oluşturmak için masaüstünde açın.',
     'title' => 'Otomasyonlar',
     'default_name' => 'Yeni otomasyon',
 
