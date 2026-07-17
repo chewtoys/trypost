@@ -18,7 +18,7 @@ const tabs = computed(() => [
 </script>
 
 <template>
-    <nav class="flex items-center gap-4 overflow-x-auto border-b-2 border-foreground/10 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav class="flex items-center gap-4 overflow-x-auto border-b-2 border-foreground/10 px-4 lg:gap-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Link
             v-for="tab in tabs"
             :key="tab.key"
