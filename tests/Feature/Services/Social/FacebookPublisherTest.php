@@ -765,6 +765,24 @@ test('facebook image post throws when the source image cannot be downloaded for 
         ->toThrow(FacebookPublishException::class, 'Failed to download image for cropping');
 });
 
+test('facebook image post throws a clean exception when the crop source is not decodable', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Failed to process image for cropping');
+});
+
 test('facebook single image post without aspect ratio uploads the original image (no crop)', function () {
     Storage::fake();
 
