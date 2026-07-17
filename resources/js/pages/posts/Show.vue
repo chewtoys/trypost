@@ -155,7 +155,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                     <div class="mx-auto max-w-2xl px-6 py-10">
                         <!-- Media grid (top) — separate rounded tiles, 4-col -->
                         <div v-if="post.media.length > 0" class="mb-6">
-                            <div class="grid grid-cols-4 gap-2">
+                            <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 <button
                                     v-for="(item, i) in post.media"
                                     :key="item.id"

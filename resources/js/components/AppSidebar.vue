@@ -200,7 +200,7 @@ const handleCreateWorkspace = () => {
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width) min-w-56"
-                            align="start" side="right" :side-offset="4">
+                            align="start" side="bottom" :side-offset="4">
                             <DropdownMenuLabel>
                                 {{ $t('sidebar.workspaces') }}
                             </DropdownMenuLabel>
