@@ -91,6 +91,27 @@ final class SafeHttpFetcher
         }
     }
 
+    /**
+     * Guzzle allow_redirects options that re-run the SSRF guard on every hop.
+     * For callers that follow redirects on user-supplied URLs with methods/bodies
+     * that SafeHttpFetcher::get() cannot express.
+     *
+     * @return array<string, mixed>
+     */
+    public function redirectGuardOptions(int $max = self::MAX_REDIRECTS): array
+    {
+        return [
+            'allow_redirects' => [
+                'max' => $max,
+                'strict' => true,
+                'protocols' => ['http', 'https'],
+                'on_redirect' => function ($request, $response, $uri): void {
+                    $this->guardAgainstSsrf((string) $uri);
+                },
+            ],
+        ];
+    }
+
     public function guardAgainstSsrf(string $url): void
     {
         $parts = parse_url($url);
