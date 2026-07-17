@@ -44,6 +44,19 @@ test('start rejects a prompt shorter than the minimum length', function () {
     Bus::assertNotDispatched(StreamPostCreation::class);
 });
 
+test('start accepts a prompt at the minimum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => str_repeat('a', AiPromptRules::PROMPT_MIN_LENGTH),
+            'format' => 'x_post',
+        ])
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Bus::assertDispatched(StreamPostCreation::class);
+});
+
 test('start rejects a prompt longer than the maximum length', function () {
     Bus::fake();
 
