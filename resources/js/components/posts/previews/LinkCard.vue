@@ -7,7 +7,9 @@ const props = defineProps<{ card: LinkCard }>();
 
 const domain = computed(() => {
     try {
-        return new URL(props.card.uri).hostname.replace(/^www\./, '');
+        const { hostname } = new URL(props.card.uri);
+
+        return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
     } catch {
         return props.card.uri;
     }
