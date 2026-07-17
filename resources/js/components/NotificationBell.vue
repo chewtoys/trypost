@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
             <div
                 v-if="show"
                 ref="panel"
-                class="fixed bottom-2 left-[17rem] z-50 flex h-[32rem] w-[22rem] flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-md"
+                class="fixed inset-x-2 bottom-2 z-50 flex h-[32rem] max-h-[calc(100svh-1rem)] flex-col overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-md sm:inset-x-auto sm:left-[17rem] sm:w-[22rem]"
             >
                 <!-- Header -->
                 <div class="flex items-center justify-between gap-2 border-b-2 border-foreground/10 px-4 py-3">

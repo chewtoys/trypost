@@ -63,7 +63,7 @@ const handleCreate = () => {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <PageHeader :title="$t('automations.title')" />
 
                 <Button @click="handleCreate" :disabled="isCreating">
