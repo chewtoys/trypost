@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => '予約を解除して編集',
 
         'tabs' => [
+            'compose' => '作成',
             'preview' => 'プレビュー',
             'channels' => 'チャンネル',
             'comments' => 'コメント',

@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => '取消排期以编辑',
 
         'tabs' => [
+            'compose' => '撰写',
             'preview' => '预览',
             'channels' => '渠道',
             'comments' => '评论',

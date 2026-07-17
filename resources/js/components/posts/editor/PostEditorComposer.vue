@@ -237,7 +237,7 @@ const onAltTextSave = (alt: string): void => {
         <div class="relative">
             <!-- Media grid (top) — always shown so "Add" tile is discoverable -->
             <div v-if="!readOnly || media.length" class="mb-6">
-                <div class="grid grid-cols-4 gap-2">
+                <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     <div
                         v-for="(item, index) in media"
                         :key="item.id"
@@ -320,7 +320,7 @@ const onAltTextSave = (alt: string): void => {
 
                         <span
                             v-if="media.length > 1 && !readOnly"
-                            class="absolute left-1.5 top-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-opacity group-hover:opacity-100 group-focus:opacity-100"
+                            class="absolute left-1.5 top-1.5 inline-flex size-6 cursor-grab items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-opacity lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                         >
                             <IconGripVertical class="size-3.5" />
                         </span>
@@ -328,7 +328,7 @@ const onAltTextSave = (alt: string): void => {
                         <button
                             v-if="canRegenerateWithAi(item)"
                             type="button"
-                            class="absolute bottom-1.5 left-1.5 inline-flex h-6 cursor-pointer items-center gap-1 rounded-md border-2 border-foreground bg-card px-1.5 text-[10px] font-semibold text-foreground opacity-0 shadow-2xs transition-all hover:bg-violet-100 group-hover:opacity-100 group-focus:opacity-100"
+                            class="absolute bottom-1.5 left-1.5 inline-flex h-6 cursor-pointer items-center gap-1 rounded-md border-2 border-foreground bg-card px-1.5 text-[10px] font-semibold text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-violet-100 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             @click.stop="emit('open-ai-regenerate-image', item.id)"
                         >
                             <IconRefresh class="size-3" />
@@ -340,7 +340,7 @@ const onAltTextSave = (alt: string): void => {
                             type="button"
                             :title="$t('posts.edit.alt_text.edit')"
                             :aria-label="$t('posts.edit.alt_text.edit')"
-                            class="absolute right-9 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:bg-violet-100 group-hover:opacity-100 group-focus:opacity-100"
+                            class="absolute right-9 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-violet-100 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
                             data-testid="alt-text-button"
                             @click.stop="openAltText(index)"
                         >
@@ -350,7 +350,8 @@ const onAltTextSave = (alt: string): void => {
                         <button
                             v-if="!readOnly"
                             type="button"
-                            class="absolute right-1.5 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:bg-rose-100 hover:text-rose-700 group-hover:opacity-100 group-focus:opacity-100"
+                            class="absolute right-1.5 top-1.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground opacity-100 shadow-2xs lg:opacity-0 transition-all hover:bg-rose-100 hover:text-rose-700 lg:group-hover:opacity-100 lg:group-focus:opacity-100"
+                            data-testid="media-remove"
                             @click.stop="removeMedia(item.id)"
                         >
                             <IconTrash class="size-3.5" />

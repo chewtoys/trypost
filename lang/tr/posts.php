@@ -365,6 +365,7 @@ return [
         'unschedule_cta' => 'Düzenlemek için zamanlamayı kaldır',
 
         'tabs' => [
+            'compose' => 'Oluştur',
             'preview' => 'Önizleme',
             'channels' => 'Kanallar',
             'comments' => 'Yorumlar',

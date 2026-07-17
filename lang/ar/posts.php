@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'ألغِ الجدولة للتعديل',
 
         'tabs' => [
+            'compose' => 'الكتابة',
             'preview' => 'معاينة',
             'channels' => 'القنوات',
             'comments' => 'التعليقات',

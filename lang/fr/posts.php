@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Déprogrammer pour modifier',
 
         'tabs' => [
+            'compose' => 'Rédiger',
             'preview' => 'Aperçu',
             'channels' => 'Canaux',
             'comments' => 'Commentaires',
