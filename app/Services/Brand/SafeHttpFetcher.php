@@ -8,6 +8,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Symfony\Component\DomCrawler\UriResolver;
 
 /**
  * HTTP fetcher with SSRF protection, timeout, redirect cap and a branded user-agent.
@@ -36,13 +37,38 @@ final class SafeHttpFetcher
     {
         $this->guardAgainstSsrf($url);
 
-        try {
-            $response = Http::timeout(self::TIMEOUT_SECONDS)
-                ->withUserAgent(self::USER_AGENT)
-                ->withOptions(['allow_redirects' => ['max' => self::MAX_REDIRECTS]])
-                ->get($url);
-        } catch (ConnectionException $e) {
-            throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => $e->getMessage()]));
+        $currentUrl = $url;
+
+        // Redirects are followed manually (allow_redirects disabled) so that every
+        // hop's Location target is re-validated against the SSRF guard before it is
+        // ever requested. A public page could otherwise 302 to an internal host and
+        // Guzzle's built-in redirect following would fetch it without re-checking.
+        for ($hop = 0; ; $hop++) {
+            try {
+                $response = Http::timeout(self::TIMEOUT_SECONDS)
+                    ->withUserAgent(self::USER_AGENT)
+                    ->withOptions(['allow_redirects' => false])
+                    ->get($currentUrl);
+            } catch (ConnectionException $e) {
+                throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => $e->getMessage()]));
+            }
+
+            if (! $response->redirect() || $hop >= self::MAX_REDIRECTS) {
+                break;
+            }
+
+            $location = $response->header('Location');
+
+            if ($location === '') {
+                break;
+            }
+
+            $currentUrl = (string) UriResolver::resolve($location, $currentUrl);
+            $this->guardAgainstSsrf($currentUrl);
+        }
+
+        if ($response->redirect()) {
+            throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => 'too many redirects']));
         }
 
         if ($response->failed()) {
