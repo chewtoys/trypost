@@ -33,6 +33,22 @@ function createHugeHeaderImage(int $width, int $height): string
     return $tempFile;
 }
 
+/**
+ * A wide image split into a light top half and a dark bottom half, for asserting
+ * the story background mirrors the top onto the bottom.
+ */
+function createTwoToneImage(int $width, int $height, string $topHex, string $bottomHex): string
+{
+    $manager = new ImageManager(Driver::class);
+    $image = $manager->createImage($width, $height)->fill($topHex);
+    $bottom = $manager->createImage($width, intdiv($height, 2))->fill($bottomHex);
+    $image->insert($bottom, 0, intdiv($height, 2), 'top-left');
+    $tempFile = tempnam(sys_get_temp_dir(), 'twotone_');
+    file_put_contents($tempFile, (string) $image->encodeUsingMediaType('image/jpeg'));
+
+    return $tempFile;
+}
+
 $tempFiles = [];
 
 afterEach(function () use (&$tempFiles) {
@@ -229,29 +245,54 @@ it('returns a copy when image already matches the target ratio', function () use
     expect($cropped->height())->toBe(800);
 });
 
-it('fills the gaps with a darkened image-derived background, never a black letterbox', function () use (&$tempFiles) {
-    $source = createTestImage(1200, 900, 'image/jpeg', 'ff0000'); // 4:3 red, wider than 9:16
+it('fits an off-ratio image over a lightened, image-derived blurred background', function () use (&$tempFiles) {
+    $source = createTestImage(1200, 400, 'image/jpeg', '3366cc'); // wide, solid blue
     $tempFiles[] = $source;
 
     $optimizer = new MediaOptimizer;
     $result = $optimizer->fitToCanvas($source, 1080, 1920);
     $tempFiles[] = $result;
 
-    $manager = new ImageManager(Driver::class);
-    $out = $manager->decodePath($result);
+    $out = (new ImageManager(Driver::class))->decodePath($result);
 
     expect($out->width())->toBe(1080)
         ->and($out->height())->toBe(1920);
 
-    // A 4:3 image is letterboxed top & bottom on a 9:16 canvas. The band must be
-    // a darkened copy of the red image, not a black bar, and darker than the
-    // centered foreground on top of it.
-    $band = $out->colorAt(540, 40);        // top background band
-    $foreground = $out->colorAt(540, 960); // centered image
+    // The background is derived from the image (blue), never a black letterbox,
+    // and lightened via gamma — the corner's blue channel exceeds the source's 0xcc.
+    $corner = $out->colorAt(20, 20);
 
-    expect($band->red()->value())->toBeGreaterThan(120)
-        ->and($band->red()->value())->toBeGreaterThan($band->green()->value() + 60)
-        ->and($foreground->red()->value())->toBeGreaterThan($band->red()->value());
+    expect($corner->blue()->value())->toBeGreaterThan($corner->red()->value())
+        ->and($corner->blue()->value())->toBeGreaterThan(0xCC);
+});
+
+it('mirrors the blurred background so the bottom reads like the top', function () use (&$tempFiles) {
+    $source = createTwoToneImage(1200, 400, 'ffffff', '000000'); // light top, dark bottom
+    $tempFiles[] = $source;
+
+    $optimizer = new MediaOptimizer;
+    $result = $optimizer->fitToCanvas($source, 1080, 1920);
+    $tempFiles[] = $result;
+
+    $out = (new ImageManager(Driver::class))->decodePath($result);
+
+    // The top half is mirrored onto the bottom, so the bottom band shows the
+    // image's light top — not the dark bottom a plain cover would surface.
+    expect($out->colorAt(540, 1900)->red()->value())->toBeGreaterThan(150);
+})->skip(! extension_loaded('imagick'), 'Blurred-background mirror requires ext-imagick');
+
+it('produces a valid canvas through the gd fallback for hosts without imagick', function () use (&$tempFiles) {
+    $source = createTestImage(1200, 400, 'image/jpeg', '3366cc');
+    $tempFiles[] = $source;
+
+    // The GD fallback never runs when imagick is loaded (as it is in CI), so
+    // exercise it directly to guard against it breaking undetected.
+    $method = new ReflectionMethod(MediaOptimizer::class, 'fitOntoBlurredBackgroundGd');
+    $method->setAccessible(true);
+    $canvas = $method->invoke(new MediaOptimizer, $source, 1080, 1920);
+
+    expect($canvas->width())->toBe(1080)
+        ->and($canvas->height())->toBe(1920);
 });
 
 it('scales an already-9:16 image down to the canvas with no letterbox band', function () use (&$tempFiles) {

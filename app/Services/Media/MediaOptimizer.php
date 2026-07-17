@@ -6,13 +6,28 @@ namespace App\Services\Media;
 
 use App\Enums\SocialAccount\Platform;
 use Illuminate\Support\Facades\Log;
+use Intervention\Image\Direction;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
+use Intervention\Image\Interfaces\ImageInterface;
 use RuntimeException;
 
 class MediaOptimizer
 {
     private const MAX_DECODE_MEMORY_BYTES = 256 * 1024 * 1024;
+
+    private const FIT_BLUR_SIGMA = 55;
+
+    private const FIT_BLUR_GAMMA = 1.3;
+
+    private const FIT_QUALITY = 90;
+
+    private const FIT_GD_DOWNSCALE = 8;
+
+    private const FIT_GD_BLUR = 45;
+
+    private const FIT_GD_BRIGHTNESS = 12;
 
     private ImageManager $manager;
 
@@ -158,23 +173,83 @@ class MediaOptimizer
 
         $tempFile = tempnam(sys_get_temp_dir(), 'media_fit_');
 
-        if (abs($imageRatio - $canvasRatio) < 0.01) {
-            $sized = $foreground->scaleDown($width, $height);
-            file_put_contents($tempFile, (string) $sized->encodeUsingMediaType('image/jpeg', quality: 100));
+        try {
+            if (abs($imageRatio - $canvasRatio) < 0.01) {
+                $sized = $foreground->scaleDown($width, $height);
+                file_put_contents($tempFile, (string) $sized->encodeUsingMediaType('image/jpeg', quality: self::FIT_QUALITY));
+
+                return $tempFile;
+            }
+
+            $canvas = extension_loaded('imagick')
+                ? $this->fitOntoBlurredBackground($filePath, $width, $height)
+                : $this->fitOntoBlurredBackgroundGd($filePath, $width, $height);
+
+            file_put_contents($tempFile, (string) $canvas->encodeUsingMediaType('image/jpeg', quality: self::FIT_QUALITY));
 
             return $tempFile;
+        } catch (\Throwable $e) {
+            @unlink($tempFile);
+
+            throw $e;
         }
+    }
+
+    /**
+     * Fit the image onto the canvas over a soft, lightened blurred background
+     * built from the image itself: the image is scaled to fill the width, heavily
+     * gaussian-blurred so shapes dissolve into a colour wash, lightened, and the
+     * top half is mirrored onto the bottom so the background reads symmetrically.
+     * Imagick only — blurring at full width before stretching avoids the streaks
+     * and posterisation the GD path is prone to.
+     */
+    private function fitOntoBlurredBackground(string $filePath, int $width, int $height): ImageInterface
+    {
+        $manager = new ImageManager(new ImagickDriver);
+
+        $foreground = $manager->decodePath($filePath);
+        $sourceWidth = $foreground->width();
+        $sourceHeight = $foreground->height();
+        $scale = min($width / $sourceWidth, $height / $sourceHeight);
+        $foreground->resize(max(1, (int) round($sourceWidth * $scale)), max(1, (int) round($sourceHeight * $scale)));
+
+        $scaledHeight = max(1, (int) round($sourceHeight * ($width / $sourceWidth)));
+        $topHalf = $manager->decodePath($filePath)->resize($width, $scaledHeight);
+        $core = $topHalf->core()->native();
+        $core->blurImage(0, self::FIT_BLUR_SIGMA);
+        $core->gammaImage(self::FIT_BLUR_GAMMA);
+        $topHalf->resize($width, intdiv($height, 2));
+
+        $canvas = $manager->createImage($width, $height)->fill('000000');
+        $canvas->insert($topHalf, 0, 0, 'top-left');
+        $topHalf->flip(Direction::VERTICAL);
+        $canvas->insert($topHalf, 0, intdiv($height, 2), 'top-left');
+        $canvas->insert($foreground, 0, 0, 'center');
+
+        return $canvas;
+    }
+
+    /**
+     * GD fallback for hosts without ext-imagick: a downscale→blur→upscale
+     * background. Less refined than the Imagick path (no large smooth gaussian),
+     * but artefact-free enough for a story background.
+     */
+    private function fitOntoBlurredBackgroundGd(string $filePath, int $width, int $height): ImageInterface
+    {
+        $foreground = $this->manager->decodePath($filePath);
+        $scale = min($width / $foreground->width(), $height / $foreground->height());
+        $foreground->resize(max(1, (int) round($foreground->width() * $scale)), max(1, (int) round($foreground->height() * $scale)));
 
         $canvas = $this->manager->decodePath($filePath)
             ->cover($width, $height)
-            ->blur(40)
-            ->brightness(-12);
+            ->resize(intdiv($width, self::FIT_GD_DOWNSCALE), intdiv($height, self::FIT_GD_DOWNSCALE))
+            ->blur(self::FIT_GD_BLUR)
+            ->resize($width, $height)
+            ->brightness(self::FIT_GD_BRIGHTNESS);
 
-        $canvas->insert($foreground->scaleDown($width, $height), 0, 0, 'center');
+        $canvas->insert($foreground, 0, 0, 'center');
 
-        file_put_contents($tempFile, (string) $canvas->encodeUsingMediaType('image/jpeg', quality: 100));
-
-        return $tempFile;
+        return $canvas;
     }
 
     /**
