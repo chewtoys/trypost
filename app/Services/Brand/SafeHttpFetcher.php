@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Brand;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -112,6 +113,22 @@ final class SafeHttpFetcher
         ];
     }
 
+    /**
+     * A PendingRequest with the SSRF guard applied to $url and redirect handling
+     * pre-configured (per-hop re-guard when following, or no redirects). Callers
+     * add their own timeout / sink / headers and dispatch to the SAME $url, so a
+     * user-supplied URL can never be fetched without the guard and redirect
+     * protection.
+     */
+    public function guardedRequest(string $url, bool $followRedirects = true): PendingRequest
+    {
+        $this->guardAgainstSsrf($url);
+
+        return Http::withUserAgent(self::USER_AGENT)->withOptions(
+            $followRedirects ? $this->redirectGuardOptions() : ['allow_redirects' => false],
+        );
+    }
+
     public function guardAgainstSsrf(string $url): void
     {
         $parts = parse_url($url);
@@ -125,6 +142,13 @@ final class SafeHttpFetcher
 
         if ($host === '') {
             throw new RuntimeException(__('workspaces.create.autofill_errors.missing_host'));
+        }
+
+        // Self-hosted operators can opt into fetching their own internal
+        // network. Only the private/reserved-IP rejection below is skipped;
+        // the scheme and host checks above still always apply.
+        if ((bool) config('trypost.security.allow_private_network')) {
+            return;
         }
 
         $ip = gethostbyname($host);

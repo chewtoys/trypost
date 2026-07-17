@@ -8,7 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Http;
+use App\Services\Brand\SafeHttpFetcher;
 use RuntimeException;
 use Throwable;
 
@@ -24,6 +24,8 @@ use Throwable;
  */
 class MediaAttacher
 {
+    public function __construct(private readonly SafeHttpFetcher $safeHttp) {}
+
     /**
      * @param  array<int, array{url: string, alt?: ?string}>  $urls
      * @return array{attached: array<int, array<string, mixed>>, failed: array<int, string>}
@@ -159,10 +161,10 @@ class MediaAttacher
         $temp = tempnam(sys_get_temp_dir(), 'media_');
 
         try {
-            $response = Http::timeout(20)
+            $response = $this->safeHttp->guardedRequest($url, followRedirects: false)
+                ->timeout(20)
                 ->sink($temp)
                 ->withOptions([
-                    'allow_redirects' => false,
                     'progress' => static function ($total, $downloaded) use ($cap): void {
                         if ($downloaded > $cap) {
                             throw new RuntimeException('exceeded max bytes');

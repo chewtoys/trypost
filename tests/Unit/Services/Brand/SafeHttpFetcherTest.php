@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Brand\SafeHttpFetcher;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 // Public IP literals let SafeHttpFetcher's SSRF guard pass without a real DNS
@@ -67,4 +68,25 @@ test('throws when a redirect chain exceeds the redirect cap', function () {
 
     // The cap (3) is hit after following 3 redirects (4 requests); the next hop must never fire.
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '93.184.216.38'));
+});
+
+test('guardAgainstSsrf blocks a private ip by default', function () {
+    expect(fn () => app(SafeHttpFetcher::class)->guardAgainstSsrf('http://127.0.0.1/x'))
+        ->toThrow(RuntimeException::class);
+});
+
+test('guardAgainstSsrf allows a private ip when allow_private_network is enabled', function () {
+    config(['trypost.security.allow_private_network' => true]);
+
+    app(SafeHttpFetcher::class)->guardAgainstSsrf('http://127.0.0.1/x');
+})->throwsNoExceptions();
+
+test('guardedRequest throws for a private ip by default', function () {
+    expect(fn () => app(SafeHttpFetcher::class)->guardedRequest('http://127.0.0.1/x'))
+        ->toThrow(RuntimeException::class);
+});
+
+test('guardedRequest returns a PendingRequest for a public url', function () {
+    expect(app(SafeHttpFetcher::class)->guardedRequest('https://93.184.216.34/x'))
+        ->toBeInstanceOf(PendingRequest::class);
 });
