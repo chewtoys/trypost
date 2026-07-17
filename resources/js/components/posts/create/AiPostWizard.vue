@@ -364,6 +364,8 @@ const startGeneration = async () => {
                 class="min-h-[140px] resize-none"
             />
             <p
+                data-testid="ai-prompt-counter"
+                aria-live="polite"
                 class="text-right text-xs tabular-nums"
                 :class="promptLength > PROMPT_MAX ? 'font-semibold text-destructive' : 'text-muted-foreground'"
             >

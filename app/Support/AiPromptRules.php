@@ -23,11 +23,13 @@ class AiPromptRules
     public const PROMPT_MAX_LENGTH = 2000;
 
     /**
-     * Validation rules for the create wizard's generation prompt.
+     * Validation rules for the create wizard's generation prompt. The editor's
+     * content generation reuses only PROMPT_MAX_LENGTH — it has no minimum,
+     * since it has no character counter to mirror one.
      *
      * @return array<int, string>
      */
-    public static function promptRule(): array
+    public static function wizardPromptRule(): array
     {
         return ['required', 'string', 'min:'.self::PROMPT_MIN_LENGTH, 'max:'.self::PROMPT_MAX_LENGTH];
     }

@@ -34,7 +34,7 @@ class StartPostCreationRequest extends FormRequest
             ],
             'social_account_id' => ['nullable', 'uuid'],
             'image_count' => ['nullable', 'integer', 'min:0', 'max:10'],
-            'prompt' => AiPromptRules::promptRule(),
+            'prompt' => AiPromptRules::wizardPromptRule(),
             'date' => ['nullable', 'date_format:Y-m-d'],
             'template' => ['sometimes', 'string', Rule::enum(ContentStyle::class)],
         ];
