@@ -44,7 +44,7 @@ final class SafeHttpFetcher
         // hop's Location target is re-validated against the SSRF guard before it is
         // ever requested. A public page could otherwise 302 to an internal host and
         // Guzzle's built-in redirect following would fetch it without re-checking.
-        for ($hop = 0; ; $hop++) {
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
             try {
                 $response = Http::timeout(self::TIMEOUT_SECONDS)
                     ->withUserAgent(self::USER_AGENT)
