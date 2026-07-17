@@ -52,8 +52,9 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Mobile detection
-const isMobile = ref(false);
+// Mobile detection — seed from the viewport at setup (available on client render
+// and SPA navigations) so a narrow screen never paints the month grid for a frame.
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 const { canCreatePost } = useWorkspaceRole();
 
 const createPostUrl = (isoDate: string | null = null) =>
@@ -253,7 +254,7 @@ const formatTime = (scheduledAt: string): string => {
 
     <AppLayout :fullWidth="true">
         <div class="flex flex-col h-full">
-            <header class="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:px-6">
+            <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:grid md:grid-cols-[auto_1fr_auto] md:px-6">
                 <div class="flex items-center gap-2 pl-12 md:pl-0">
                     <Button variant="outline" size="icon" @click="navigate(-1)">
                         <IconChevronLeft class="size-4" />
@@ -264,14 +265,16 @@ const formatTime = (scheduledAt: string): string => {
                     <Button variant="outline" size="icon" @click="navigate(1)">
                         <IconChevronRight class="size-4" />
                     </Button>
-                    <DatePicker v-if="isMobile" v-model="selectedDate" @update:model-value="(v: any) => goToDate(v)" />
                 </div>
-                <div class="flex items-center justify-center">
+                <div class="hidden items-center justify-center md:flex">
                     <span class="truncate text-sm font-bold capitalize text-foreground">
                         {{ headerTitle }}
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
+                    <div v-if="isMobile" class="w-44">
+                        <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
+                    </div>
                     <Tabs v-if="!isMobile" :default-value="view" @update:model-value="switchView">
                         <TabsList>
                             <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>

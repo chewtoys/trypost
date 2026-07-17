@@ -183,14 +183,14 @@ useWorkspaceEcho(
             <PageHeader :title="pageTitle" />
 
             <!-- Toolbar -->
-            <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex w-full items-center gap-3 sm:w-auto">
+                    <div class="relative w-full sm:w-auto">
                         <IconSearch class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/60" />
                         <Input
                             v-model="searchQuery"
                             :placeholder="trans('posts.search')"
-                            class="w-64 pl-9"
+                            class="w-full pl-9 sm:w-64"
                         />
                     </div>
 
