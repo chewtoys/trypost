@@ -7,6 +7,7 @@ import type { MediaItem } from '@/types/media';
 
 export interface LinkCard {
     uri: string;
+    domain: string;
     title: string;
     description: string;
     image: string | null;

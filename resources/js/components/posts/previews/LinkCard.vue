@@ -1,19 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 import type { LinkCard } from '@/composables/useLinkCard';
 
-const props = defineProps<{ card: LinkCard }>();
-
-const domain = computed(() => {
-    try {
-        const { hostname } = new URL(props.card.uri);
-
-        return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
-    } catch {
-        return props.card.uri;
-    }
-});
+defineProps<{ card: LinkCard }>();
 </script>
 
 <template>
@@ -25,7 +13,7 @@ const domain = computed(() => {
             class="aspect-[1.91/1] w-full object-cover"
         />
         <div class="px-3 py-2">
-            <div class="text-[13px] text-neutral-500 dark:text-neutral-400">{{ domain }}</div>
+            <div class="text-[13px] text-neutral-500 dark:text-neutral-400">{{ card.domain }}</div>
             <div
                 v-if="card.title"
                 class="mt-0.5 text-[15px] font-semibold text-neutral-900 dark:text-neutral-100 line-clamp-2"

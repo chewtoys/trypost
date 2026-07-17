@@ -28,6 +28,7 @@ test('returns a link card for a valid url', function () {
         ->assertOk()
         ->assertJson([
             'uri' => 'https://example.com',
+            'domain' => 'example.com',
             'title' => 'Example',
             'description' => 'Desc',
             'image' => 'https://example.com/card.png',
