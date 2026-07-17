@@ -87,7 +87,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.automations'),
                   href: automations.url(),
                   icon: IconBolt,
-                  badge: 'Beta',
+                  badge: trans('common.beta'),
               },
           ]
         : []),
@@ -199,7 +199,7 @@ const handleCreateWorkspace = () => {
                                 <IconChevronRight class="ml-auto size-4" />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent class="w-[--reka-dropdown-menu-trigger-width] min-w-56"
+                        <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width) min-w-56"
                             align="start" side="right" :side-offset="4">
                             <DropdownMenuLabel>
                                 {{ $t('sidebar.workspaces') }}

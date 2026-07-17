@@ -48,7 +48,7 @@ class BlueskyPublisher
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         // Refresh token if needed
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -63,7 +63,7 @@ class BlueskyPublisher
                     $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
                     if ($blob) {
                         $images[] = [
-                            'alt' => '',
+                            'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
                             'image' => $blob,
                         ];
                     }
