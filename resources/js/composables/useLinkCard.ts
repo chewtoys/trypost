@@ -13,35 +13,19 @@ export interface LinkCard {
 }
 
 /**
- * The first http(s) URL in `text`, or null. Trailing sentence punctuation and an
- * unmatched closing paren are trimmed so the detected URL matches the link's
- * rendered span — this mirrors the backend `UrlDetector`, keeping the preview
- * card's URL identical to the one the post actually links to.
- */
-const firstUrl = (text: string): string | null => {
-    const match = text.match(/https?:\/\/[^\s]+/);
-
-    if (!match) {
-        return null;
-    }
-
-    const url = match[0].replace(/[.,;:!?]$/, '');
-
-    return url.endsWith(')') && !url.includes('(') ? url.slice(0, -1) : url;
-};
-
-/**
- * Live link-preview card for the composer. Resolves the first link in `content`
- * to its OpenGraph card, but only when there is no attached media (media
- * suppresses the link card on every platform). Returns the card and a loading
- * flag for the editor previews to render.
+ * Live link-preview card for the composer. Detects the first link in `content`
+ * — a rough match is enough, because the backend re-detects it and returns the
+ * exact, trimmed URL as `card.uri` — and resolves its OpenGraph card, but only
+ * when no media is attached (media suppresses the link card on every platform).
  */
 export const useLinkCard = (content: Ref<string>, media: Ref<MediaItem[]>) => {
     const card = ref<LinkCard | null>(null);
     const loading = ref(false);
     const http = useHttp<{ url: string }, LinkCard | null>({ url: '' });
 
-    const url = computed(() => (media.value.length > 0 ? null : firstUrl(content.value)));
+    const url = computed(() =>
+        media.value.length > 0 ? null : (content.value.match(/https?:\/\/\S+/)?.[0] ?? null),
+    );
 
     const fetchCard = async (target: string): Promise<void> => {
         loading.value = true;
