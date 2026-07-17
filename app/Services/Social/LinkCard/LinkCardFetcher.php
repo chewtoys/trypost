@@ -32,11 +32,16 @@ class LinkCardFetcher
             return null;
         }
 
-        return Cache::remember(
+        // Cache a plain array, never the DTO: a rich object does not round-trip
+        // cleanly through every cache driver (it comes back as an incomplete
+        // class), whereas primitives always do.
+        $data = Cache::remember(
             'link_card:'.sha1($url),
             now()->addMinutes(self::CACHE_MINUTES),
-            fn (): ?LinkCardMetadata => $this->build($url),
+            fn (): ?array => $this->build($url)?->toArray(),
         );
+
+        return $data === null ? null : LinkCardMetadata::fromArray($data);
     }
 
     private function build(string $url): ?LinkCardMetadata

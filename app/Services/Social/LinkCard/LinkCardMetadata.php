@@ -17,6 +17,22 @@ final readonly class LinkCardMetadata
     ) {}
 
     /**
+     * Rebuild the DTO from its cached array form (the inverse of toArray, minus
+     * the derived `domain`, which toArray recomputes).
+     *
+     * @param  array{uri?: string, title?: string, description?: string, image?: ?string}  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            uri: (string) data_get($data, 'uri', ''),
+            title: (string) data_get($data, 'title', ''),
+            description: (string) data_get($data, 'description', ''),
+            imageUrl: data_get($data, 'image'),
+        );
+    }
+
+    /**
      * @return array{uri: string, domain: string, title: string, description: string, image: ?string}
      */
     public function toArray(): array

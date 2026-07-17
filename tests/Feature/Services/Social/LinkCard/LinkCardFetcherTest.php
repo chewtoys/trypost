@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Services\Social\LinkCard\LinkCardFetcher;
+use App\Services\Social\LinkCard\LinkCardMetadata;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 // example.com resolves to a public IP so the SafeHttpFetcher SSRF guard passes;
@@ -50,8 +52,16 @@ test('caches the result so a repeated url is fetched once', function () {
     ]);
 
     $fetcher = app(LinkCardFetcher::class);
-    $fetcher->fetch('https://example.com');
-    $fetcher->fetch('https://example.com');
+    $first = $fetcher->fetch('https://example.com');
+    $second = $fetcher->fetch('https://example.com');
 
     Http::assertSentCount(1);
+
+    // The cache must hold a primitive array, not the DTO — a rich object does
+    // not round-trip through every cache driver (it comes back as an incomplete
+    // class). A cache hit still reconstructs a proper DTO.
+    expect(Cache::get('link_card:'.sha1('https://example.com')))->toBeArray();
+    expect($second)->toBeInstanceOf(LinkCardMetadata::class)
+        ->and($second->uri)->toBe($first->uri)
+        ->and($second->title)->toBe('Cached');
 });
