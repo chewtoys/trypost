@@ -226,7 +226,7 @@ onBeforeUnmount(() => {
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100"
+                                    class="inline-flex size-7 max-sm:size-9 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100"
                                     @click="handleMarkAllAsRead"
                                 >
                                     <IconChecks class="size-3.5" stroke-width="2.5" />
@@ -238,7 +238,7 @@ onBeforeUnmount(() => {
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100"
+                                    class="inline-flex size-7 max-sm:size-9 cursor-pointer items-center justify-center rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:bg-violet-100"
                                     @click="handleArchiveAll"
                                 >
                                     <IconArchive class="size-3.5" stroke-width="2.5" />
@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
                         </Tooltip>
                         <button
                             type="button"
-                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-rotate-90 hover:bg-rose-100"
+                            class="inline-flex size-7 max-sm:size-9 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground shadow-2xs transition-all hover:-rotate-90 hover:bg-rose-100"
                             @click="close"
                         >
                             <IconX class="size-3.5" stroke-width="2.5" />
@@ -281,7 +281,7 @@ onBeforeUnmount(() => {
                                     <TooltipTrigger as-child>
                                         <button
                                             type="button"
-                                            class="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-foreground/10 hover:text-foreground"
+                                            class="inline-flex size-7 max-sm:size-9 cursor-pointer items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-foreground/10 hover:text-foreground"
                                             @click="handleMarkAsRead(notification)"
                                         >
                                             <IconCheck class="size-3.5" stroke-width="2.5" />
