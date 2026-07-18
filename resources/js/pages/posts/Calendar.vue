@@ -253,36 +253,55 @@ const formatTime = (scheduledAt: string): string => {
 
     <AppLayout :fullWidth="true">
         <div class="flex flex-col h-full">
-            <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:grid md:grid-cols-[auto_1fr_auto] md:px-6">
-                <div class="flex w-full items-center gap-2 pl-12 md:w-auto md:pl-0">
+            <!-- Mobile header: date navigation on top, actions below -->
+            <header class="flex shrink-0 flex-col gap-2 border-b-2 border-foreground bg-card px-4 py-3 lg:hidden">
+                <div class="flex items-center gap-2 pl-12">
                     <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
                         <IconChevronLeft class="size-4" />
                     </Button>
-                    <Button variant="outline" class="flex-1 md:flex-none" @click="goToToday">
-                        {{ $t('calendar.today') }}
-                    </Button>
+                    <div class="flex-1">
+                        <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
+                    </div>
                     <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
                         <IconChevronRight class="size-4" />
                     </Button>
                 </div>
-                <div class="hidden items-center justify-center md:flex">
+                <div class="flex items-center gap-2">
+                    <Button variant="outline" class="shrink-0" @click="goToToday">
+                        {{ $t('calendar.today') }}
+                    </Button>
+                    <Link v-if="canCreatePost" :href="createPost.url()" class="flex-1">
+                        <Button class="w-full">{{ $t('calendar.new_post') }}</Button>
+                    </Link>
+                </div>
+            </header>
+
+            <!-- Desktop header: nav · title · view switcher + new post -->
+            <header class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-6 py-3 lg:grid">
+                <div class="flex items-center gap-2">
+                    <Button variant="outline" size="icon" @click="navigate(-1)">
+                        <IconChevronLeft class="size-4" />
+                    </Button>
+                    <Button variant="outline" @click="goToToday">
+                        {{ $t('calendar.today') }}
+                    </Button>
+                    <Button variant="outline" size="icon" @click="navigate(1)">
+                        <IconChevronRight class="size-4" />
+                    </Button>
+                </div>
+                <div class="flex items-center justify-center">
                     <span class="truncate text-sm font-bold capitalize text-foreground">
                         {{ headerTitle }}
                     </span>
                 </div>
-                <div class="flex w-full items-center gap-2 md:w-auto">
-                    <div class="flex-1 lg:hidden">
-                        <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
-                    </div>
-                    <div class="hidden lg:block">
-                        <Tabs :default-value="view" @update:model-value="switchView">
-                            <TabsList>
-                                <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
-                                <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>
-                                <TabsTrigger value="month">{{ $t('calendar.month') }}</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
-                    </div>
+                <div class="flex items-center justify-end gap-2">
+                    <Tabs :default-value="view" @update:model-value="switchView">
+                        <TabsList>
+                            <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
+                            <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>
+                            <TabsTrigger value="month">{{ $t('calendar.month') }}</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
 
                     <Link v-if="canCreatePost" :href="createPost.url()">
                         <Button>{{ $t('calendar.new_post') }}</Button>
