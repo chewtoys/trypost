@@ -376,23 +376,33 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
 
     <AppLayout :full-width="true">
         <div class="flex flex-col flex-1 min-h-0">
-            <PostEditorHeader
-                :post="post"
-                :can-edit="canCreatePost"
+            <!-- On mobile the status moves into the switcher and the actions into the
+                 bottom bar, so the header is desktop-only — except the scheduled banner,
+                 which stays as the locked-state explanation. -->
+            <div :class="isScheduled ? 'shrink-0' : 'hidden shrink-0 lg:block'">
+                <PostEditorHeader
+                    :post="post"
+                    :can-edit="canCreatePost"
+                    :is-saving="isSaving"
+                    :show-saved="showSaved"
+                    :is-submitting="isSubmitting"
+                    :is-post-action-disabled="isPostActionDisabled"
+                    :post-action-tooltip="postActionTooltip"
+                    :pick-time-label="pickTimeLabel"
+                    v-model:has-picked-time="hasPickedTime"
+                    v-model:scheduled-date-time="scheduledDateTime"
+                    @delete="deletePost"
+                    @unschedule="unschedulePost"
+                    @submit="submit"
+                />
+            </div>
+
+            <PostEditorMobileNav
+                v-model:active-view="mobileView"
                 :is-saving="isSaving"
                 :show-saved="showSaved"
-                :is-submitting="isSubmitting"
-                :is-post-action-disabled="isPostActionDisabled"
-                :post-action-tooltip="postActionTooltip"
-                :pick-time-label="pickTimeLabel"
-                v-model:has-picked-time="hasPickedTime"
-                v-model:scheduled-date-time="scheduledDateTime"
-                @delete="deletePost"
-                @unschedule="unschedulePost"
-                @submit="submit"
+                :status="post.status"
             />
-
-            <PostEditorMobileNav v-model:active-view="mobileView" />
 
             <div class="relative flex-1 overflow-hidden">
                 <div
