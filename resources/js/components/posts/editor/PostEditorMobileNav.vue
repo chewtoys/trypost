@@ -27,7 +27,7 @@ const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
     <div
         data-testid="editor-mobile-nav"
         class="flex shrink-0 gap-1 overflow-x-auto border-b-2 border-foreground bg-card py-3 pr-2 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        :class="isTopBar ? 'pl-14' : 'pl-2'"
+        :class="isTopBar ? 'pl-16' : 'pl-2'"
     >
         <button
             v-for="item in items"

@@ -31,4 +31,25 @@ test('the automation builder shows a desktop-recommended notice on a phone', fun
     JS);
 
     $page->assertVisible('@automation-mobile-notice');
+
+    // The desktop-only builder header (name, status, guide, save, tabs) is
+    // replaced by a minimal back-only header on a phone — nothing here is
+    // actionable, so only the back button and the floating hamburger remain.
+    $page->assertVisible('@automation-mobile-back');
+});
+
+test('the automation builder shows the full header on desktop, not the minimal one', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $automation = Automation::factory()->create(['workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.automations.workflow', $automation))->resize(1280, 900);
+
+    $page->assertMissing('@automation-mobile-back');
+    $page->assertMissing('@automation-mobile-notice');
 });

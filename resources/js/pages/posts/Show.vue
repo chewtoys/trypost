@@ -131,7 +131,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         </Button>
                     </Link>
                 </div>
-                <div class="flex items-start justify-between gap-3 md:items-center md:justify-end">
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 md:flex-nowrap md:justify-end">
                     <span class="flex items-start gap-1.5 text-sm font-medium text-foreground/70">
                         <IconCalendar class="mt-0.5 size-4 shrink-0 text-foreground/60" />
                         <span v-if="post.published_at">

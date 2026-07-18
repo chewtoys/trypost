@@ -24,6 +24,7 @@ import '@vue-flow/controls/dist/style.css';
 
 import AutomationConnectionLine from '@/components/automations/AutomationConnectionLine.vue';
 import AutomationHeader from '@/components/automations/AutomationHeader.vue';
+import AutomationMobileBackHeader from '@/components/automations/AutomationMobileBackHeader.vue';
 import ConditionNodeConfig from '@/components/automations/config/ConditionNodeConfig.vue';
 import DelayNodeConfig from '@/components/automations/config/DelayNodeConfig.vue';
 import EndNodeConfig from '@/components/automations/config/EndNodeConfig.vue';
@@ -450,7 +451,9 @@ const defaultEdgeOptions = {
 
     <AppLayout full-width>
         <div class="flex min-h-0 flex-1 flex-col bg-background">
-            <AutomationHeader :automation="automation" current="workflow">
+            <AutomationMobileBackHeader />
+
+            <AutomationHeader :automation="automation" current="workflow" class="hidden lg:block">
                 <template #actions>
                     <TooltipProvider>
                         <Tooltip>
