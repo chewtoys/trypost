@@ -253,27 +253,27 @@ const formatTime = (scheduledAt: string): string => {
 
     <AppLayout :fullWidth="true">
         <div class="flex flex-col h-full">
-            <!-- Mobile header: date navigation on top, actions below -->
+            <!-- Mobile header: nav + date jump on top, full-width New post below -->
             <header class="flex shrink-0 flex-col gap-2 border-b-2 border-foreground bg-card px-4 py-3 lg:hidden">
-                <div class="flex items-center gap-2 pl-12">
-                    <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
-                        <IconChevronLeft class="size-4" />
-                    </Button>
-                    <div class="flex-1">
+                <div class="flex items-center justify-between gap-2 pl-12">
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
+                            <IconChevronLeft class="size-4" />
+                        </Button>
+                        <Button variant="outline" @click="goToToday">
+                            {{ $t('calendar.today') }}
+                        </Button>
+                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
+                            <IconChevronRight class="size-4" />
+                        </Button>
+                    </div>
+                    <div class="w-36 shrink-0">
                         <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
                     </div>
-                    <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
-                        <IconChevronRight class="size-4" />
-                    </Button>
                 </div>
-                <div class="flex items-center gap-2">
-                    <Button variant="outline" class="shrink-0" @click="goToToday">
-                        {{ $t('calendar.today') }}
-                    </Button>
-                    <Link v-if="canCreatePost" :href="createPost.url()" class="flex-1">
-                        <Button class="w-full">{{ $t('calendar.new_post') }}</Button>
-                    </Link>
-                </div>
+                <Link v-if="canCreatePost" :href="createPost.url()" class="block">
+                    <Button class="w-full">{{ $t('calendar.new_post') }}</Button>
+                </Link>
             </header>
 
             <!-- Desktop header: nav · title · view switcher + new post -->
