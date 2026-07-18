@@ -52,9 +52,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Mobile detection — seed from the viewport at setup (available on client render
-// and SPA navigations) so a narrow screen never paints the month grid for a frame.
-const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+// Mobile detection
+const isMobile = ref(false);
 const { canCreatePost } = useWorkspaceRole();
 
 const createPostUrl = (isoDate: string | null = null) =>
@@ -255,14 +254,14 @@ const formatTime = (scheduledAt: string): string => {
     <AppLayout :fullWidth="true">
         <div class="flex flex-col h-full">
             <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:grid md:grid-cols-[auto_1fr_auto] md:px-6">
-                <div class="flex items-center gap-2 pl-12 md:pl-0">
-                    <Button variant="outline" size="icon" @click="navigate(-1)">
+                <div class="flex w-full items-center gap-2 pl-12 md:w-auto md:pl-0">
+                    <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
                         <IconChevronLeft class="size-4" />
                     </Button>
-                    <Button variant="outline" @click="goToToday">
+                    <Button variant="outline" class="flex-1 md:flex-none" @click="goToToday">
                         {{ $t('calendar.today') }}
                     </Button>
-                    <Button variant="outline" size="icon" @click="navigate(1)">
+                    <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
                         <IconChevronRight class="size-4" />
                     </Button>
                 </div>
@@ -271,17 +270,19 @@ const formatTime = (scheduledAt: string): string => {
                         {{ headerTitle }}
                     </span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <div v-if="isMobile" class="w-44">
+                <div class="flex w-full items-center gap-2 md:w-auto">
+                    <div class="flex-1 lg:hidden">
                         <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
                     </div>
-                    <Tabs v-if="!isMobile" :default-value="view" @update:model-value="switchView">
-                        <TabsList>
-                            <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
-                            <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>
-                            <TabsTrigger value="month">{{ $t('calendar.month') }}</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+                    <div class="hidden lg:block">
+                        <Tabs :default-value="view" @update:model-value="switchView">
+                            <TabsList>
+                                <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
+                                <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>
+                                <TabsTrigger value="month">{{ $t('calendar.month') }}</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </div>
 
                     <Link v-if="canCreatePost" :href="createPost.url()">
                         <Button>{{ $t('calendar.new_post') }}</Button>
