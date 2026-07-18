@@ -44,18 +44,21 @@ const isPublished = computed(() => PUBLISHED_STATUSES.includes(props.post.status
             isScheduled ? 'bg-violet-100' : 'bg-card',
         ]"
     >
-        <!-- Left: the scheduled banner, or the editable-state status -->
+        <!-- Left: the scheduled banner, or the editable-state status.
+             Both clear the floating hamburger on mobile (pl-12 md:pl-0). -->
         <template v-if="isScheduled">
-            <div class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-violet-200">
-                <IconCalendar class="size-4 text-foreground" stroke-width="2" />
-            </div>
-            <div class="min-w-0 flex-1 leading-tight">
-                <p class="text-sm font-semibold text-foreground">
-                    {{ $t('posts.edit.scheduled_overlay_title') }}
-                </p>
-                <p class="text-xs text-foreground/70">
-                    {{ $t('posts.edit.scheduled_overlay_subtitle', { date: pickTimeLabel }) }}
-                </p>
+            <div class="flex min-w-0 flex-1 items-start gap-3 pl-12 md:items-center md:pl-0">
+                <div class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-violet-200 md:size-9">
+                    <IconCalendar class="size-4 text-foreground" stroke-width="2" />
+                </div>
+                <div class="min-w-0 flex-1 leading-tight">
+                    <p class="text-sm font-semibold text-foreground">
+                        {{ $t('posts.edit.scheduled_overlay_title') }}
+                    </p>
+                    <p class="text-xs text-foreground/70">
+                        {{ $t('posts.edit.scheduled_overlay_subtitle', { date: pickTimeLabel }) }}
+                    </p>
+                </div>
             </div>
         </template>
 
