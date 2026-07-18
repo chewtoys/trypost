@@ -58,7 +58,7 @@ const clear = () => {
                 variant="outline"
                 role="combobox"
                 :aria-expanded="open"
-                class="justify-between gap-2 font-normal"
+                class="w-full justify-between gap-2 font-normal sm:w-auto"
             >
                 <IconTag class="size-4 shrink-0 opacity-60" />
 
