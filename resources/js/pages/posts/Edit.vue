@@ -399,8 +399,6 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
 
             <PostEditorMobileNav
                 v-model:active-view="mobileView"
-                :is-saving="isSaving"
-                :show-saved="showSaved"
                 :status="post.status"
             />
 
