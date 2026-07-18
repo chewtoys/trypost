@@ -31,7 +31,7 @@ const headerHidden = computed(() => props.status !== PostStatus.Scheduled);
 <template>
     <div
         data-testid="editor-mobile-nav"
-        class="flex shrink-0 items-center gap-2 border-b-2 border-foreground bg-card px-2 py-2 lg:hidden"
+        class="flex shrink-0 items-center gap-2 border-b-2 border-foreground bg-card px-2 py-3 lg:hidden"
     >
         <div
             class="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -42,7 +42,7 @@ const headerHidden = computed(() => props.status !== PostStatus.Scheduled);
                 :key="item.key"
                 type="button"
                 :data-testid="`editor-nav-${item.key}`"
-                class="inline-flex h-10 shrink-0 items-center rounded-lg border-2 px-3 text-sm font-semibold transition-colors"
+                class="inline-flex h-10 shrink-0 items-center rounded-md border-2 px-3 text-sm font-semibold transition-colors"
                 :class="activeView === item.key
                     ? 'border-foreground bg-violet-100 text-foreground'
                     : 'border-transparent text-foreground/60 hover:text-foreground'"
