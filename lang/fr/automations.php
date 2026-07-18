@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'L\'éditeur d\'automatisation fonctionne mieux sur un grand écran. Ouvrez-le sur un ordinateur pour créer votre workflow.',
     'title' => 'Automatisations',
     'default_name' => 'Nouvelle automatisation',
 

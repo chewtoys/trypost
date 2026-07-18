@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => '自动化编辑器在更大的屏幕上体验最佳。请在电脑上打开以搭建你的工作流。',
     'title' => '自动化',
     'default_name' => '新建自动化',
 

@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => '편집하려면 예약 취소',
 
         'tabs' => [
+            'compose' => '작성',
             'preview' => '미리보기',
             'channels' => '채널',
             'comments' => '댓글',

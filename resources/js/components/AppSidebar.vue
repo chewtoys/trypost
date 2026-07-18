@@ -17,6 +17,7 @@ import {
     IconPhoto,
     IconPencil,
     IconPlus,
+    IconSelector,
     IconSettings,
     IconTag,
 } from '@tabler/icons-vue';
@@ -45,6 +46,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
@@ -69,6 +71,10 @@ const workspaces = computed<Workspace[]>(() => page.props.auth.workspaces as Wor
 const subscriptionPastDue = computed<boolean>(() => Boolean(page.props.auth.subscriptionPastDue));
 
 const { canCreatePost, canManageAccounts, canManageAutomations, canCreateWorkspace } = useWorkspaceRole();
+
+// Open the workspace menu to the side on desktop (like the user menu) but keep
+// it below the trigger on mobile, where the sidebar is an overlay sheet.
+const { isMobile } = useSidebar();
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
@@ -196,11 +202,11 @@ const handleCreateWorkspace = () => {
                                         {{ currentWorkspace?.name ?? $t('sidebar.select_workspace') }}
                                     </span>
                                 </div>
-                                <IconChevronRight class="ml-auto size-4" />
+                                <component :is="isMobile ? IconSelector : IconChevronRight" class="ml-auto size-4" />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width) min-w-56"
-                            align="start" side="right" :side-offset="4">
+                            align="start" :side="isMobile ? 'bottom' : 'right'" :side-offset="4">
                             <DropdownMenuLabel>
                                 {{ $t('sidebar.workspaces') }}
                             </DropdownMenuLabel>

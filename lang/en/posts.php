@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Unschedule to edit',
 
         'tabs' => [
+            'compose' => 'Compose',
             'preview' => 'Preview',
             'channels' => 'Channels',
             'comments' => 'Comments',

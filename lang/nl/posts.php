@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Planning opheffen om te bewerken',
 
         'tabs' => [
+            'compose' => 'Opstellen',
             'preview' => 'Voorbeeld',
             'channels' => 'Kanalen',
             'comments' => 'Reacties',

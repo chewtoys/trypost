@@ -365,6 +365,7 @@ return [
         'unschedule_cta' => 'Zum Bearbeiten Planung aufheben',
 
         'tabs' => [
+            'compose' => 'Verfassen',
             'preview' => 'Vorschau',
             'channels' => 'Kanäle',
             'comments' => 'Kommentare',

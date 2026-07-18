@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => '자동화 편집기는 큰 화면에서 가장 잘 작동합니다. 워크플로를 만들려면 데스크톱에서 열어주세요.',
     'title' => '자동화',
     'default_name' => '새 자동화',
 

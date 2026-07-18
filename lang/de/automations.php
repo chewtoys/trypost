@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'Der Automatisierungs-Editor funktioniert am besten auf einem größeren Bildschirm. Öffne ihn auf einem Desktop, um deinen Workflow zu erstellen.',
     'title' => 'Automatisierungen',
     'default_name' => 'Neue Automatisierung',
 

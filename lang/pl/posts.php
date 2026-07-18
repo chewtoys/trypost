@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Anuluj planowanie, aby edytować',
 
         'tabs' => [
+            'compose' => 'Utwórz',
             'preview' => 'Podgląd',
             'channels' => 'Kanały',
             'comments' => 'Komentarze',
