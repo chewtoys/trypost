@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Desagendar para editar',
 
         'tabs' => [
+            'compose' => 'Escrever',
             'preview' => 'Pré-visualização',
             'channels' => 'Canais',
             'comments' => 'Comentários',
@@ -376,6 +377,14 @@ return [
             'cancel' => 'Cancelar',
             'add' => 'Adicionar',
             'add_count' => 'Adicionar :count',
+        ],
+
+        'alt_text' => [
+            'label' => 'Texto alternativo',
+            'edit' => 'Editar texto alternativo',
+            'placeholder' => 'Descreva esta imagem para pessoas que usam leitores de tela',
+            'hint' => 'Publicado nas plataformas que oferecem suporte a descrições de imagem.',
+            'save' => 'Salvar',
         ],
 
         'emoji_picker' => [
@@ -597,9 +606,8 @@ return [
             'media_optional_label' => 'Quantas imagens?',
             'media_none' => 'Nenhuma',
             'media_count_label' => 'Número de imagens',
-            'brand_colors_label' => 'Cores da imagem',
-            'brand_colors_on' => 'Cores da marca',
-            'brand_colors_off' => 'IA decide',
+            'brand_colors_label' => 'Cores da marca',
+            'brand_colors_description' => 'Aplica a paleta da sua marca nas imagens geradas. Desative para deixar a IA escolher as cores que combinam com o conteúdo.',
             'prompt_title' => 'Descreva seu post',
             'prompt_label' => 'Sobre o que é este post?',
             'prompt_placeholder' => 'Ex. Anunciar nossa nova função de carrossel para o Instagram',

@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Unschedule to edit',
 
         'tabs' => [
+            'compose' => 'Compose',
             'preview' => 'Preview',
             'channels' => 'Channels',
             'comments' => 'Comments',
@@ -376,6 +377,14 @@ return [
             'cancel' => 'Cancel',
             'add' => 'Add',
             'add_count' => 'Add :count',
+        ],
+
+        'alt_text' => [
+            'label' => 'Alt text',
+            'edit' => 'Edit alt text',
+            'placeholder' => 'Describe this image for people using screen readers',
+            'hint' => 'Published to platforms that support image descriptions.',
+            'save' => 'Save',
         ],
 
         'emoji_picker' => [
@@ -597,9 +606,8 @@ return [
             'media_optional_label' => 'How many images?',
             'media_none' => 'None',
             'media_count_label' => 'Number of images',
-            'brand_colors_label' => 'Image colors',
-            'brand_colors_on' => 'Brand colors',
-            'brand_colors_off' => 'Let AI decide',
+            'brand_colors_label' => 'Brand colors',
+            'brand_colors_description' => 'Apply your workspace brand palette to the generated images. Turn it off to let the AI pick colors that fit the content.',
             'prompt_title' => 'Describe your post',
             'prompt_label' => 'What is this post about?',
             'prompt_placeholder' => 'e.g. Announce our new carousel feature for Instagram',

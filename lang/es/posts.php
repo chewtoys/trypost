@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Cancelar para editar',
 
         'tabs' => [
+            'compose' => 'Redactar',
             'preview' => 'Vista previa',
             'channels' => 'Canales',
             'comments' => 'Comentarios',
@@ -376,6 +377,14 @@ return [
             'cancel' => 'Cancelar',
             'add' => 'Agregar',
             'add_count' => 'Agregar :count',
+        ],
+
+        'alt_text' => [
+            'label' => 'Texto alternativo',
+            'edit' => 'Editar texto alternativo',
+            'placeholder' => 'Describe esta imagen para las personas que usan lectores de pantalla',
+            'hint' => 'Se publica en las plataformas que admiten descripciones de imágenes.',
+            'save' => 'Guardar',
         ],
 
         'emoji_picker' => [
@@ -598,9 +607,8 @@ return [
             'media_optional_label' => '¿Cuántas imágenes?',
             'media_none' => 'Ninguna',
             'media_count_label' => 'Número de imágenes',
-            'brand_colors_label' => 'Colores de la imagen',
-            'brand_colors_on' => 'Colores de marca',
-            'brand_colors_off' => 'La IA decide',
+            'brand_colors_label' => 'Colores de marca',
+            'brand_colors_description' => 'Aplica la paleta de tu marca a las imágenes generadas. Desactívalo para que la IA elija los colores que mejor encajen con el contenido.',
             'prompt_title' => 'Describe tu post',
             'prompt_label' => '¿De qué trata este post?',
             'prompt_placeholder' => 'Ej. Anuncia nuestra nueva función de carrusel para Instagram',

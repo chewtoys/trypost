@@ -13,6 +13,7 @@ import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCr
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
@@ -33,6 +34,7 @@ interface AiTemplate {
     preview: string;
     needs_account: boolean;
     supported_formats: string[];
+    applies_brand_visuals: boolean;
 }
 
 interface Props {
@@ -65,6 +67,8 @@ const imageCount = ref(2);
 const promptText = ref('');
 // true = images use the workspace brand palette; false = the AI picks colors freely.
 const useBrandColors = ref(true);
+const PROMPT_MIN = 3;
+const PROMPT_MAX = 2000;
 
 const submitting = ref(false);
 
@@ -160,10 +164,13 @@ const submittedImageCount = computed(() => {
     return 0;
 });
 
+const promptLength = computed(() => [...promptText.value.trim()].length);
+
 const canSubmit = computed(() =>
     selectedFormat.value !== null &&
     selectedAccountId.value !== null &&
-    promptText.value.trim().length >= 3,
+    promptLength.value >= PROMPT_MIN &&
+    promptLength.value <= PROMPT_MAX,
 );
 
 // Auto-pick the only account when format has exactly one match.
@@ -353,25 +360,17 @@ const startGeneration = async () => {
             </div>
         </div>
 
-        <!-- Colors: use the brand palette or let the AI decide (only when images are generated) -->
-        <div v-if="selectedFormat && submittedImageCount > 0" class="space-y-2">
-            <Label class="text-sm font-bold">{{ $t('posts.create.steps.brand_colors_label') }}</Label>
-            <div class="flex flex-wrap gap-2">
-                <Button
-                    type="button"
-                    :variant="useBrandColors ? 'default' : 'outline'"
-                    @click="useBrandColors = true"
-                >
-                    {{ $t('posts.create.steps.brand_colors_on') }}
-                </Button>
-                <Button
-                    type="button"
-                    :variant="!useBrandColors ? 'default' : 'outline'"
-                    @click="useBrandColors = false"
-                >
-                    {{ $t('posts.create.steps.brand_colors_off') }}
-                </Button>
+        <!-- Brand colors: apply the workspace palette or let the AI decide. Only
+             for image templates that honor it (tweet cards are always branded). -->
+        <div
+            v-if="selectedFormat && submittedImageCount > 0 && resolvedTemplateRecord?.applies_brand_visuals"
+            class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+        >
+            <div class="space-y-0.5">
+                <Label for="apply-brand-visuals" class="text-sm font-bold">{{ $t('posts.create.steps.brand_colors_label') }}</Label>
+                <p class="text-sm text-foreground/70">{{ $t('posts.create.steps.brand_colors_description') }}</p>
             </div>
+            <Switch id="apply-brand-visuals" v-model="useBrandColors" />
         </div>
 
         <!-- Prompt -->
@@ -383,6 +382,14 @@ const startGeneration = async () => {
                 :placeholder="$t('posts.create.steps.prompt_placeholder')"
                 class="min-h-[140px] resize-none"
             />
+            <p
+                data-testid="ai-prompt-counter"
+                aria-live="polite"
+                class="text-right text-xs tabular-nums"
+                :class="promptLength > PROMPT_MAX ? 'font-semibold text-destructive' : 'text-muted-foreground'"
+            >
+                {{ promptLength }}/{{ PROMPT_MAX }}
+            </p>
         </div>
 
         <!-- Generate -->
