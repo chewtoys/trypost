@@ -50,8 +50,8 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
         {{ $t('posts.edit.unschedule_cta') }}
     </Button>
 
-    <div v-else-if="!isReadOnly && canEdit" class="flex flex-col items-end gap-1">
-        <div class="flex items-center gap-2">
+    <div v-else-if="!isReadOnly && canEdit" class="flex w-full flex-col gap-1 lg:w-auto lg:items-end">
+        <div class="flex w-full items-center gap-2 lg:w-auto">
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger as-child>
@@ -95,9 +95,10 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
 
                 <Tooltip>
                     <TooltipTrigger as-child>
-                        <span tabindex="0">
+                        <span tabindex="0" class="flex-1 lg:flex-none">
                             <Button
                                 type="button"
+                                class="w-full lg:w-auto"
                                 :disabled="isPostActionDisabled"
                                 @click="emit('submit', hasPickedTime ? PostStatus.Scheduled : PostStatus.Publishing)"
                             >
