@@ -31,7 +31,7 @@ Stop and tell the user if any of these fail:
 - Current branch must be `main`. Else: ask user to `git checkout main`.
 - Working tree must be clean. Else: ask user to commit/stash.
 - Local in sync with `origin/main` (rev-list count `0	0`). Else: ask user to pull/push.
-- Commits-since-tag list must be non-empty. Else: "Nada novo desde a última tag."
+- Commits-since-tag list must be non-empty. Else: "Nothing new since the last tag."
 
 ### Step 2 — Determine next version
 
@@ -202,7 +202,7 @@ Show:
    - `releases/<version>/email.md`
    - Branch `chore/release-<version>-artifacts` + a PR versioning the two files above
 
-Then ask in Portuguese: **"Crio a tag, publico o release e abro o PR com os arquivos?"**
+Then ask: **"Create the tag, publish the release, and open the PR with the artifacts?"**
 
 Do **not** proceed without explicit yes.
 
