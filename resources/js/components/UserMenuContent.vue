@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconLanguage,
     IconLogout,
+    IconSettings,
     IconUser,
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
@@ -21,6 +22,7 @@ import {
 import UserInfo from '@/components/UserInfo.vue';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
+import { settings as settingsHub } from '@/routes/app';
 import { edit } from '@/routes/app/profile';
 import type { User } from '@/types';
 
@@ -67,6 +69,12 @@ const handleLogout = () => {
             <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
                 <IconUser class="size-4" />
                 {{ $t('sidebar.profile') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem :as-child="true">
+            <Link class="block w-full cursor-pointer" :href="settingsHub.url()" prefetch>
+                <IconSettings class="size-4" />
+                {{ $t('sidebar.settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>
