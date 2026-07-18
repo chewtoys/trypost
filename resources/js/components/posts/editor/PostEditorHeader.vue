@@ -41,14 +41,15 @@ const isPublished = computed(() => PUBLISHED_STATUSES.includes(props.post.status
     <header
         :class="[
             'flex shrink-0 items-center gap-3 border-b-2 border-foreground px-4 py-3 md:px-6',
-            isScheduled ? 'bg-violet-100' : 'justify-between bg-card',
+            isScheduled ? 'bg-violet-100' : 'bg-card',
         ]"
     >
+        <!-- Left: the scheduled banner, or the editable-state status -->
         <template v-if="isScheduled">
             <div class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-violet-200">
                 <IconCalendar class="size-4 text-foreground" stroke-width="2" />
             </div>
-            <div class="flex-1 leading-tight">
+            <div class="min-w-0 flex-1 leading-tight">
                 <p class="text-sm font-semibold text-foreground">
                     {{ $t('posts.edit.scheduled_overlay_title') }}
                 </p>
@@ -56,62 +57,45 @@ const isPublished = computed(() => PUBLISHED_STATUSES.includes(props.post.status
                     {{ $t('posts.edit.scheduled_overlay_subtitle', { date: pickTimeLabel }) }}
                 </p>
             </div>
-            <div class="hidden lg:flex">
-                <PostEditorActions
-                    :is-read-only="isReadOnly"
-                    :is-scheduled="isScheduled"
-                    :can-edit="canEdit"
-                    :is-saving="isSaving"
-                    :is-submitting="isSubmitting"
-                    :is-post-action-disabled="isPostActionDisabled"
-                    :post-action-tooltip="postActionTooltip"
-                    :pick-time-label="pickTimeLabel"
-                    v-model:has-picked-time="hasPickedTime"
-                    v-model:scheduled-date-time="scheduledDateTime"
-                    @delete="emit('delete')"
-                    @unschedule="emit('unschedule')"
-                    @submit="emit('submit', $event)"
-                />
-            </div>
         </template>
 
-        <template v-else>
-            <div class="flex items-center gap-3 pl-12 md:pl-0">
-                <span v-if="isSaving" class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70">
-                    <IconLoader2 class="size-3.5 animate-spin" />
-                    {{ $t('posts.edit.saving') }}
-                </span>
-                <span v-else-if="showSaved" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                    <IconCircleCheck class="size-3.5" stroke-width="2.5" />
-                    {{ $t('posts.edit.saved') }}
-                </span>
-                <span v-else-if="isPublished" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
-                    <IconCircleCheck class="size-3.5" stroke-width="2.5" />
-                    {{ $t('posts.edit.status.published') }}
-                </span>
-                <span v-else class="flex items-center gap-1.5 text-xs font-semibold text-foreground/60">
-                    <span class="size-2 rounded-full bg-foreground/40" />
-                    {{ $t('posts.edit.draft') }}
-                </span>
-            </div>
+        <div v-else class="flex items-center gap-3 pl-12 md:pl-0">
+            <span v-if="isSaving" class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70">
+                <IconLoader2 class="size-3.5 animate-spin" />
+                {{ $t('posts.edit.saving') }}
+            </span>
+            <span v-else-if="showSaved" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <IconCircleCheck class="size-3.5" stroke-width="2.5" />
+                {{ $t('posts.edit.saved') }}
+            </span>
+            <span v-else-if="isPublished" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                <IconCircleCheck class="size-3.5" stroke-width="2.5" />
+                {{ $t('posts.edit.status.published') }}
+            </span>
+            <span v-else class="flex items-center gap-1.5 text-xs font-semibold text-foreground/60">
+                <span class="size-2 rounded-full bg-foreground/40" />
+                {{ $t('posts.edit.draft') }}
+            </span>
+        </div>
 
-            <div class="hidden lg:flex">
-                <PostEditorActions
-                    :is-read-only="isReadOnly"
-                    :is-scheduled="isScheduled"
-                    :can-edit="canEdit"
-                    :is-saving="isSaving"
-                    :is-submitting="isSubmitting"
-                    :is-post-action-disabled="isPostActionDisabled"
-                    :post-action-tooltip="postActionTooltip"
-                    :pick-time-label="pickTimeLabel"
-                    v-model:has-picked-time="hasPickedTime"
-                    v-model:scheduled-date-time="scheduledDateTime"
-                    @delete="emit('delete')"
-                    @unschedule="emit('unschedule')"
-                    @submit="emit('submit', $event)"
-                />
-            </div>
-        </template>
+        <!-- Actions: one instance for both states, pushed right on desktop.
+             On mobile they live in the sticky bottom bar, so this stays hidden. -->
+        <div class="ml-auto hidden lg:flex">
+            <PostEditorActions
+                :is-read-only="isReadOnly"
+                :is-scheduled="isScheduled"
+                :can-edit="canEdit"
+                :is-saving="isSaving"
+                :is-submitting="isSubmitting"
+                :is-post-action-disabled="isPostActionDisabled"
+                :post-action-tooltip="postActionTooltip"
+                :pick-time-label="pickTimeLabel"
+                v-model:has-picked-time="hasPickedTime"
+                v-model:scheduled-date-time="scheduledDateTime"
+                @delete="emit('delete')"
+                @unschedule="emit('unschedule')"
+                @submit="emit('submit', $event)"
+            />
+        </div>
     </header>
 </template>
