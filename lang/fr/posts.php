@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'Combien d\'images ?',
             'media_none' => 'Aucune',
             'media_count_label' => 'Nombre d\'images',
+            'brand_colors_label' => 'Couleurs de la marque',
+            'brand_colors_description' => 'Appliquez la palette de votre marque aux images générées. Désactivez pour laisser l’IA choisir des couleurs adaptées au contenu.',
             'prompt_title' => 'Décrivez votre publication',
             'prompt_label' => 'De quoi parle cette publication ?',
             'prompt_placeholder' => 'par ex. Annoncer notre nouvelle fonctionnalité de carrousel pour Instagram',
