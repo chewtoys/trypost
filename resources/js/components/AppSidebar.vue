@@ -17,6 +17,7 @@ import {
     IconPhoto,
     IconPencil,
     IconPlus,
+    IconSelector,
     IconTag,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -44,6 +45,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar } from '@/routes/app';
@@ -68,6 +70,10 @@ const subscriptionPastDue = computed<boolean>(() => Boolean(page.props.auth.subs
 
 const { canCreatePost, canManageAccounts, canManageAutomations, canCreateWorkspace } = useWorkspaceRole();
 
+// Open the workspace menu to the side on desktop (like the user menu) but keep
+// it below the trigger on mobile, where the sidebar is an overlay sheet.
+const { isMobile } = useSidebar();
+
 const mainNavItems = computed<NavItem[]>(() => [
     {
         title: trans('sidebar.posts.calendar'),
@@ -85,7 +91,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.automations'),
                   href: automations.url(),
                   icon: IconBolt,
-                  badge: 'Beta',
+                  badge: trans('common.beta'),
               },
           ]
         : []),
@@ -192,11 +198,11 @@ const handleCreateWorkspace = () => {
                                         {{ currentWorkspace?.name ?? $t('sidebar.select_workspace') }}
                                     </span>
                                 </div>
-                                <IconChevronRight class="ml-auto size-4" />
+                                <component :is="isMobile ? IconSelector : IconChevronRight" class="ml-auto size-4" />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent class="w-[--reka-dropdown-menu-trigger-width] min-w-56"
-                            align="start" side="right" :side-offset="4">
+                        <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width) min-w-56"
+                            align="start" :side="isMobile ? 'bottom' : 'right'" :side-offset="4">
                             <DropdownMenuLabel>
                                 {{ $t('sidebar.workspaces') }}
                             </DropdownMenuLabel>

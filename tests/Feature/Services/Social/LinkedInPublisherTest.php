@@ -224,6 +224,165 @@ test('linkedin publisher can publish post with image', function () {
     );
 });
 
+test('linkedin publisher sends the real alt text on a single image post', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'A golden retriever catching a frisbee in the park'],
+            ],
+        ],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/C5622AQFake';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrl,
+                    'image' => 'urn:li:image:C5622AQFakeImageUrn',
+                ],
+            ], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:altsingle']);
+        }
+
+        // Media download fallback
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'content.media.altText') === 'A golden retriever catching a frisbee in the park'
+            && data_get($request->data(), 'content.media.altText') !== 'test.jpg';
+    });
+});
+
+test('linkedin publisher omits alt text on a single image post when none is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/C5622AQFake';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrl,
+                    'image' => 'urn:li:image:C5622AQFakeImageUrn',
+                ],
+            ], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:altnone']);
+        }
+
+        // Media download fallback
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        $media = data_get($request->data(), 'content.media');
+
+        return is_array($media)
+            && $media['id'] === 'urn:li:image:C5622AQFakeImageUrn'
+            && ! array_key_exists('altText', $media);
+    });
+});
+
+test('linkedin publisher truncates single image alt text to the platform max length', function () {
+    $longAlt = str_repeat('a', 4200);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/C5622AQFake';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrl,
+                    'image' => 'urn:li:image:C5622AQFakeImageUrn',
+                ],
+            ], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:alttrunc']);
+        }
+
+        // Media download fallback
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'content.media.altText') === str_repeat('a', 4086);
+    });
+});
+
 test('linkedin publisher can publish carousel with multiple images', function () {
     $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
     $this->post->update([
@@ -312,6 +471,87 @@ test('linkedin publisher can publish carousel with multiple images', function ()
             && count($images) === 3
             && data_get($images, '0.id') === 'urn:li:image:CarouselImageUrn1'
             && ! array_key_exists('media', $images[0]);
+    });
+});
+
+test('linkedin publisher sends per-image alt text on a carousel, not the filename', function () {
+    $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-1',
+                'path' => 'media/2026-01/carousel-1.jpg',
+                'url' => 'https://example.com/media/2026-01/carousel-1.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'carousel-1.jpg',
+                'meta' => ['alt_text' => 'A sunset over the mountains'],
+            ],
+            [
+                'id' => 'test-media-2',
+                'path' => 'media/2026-01/carousel-2.jpg',
+                'url' => 'https://example.com/media/2026-01/carousel-2.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'carousel-2.jpg',
+            ],
+        ],
+    ]);
+
+    $uploadUrls = [
+        'https://www.linkedin.com/dms/upload/v2/pic/carousel/alt/1',
+        'https://www.linkedin.com/dms/upload/v2/pic/carousel/alt/2',
+    ];
+
+    $imageUrns = [
+        'urn:li:image:CarouselAltUrn1',
+        'urn:li:image:CarouselAltUrn2',
+    ];
+
+    $initCallCount = 0;
+
+    Http::fake(function ($request) use ($uploadUrls, $imageUrns, &$initCallCount) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            $idx = $initCallCount % 2;
+            $initCallCount++;
+
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrls[$idx],
+                    'image' => $imageUrns[$idx],
+                ],
+            ], 200);
+        }
+
+        foreach ($uploadUrls as $uploadUrl) {
+            if ($url === $uploadUrl) {
+                return Http::response(null, 201);
+            }
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:carouselalt']);
+        }
+
+        // Media download fallback
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    // The first image carries the user's real alt text (not the filename); the
+    // second has no alt_text set, so its `altText` key is omitted entirely.
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        $images = data_get($request->data(), 'content.multiImage.images');
+
+        return is_array($images)
+            && count($images) === 2
+            && data_get($images, '0.altText') === 'A sunset over the mountains'
+            && ! array_key_exists('altText', $images[1]);
     });
 });
 
@@ -430,6 +670,71 @@ test('linkedin publisher can publish post with video', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), 'initializeUpload'));
     Http::assertSent(fn ($request) => str_contains($request->url(), 'finalizeUpload'));
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+});
+
+test('linkedin publisher never sends altText on a single video post even if the video carries alt text', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test-video.mp4',
+                'meta' => ['alt_text' => 'alt text must not be sent on a video payload'],
+            ],
+        ],
+    ]);
+
+    $chunkUploadUrl = 'https://www.linkedin.com/dms/upload/v2/chunk/video/1';
+
+    Http::fake(function ($request) use ($chunkUploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, 'initializeUpload') && str_contains($url, '/rest/videos')) {
+            return Http::response([
+                'value' => [
+                    'video' => 'urn:li:video:FakeVideoUrn',
+                    'uploadToken' => 'upload-token-abc',
+                    'uploadInstructions' => [
+                        ['uploadUrl' => $chunkUploadUrl, 'firstByte' => 0, 'lastByte' => 1023],
+                    ],
+                ],
+            ], 200);
+        }
+
+        if ($url === $chunkUploadUrl) {
+            return Http::response(null, 200, ['etag' => '"etag-abc123"']);
+        }
+
+        if (str_contains($url, 'finalizeUpload') && str_contains($url, '/rest/videos')) {
+            return Http::response(null, 200);
+        }
+
+        if (str_contains($url, '/rest/videos/')) {
+            return Http::response(['status' => 'AVAILABLE'], 200);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:videonoalt']);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/rest/posts')) {
+            return false;
+        }
+
+        $media = data_get($request->data(), 'content.media');
+
+        return is_array($media)
+            && data_get($media, 'id') === 'urn:li:video:FakeVideoUrn'
+            && ! array_key_exists('altText', $media);
+    });
 });
 
 test('linkedin publisher uploads a video across multiple chunks', function () {
