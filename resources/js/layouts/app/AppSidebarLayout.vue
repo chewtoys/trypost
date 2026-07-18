@@ -52,7 +52,7 @@ onBeforeUnmount(() => {
             </AppHeader>
             <SidebarTrigger
                 v-else
-                class="absolute left-2 top-2 z-30 size-9 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
+                class="absolute left-2 top-2 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
             />
             <div
                 :class="
