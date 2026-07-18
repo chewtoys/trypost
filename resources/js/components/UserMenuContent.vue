@@ -78,15 +78,15 @@ const handleLogout = () => {
     <DropdownMenuSeparator />
     <DropdownMenuGroup>
         <DropdownMenuItem :as-child="true">
-            <Link class="block w-full cursor-pointer" :href="settingsHub.url()" prefetch>
-                <IconSettings class="size-4" />
-                {{ $t('sidebar.settings') }}
-            </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem :as-child="true">
             <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
                 <IconUser class="size-4" />
                 {{ $t('sidebar.profile') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem :as-child="true">
+            <Link class="block w-full cursor-pointer" :href="settingsHub.url()" prefetch>
+                <IconSettings class="size-4" />
+                {{ $t('sidebar.settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>
