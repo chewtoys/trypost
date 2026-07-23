@@ -49,8 +49,6 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
             const headers: Record<string, string> = {
                 'Content-Type': 'application/octet-stream',
                 'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
-                // Headers must be ByteString (≤255). encodeURIComponent keeps
-                // unicode filenames (en-dash, emoji, …) ASCII-safe for fetch().
                 'X-File-Name': encodeURIComponent(file.name),
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',

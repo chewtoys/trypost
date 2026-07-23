@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
+use RuntimeException;
 
 trait HasMedia
 {
@@ -106,6 +107,7 @@ trait HasMedia
 
     /**
      * Add media from a file path (used for chunked uploads).
+     * Non-images are streamed to storage instead of loaded into memory.
      */
     public function addMediaFromPath(string $filePath, string $originalFilename, string $collection = 'default', array $meta = [], ?string $groupId = null): Media
     {
@@ -117,17 +119,37 @@ trait HasMedia
         $type = $this->getMediaType($mimeType);
         $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
 
-        [$normalizedBytes, $normalizedMime, $normalizedExt] = $this->normalizeImageFormat(
-            $filePath,
-            $mimeType,
-            $type,
-            $extension,
-        );
+        if ($type === Type::Image->value) {
+            [$bytes, $storedMime, $storedExt] = $this->normalizeImageFormat(
+                $filePath,
+                $mimeType,
+                $type,
+                $extension,
+            );
+            $size = strlen($bytes);
+            $mediaMeta = array_merge($this->getMediaMetaFromBytes($bytes, $type, $meta), $meta);
+            $storagePath = 'medias/'.Str::uuid().'.'.$storedExt;
+            Storage::put($storagePath, $bytes);
+        } else {
+            $storedMime = $mimeType;
+            $storedExt = $extension;
+            $size = (int) filesize($filePath);
+            $mediaMeta = $meta;
+            $storagePath = 'medias/'.Str::uuid().'.'.$storedExt;
+            $stream = fopen($filePath, 'rb');
 
-        $filename = Str::uuid().'.'.$normalizedExt;
-        $storagePath = 'medias/'.$filename;
+            if ($stream === false) {
+                throw new RuntimeException("Unable to open media file for reading: {$filePath}");
+            }
 
-        Storage::put($storagePath, $normalizedBytes);
+            try {
+                Storage::writeStream($storagePath, $stream);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+        }
 
         return $this->media()->create([
             'group_id' => $groupId ?? Str::uuid()->toString(),
@@ -135,10 +157,10 @@ trait HasMedia
             'type' => $type,
             'path' => $storagePath,
             'original_filename' => $originalFilename,
-            'mime_type' => $normalizedMime,
-            'size' => strlen($normalizedBytes),
+            'mime_type' => $storedMime,
+            'size' => $size,
             'order' => 0,
-            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $meta),
+            'meta' => $mediaMeta,
         ]);
     }
 

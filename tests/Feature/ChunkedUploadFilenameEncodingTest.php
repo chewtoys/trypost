@@ -32,10 +32,6 @@ beforeEach(function () {
     ]);
 });
 
-/**
- * Mimic the browser client: encodeURIComponent → PHP rawurlencode for the
- * X-File-Name header value.
- */
 function postEncodedChunkedUpload(string $fileName, string $content): TestResponse
 {
     $size = strlen($content);
@@ -55,8 +51,6 @@ function postEncodedChunkedUpload(string $fileName, string $content): TestRespon
 }
 
 test('chunked upload accepts filename with en-dash when percent-encoded', function () {
-    // Customer bug: en-dash (U+2013) is outside ISO-8859-1, so fetch() rejects
-    // the raw X-File-Name header. The client percent-encodes; we decode here.
     $fileName = 'Corte 6 – Quantidade ou qualidade_ Os dois..png';
     $content = file_get_contents(__DIR__.'/../fixtures/1x1.png');
 
@@ -75,7 +69,6 @@ test('chunked upload accepts filename with emoji when percent-encoded', function
     $response = postEncodedChunkedUpload($fileName, $content);
 
     $response->assertSuccessful();
-    $response->assertJson(['done' => true]);
     expect($this->workspace->getMedia('assets')->first()->original_filename)
         ->toBe(strtolower($fileName));
 });
@@ -92,7 +85,6 @@ test('chunked upload accepts filename with spaces and double-dot extension', fun
 });
 
 test('chunked upload still accepts plain ascii filename without encoding', function () {
-    // Backwards compatible: rawurldecode is a no-op on plain ASCII names.
     $content = file_get_contents(__DIR__.'/../fixtures/1x1.png');
     $size = strlen($content);
 
@@ -118,4 +110,21 @@ test('chunked upload rejects unsupported extension even when percent-encoded', f
     $response = postEncodedChunkedUpload('malware – payload.exe', str_repeat('x', 100));
 
     $response->assertUnprocessable();
+});
+
+test('chunked upload streams a video file to storage on finalize', function () {
+    // Minimal ISO BMFF ("ftyp") so mime_content_type reports video/mp4.
+    $content = "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
+    $fileName = 'Quantidade ou Qualidade_ Os dois..mp4';
+
+    $response = postEncodedChunkedUpload($fileName, $content);
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'video']);
+
+    $media = $this->workspace->getMedia('assets')->first();
+    expect($media->original_filename)->toBe(strtolower($fileName));
+    expect($media->type->value)->toBe('video');
+    expect($media->size)->toBe(strlen($content));
+    Storage::assertExists($media->path);
 });

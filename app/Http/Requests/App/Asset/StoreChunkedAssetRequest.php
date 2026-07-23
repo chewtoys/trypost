@@ -28,9 +28,6 @@ class StoreChunkedAssetRequest extends FormRequest
             'range_start' => $parsed[0] ?? null,
             'range_end' => $parsed[1] ?? null,
             'total_size' => $parsed[2] ?? null,
-            // Client sends encodeURIComponent(file.name) so unicode filenames
-            // (en-dash, emoji, …) fit in an ASCII-only HTTP header. Decode
-            // before lowercasing so `ends_with` sees the real extension.
             'file_name' => strtolower(rawurldecode((string) $this->header('X-File-Name', 'upload'))),
         ]);
     }

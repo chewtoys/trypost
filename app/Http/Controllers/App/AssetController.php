@@ -98,6 +98,9 @@ class AssetController extends Controller
             ]);
         }
 
+        // Finalize may stream hundreds of MB to object storage (R2/S3).
+        set_time_limit(0);
+
         $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
 
         @unlink($tempFile);
