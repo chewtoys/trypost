@@ -11,23 +11,86 @@ use Aws\Result;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
-    Storage::fake();
     Cache::flush();
 });
 
-test('chunked cloud uploader only uses multipart on object storage for video and pdf', function () {
-    $local = new ChunkedCloudUploader(Cache::store(), disk: 'local');
-    expect($local->shouldUseMultipart('clip.mp4'))->toBeFalse();
-    expect($local->shouldUseMultipart('photo.png'))->toBeFalse();
+function seedChunkedUploadWorkspace(): void
+{
+    test()->account = Account::factory()->create();
+    test()->user = User::factory()->create(['account_id' => test()->account->id]);
+    test()->account->update(['owner_id' => test()->user->id]);
+    test()->workspace = Workspace::factory()->create([
+        'account_id' => test()->account->id,
+        'user_id' => test()->user->id,
+    ]);
+    test()->workspace->members()->attach(test()->user->id, ['role' => Role::Member->value]);
+    test()->user->update(['current_workspace_id' => test()->workspace->id]);
+    test()->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+}
 
-    config(['filesystems.disks.r2.driver' => 's3']);
-    $r2 = new ChunkedCloudUploader(Cache::store(), disk: 'r2');
-    expect($r2->shouldUseMultipart('clip.mp4'))->toBeTrue();
-    expect($r2->shouldUseMultipart('deck.pdf'))->toBeTrue();
-    expect($r2->shouldUseMultipart('photo.png'))->toBeFalse();
-});
+function fakeMp4Bytes(): string
+{
+    return "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
+}
+
+function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0, ?int $totalSize = null): TestResponse
+{
+    $totalSize ??= strlen($content);
+    $rangeEnd = $rangeStart + strlen($content) - 1;
+
+    return test()->actingAs(test()->user)->call(
+        'POST',
+        route('app.assets.store-chunked'),
+        [], [], [],
+        [
+            'HTTP_CONTENT_RANGE' => "bytes {$rangeStart}-{$rangeEnd}/{$totalSize}",
+            'HTTP_X_FILE_NAME' => rawurlencode($fileName),
+            'HTTP_ACCEPT' => 'application/json',
+            'CONTENT_TYPE' => 'application/octet-stream',
+        ],
+        $content,
+    );
+}
+
+// ─── Strategy selection (all disks × file types) ─────────────────
+
+test('shouldUseMultipart is only true for object-storage disks with video or pdf', function (string $disk, string $driver, string $fileName, bool $expected) {
+    config([
+        "filesystems.disks.{$disk}.driver" => $driver,
+        'filesystems.default' => $disk,
+    ]);
+
+    $uploader = new ChunkedCloudUploader(Cache::store(), disk: $disk);
+
+    expect($uploader->shouldUseMultipart($fileName))->toBe($expected);
+    expect($uploader->isObjectStorageDisk($disk))->toBe($driver === 's3');
+})->with([
+    'local video' => ['local', 'local', 'clip.mp4', false],
+    'local pdf' => ['local', 'local', 'deck.pdf', false],
+    'local image' => ['local', 'local', 'photo.png', false],
+    'public video' => ['public', 'local', 'clip.mp4', false],
+    'public pdf' => ['public', 'local', 'deck.pdf', false],
+    'public image' => ['public', 'local', 'photo.png', false],
+    's3 video' => ['s3', 's3', 'clip.mp4', true],
+    's3 pdf' => ['s3', 's3', 'deck.pdf', true],
+    's3 image' => ['s3', 's3', 'photo.png', false],
+    'r2 video' => ['r2', 's3', 'clip.mp4', true],
+    'r2 pdf' => ['r2', 's3', 'deck.pdf', true],
+    'r2 image' => ['r2', 's3', 'photo.png', false],
+    'spaces video' => ['spaces', 's3', 'clip.mp4', true],
+    'spaces pdf' => ['spaces', 's3', 'deck.pdf', true],
+    'spaces image' => ['spaces', 's3', 'photo.png', false],
+]);
+
+// ─── Multipart mechanics (object storage) ────────────────────────
 
 test('chunked cloud uploader uploads parts and completes multipart', function () {
     $client = Mockery::mock(S3Client::class);
@@ -74,22 +137,83 @@ test('chunked cloud uploader uploads parts and completes multipart', function ()
     expect(Cache::get('chunked-cloud-upload:id-1'))->toBeNull();
 });
 
-test('chunked asset upload uses cloud multipart for videos when disk is s3', function () {
-    $this->account = Account::factory()->create();
-    $this->user = User::factory()->create(['account_id' => $this->account->id]);
-    $this->account->update(['owner_id' => $this->user->id]);
-    $this->workspace = Workspace::factory()->create([
-        'account_id' => $this->account->id,
-        'user_id' => $this->user->id,
+// ─── HTTP: local / public assemble path ──────────────────────────
+
+test('chunked upload stores video on the local disk via assemble path', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    $content = fakeMp4Bytes();
+    $response = postChunkedAsset('clip.mp4', $content);
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'video']);
+
+    $media = test()->workspace->getMedia('assets')->first();
+    expect($media->original_filename)->toBe('clip.mp4');
+    expect($media->size)->toBe(strlen($content));
+    Storage::disk('local')->assertExists($media->path);
+});
+
+test('chunked upload stores video on the public disk via assemble path', function () {
+    config(['filesystems.default' => 'public']);
+    Storage::fake('public');
+    seedChunkedUploadWorkspace();
+
+    $content = fakeMp4Bytes();
+    $response = postChunkedAsset('clip.mp4', $content);
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'video']);
+
+    $media = test()->workspace->getMedia('assets')->first();
+    expect($media->type->value)->toBe('video');
+    Storage::disk('public')->assertExists($media->path);
+});
+
+test('chunked upload on local disk reports progress across multiple chunks', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    $part1 = fakeMp4Bytes();
+    $part2 = str_repeat("\0", 50);
+    $total = strlen($part1) + strlen($part2);
+
+    $mid = postChunkedAsset('clip.mp4', $part1, 0, $total);
+    $mid->assertSuccessful();
+    $mid->assertJson(['done' => false]);
+    expect(test()->workspace->getMedia('assets')->count())->toBe(0);
+
+    $done = postChunkedAsset('clip.mp4', $part2, strlen($part1), $total);
+    $done->assertSuccessful();
+    $done->assertJson(['done' => true, 'type' => 'video']);
+    expect(test()->workspace->getMedia('assets')->count())->toBe(1);
+});
+
+test('chunked upload stores image on local disk', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    $content = file_get_contents(__DIR__.'/../fixtures/1x1.png');
+    $response = postChunkedAsset('photo.png', $content);
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'image']);
+    Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+});
+
+// ─── HTTP: object storage ────────────────────────────────────────
+
+test('chunked upload uses multipart for videos on s3 disks', function (string $disk) {
+    config([
+        'filesystems.default' => $disk,
+        "filesystems.disks.{$disk}.driver" => 's3',
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
-    $this->user->update(['current_workspace_id' => $this->workspace->id]);
-    $this->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
+    Storage::fake($disk);
+    seedChunkedUploadWorkspace();
 
     $fake = Mockery::mock(ChunkedCloudUploader::class);
     $fake->shouldReceive('shouldUseMultipart')->with('clip.mp4')->andReturn(true);
@@ -98,33 +222,57 @@ test('chunked asset upload uses cloud multipart for videos when disk is s3', fun
         ->andReturn([
             'done' => true,
             'progress' => 100,
-            'path' => 'medias/cloud-clip.mp4',
+            'path' => "medias/{$disk}-clip.mp4",
             'size' => 12,
             'mime_type' => 'video/mp4',
         ]);
-    $this->app->instance(ChunkedCloudUploader::class, $fake);
+    app()->instance(ChunkedCloudUploader::class, $fake);
 
-    $content = 'fake-video!!';
-    $size = strlen($content);
-
-    $response = $this->actingAs($this->user)->call(
-        'POST',
-        route('app.assets.store-chunked'),
-        [], [], [],
-        [
-            'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
-            'HTTP_X_FILE_NAME' => rawurlencode('clip.mp4'),
-            'HTTP_ACCEPT' => 'application/json',
-            'CONTENT_TYPE' => 'application/octet-stream',
-        ],
-        $content,
-    );
+    $response = postChunkedAsset('clip.mp4', 'fake-video!!');
 
     $response->assertSuccessful();
     $response->assertJson([
         'done' => true,
-        'path' => 'medias/cloud-clip.mp4',
+        'path' => "medias/{$disk}-clip.mp4",
         'type' => 'video',
     ]);
-    expect($this->workspace->getMedia('assets')->first()->path)->toBe('medias/cloud-clip.mp4');
+    expect(test()->workspace->getMedia('assets')->first()->path)->toBe("medias/{$disk}-clip.mp4");
+})->with(['s3', 'r2', 'spaces']);
+
+test('chunked upload on s3 still assembles images without multipart', function () {
+    config([
+        'filesystems.default' => 's3',
+        'filesystems.disks.s3.driver' => 's3',
+    ]);
+    Storage::fake('s3');
+    seedChunkedUploadWorkspace();
+
+    $mock = Mockery::mock(ChunkedCloudUploader::class);
+    $mock->shouldReceive('shouldUseMultipart')->with('photo.png')->andReturn(false);
+    $mock->shouldNotReceive('receiveChunk');
+    app()->instance(ChunkedCloudUploader::class, $mock);
+
+    $content = file_get_contents(__DIR__.'/../fixtures/1x1.png');
+    $response = postChunkedAsset('photo.png', $content);
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'image']);
+    Storage::disk('s3')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+});
+
+test('chunked upload on local never calls multipart receiveChunk for videos', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    $mock = Mockery::mock(ChunkedCloudUploader::class);
+    $mock->shouldReceive('shouldUseMultipart')->with('clip.mp4')->andReturn(false);
+    $mock->shouldNotReceive('receiveChunk');
+    app()->instance(ChunkedCloudUploader::class, $mock);
+
+    $response = postChunkedAsset('clip.mp4', fakeMp4Bytes());
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true, 'type' => 'video']);
+    Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
 });
