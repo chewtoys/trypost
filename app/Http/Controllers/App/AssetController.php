@@ -120,7 +120,7 @@ class AssetController extends Controller
         };
 
         $filename = Str::uuid().'.'.$extension;
-        $path = 'medias/'.$filename;
+        $path = "medias/{$filename}";
 
         Storage::put($path, $response->body());
 

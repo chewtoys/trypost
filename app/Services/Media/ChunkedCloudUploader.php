@@ -176,7 +176,8 @@ class ChunkedCloudUploader
     private function startUpload(string $fileName, string $firstChunk): array
     {
         $extension = strtolower((string) pathinfo($fileName, PATHINFO_EXTENSION));
-        $key = 'medias/'.Str::uuid().'.'.$extension;
+        $filename = Str::uuid().".{$extension}";
+        $key = "medias/{$filename}";
         $mimeType = $this->detectMimeType($firstChunk, $extension);
 
         $created = $this->s3()->createMultipartUpload([

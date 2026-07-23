@@ -88,7 +88,7 @@ trait HasMedia
         );
 
         $filename = Str::uuid().'.'.$normalizedExt;
-        $path = 'medias/'.$filename;
+        $path = "medias/{$filename}";
 
         Storage::put($path, $normalizedBytes);
 
@@ -128,14 +128,16 @@ trait HasMedia
             );
             $size = strlen($bytes);
             $mediaMeta = array_merge($this->getMediaMetaFromBytes($bytes, $type, $meta), $meta);
-            $storagePath = 'medias/'.Str::uuid().'.'.$storedExt;
+            $filename = Str::uuid().".{$storedExt}";
+            $storagePath = "medias/{$filename}";
             Storage::put($storagePath, $bytes);
         } else {
             $storedMime = $mimeType;
             $storedExt = $extension;
             $size = (int) filesize($filePath);
             $mediaMeta = $meta;
-            $storagePath = 'medias/'.Str::uuid().'.'.$storedExt;
+            $filename = Str::uuid().".{$storedExt}";
+            $storagePath = "medias/{$filename}";
             $stream = fopen($filePath, 'rb');
 
             if ($stream === false) {
