@@ -164,6 +164,38 @@ trait HasMedia
         ]);
     }
 
+    /**
+     * Register media that is already stored on the default disk (e.g. after a
+     * multipart cloud upload).
+     */
+    public function addMediaFromStoredPath(
+        string $storagePath,
+        string $originalFilename,
+        string $mimeType,
+        int $size,
+        string $collection = 'default',
+        array $meta = [],
+        ?string $groupId = null,
+    ): Media {
+        if ($this->isSingleMediaCollection($collection)) {
+            $this->clearMediaCollection($collection);
+        }
+
+        $type = $this->getMediaType($mimeType);
+
+        return $this->media()->create([
+            'group_id' => $groupId ?? Str::uuid()->toString(),
+            'collection' => $collection,
+            'type' => $type,
+            'path' => $storagePath,
+            'original_filename' => $originalFilename,
+            'mime_type' => $mimeType,
+            'size' => $size,
+            'order' => 0,
+            'meta' => $meta,
+        ]);
+    }
+
     public function clearMediaCollection(string $collection = 'default'): void
     {
         $this->getMedia($collection)->each(fn (Media $media) => $media->delete());

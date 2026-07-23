@@ -10,6 +10,7 @@ use App\Http\Requests\App\Asset\StoreChunkedAssetRequest;
 use App\Http\Resources\App\MediaResource;
 use App\Models\Media;
 use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Media\ChunkedCloudUploader;
 use App\Services\UnsplashService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -68,7 +69,7 @@ class AssetController extends Controller
         return new MediaResource($media);
     }
 
-    public function storeChunked(StoreChunkedAssetRequest $request): JsonResponse
+    public function storeChunked(StoreChunkedAssetRequest $request, ChunkedCloudUploader $cloudUploader): JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -78,8 +79,49 @@ class AssetController extends Controller
         $rangeEnd = (int) $request->validated('range_end');
         $totalSize = (int) $request->validated('total_size');
         $fileName = (string) $request->validated('file_name');
+        $chunk = $request->getContent();
 
         $identifier = md5($request->user()->id.$fileName.$totalSize);
+
+        if ($cloudUploader->supports() && $cloudUploader->shouldUseMultipart($fileName)) {
+            $result = $cloudUploader->receiveChunk(
+                $identifier,
+                $fileName,
+                $chunk,
+                $rangeStart,
+                $rangeEnd,
+                $totalSize,
+            );
+
+            if (! data_get($result, 'done')) {
+                return response()->json([
+                    'done' => false,
+                    'progress' => data_get($result, 'progress'),
+                ]);
+            }
+
+            $media = $workspace->addMediaFromStoredPath(
+                (string) data_get($result, 'path'),
+                $fileName,
+                (string) data_get($result, 'mime_type'),
+                (int) data_get($result, 'size'),
+                'assets',
+            );
+
+            return response()->json([
+                'done' => true,
+                'id' => $media->id,
+                'path' => $media->path,
+                'url' => $media->url,
+                'type' => $media->type->value,
+                'mime_type' => $media->mime_type,
+                'original_filename' => $media->original_filename,
+                'size' => $media->size,
+                'meta' => $media->meta,
+                'created_at' => $media->created_at->toISOString(),
+            ]);
+        }
+
         $tempFile = storage_path("app/private/chunks/{$identifier}");
 
         $directory = dirname($tempFile);
@@ -87,7 +129,7 @@ class AssetController extends Controller
             mkdir($directory, 0755, true);
         }
 
-        file_put_contents($tempFile, $request->getContent(), $rangeStart === 0 ? 0 : FILE_APPEND);
+        file_put_contents($tempFile, $chunk, $rangeStart === 0 ? 0 : FILE_APPEND);
 
         $isLastChunk = ($rangeEnd + 1) >= $totalSize;
 
@@ -97,9 +139,6 @@ class AssetController extends Controller
                 'progress' => (int) round(($rangeEnd + 1) / $totalSize * 100),
             ]);
         }
-
-        // Finalize may stream hundreds of MB to object storage (R2/S3).
-        set_time_limit(0);
 
         $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
 
