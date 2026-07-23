@@ -1,11 +1,13 @@
 {
     "agents": [
-        "claude_code"
+        "claude_code",
+        "cursor",
+        "codex"
     ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
-    "nightwatch_mcp": true,
+    "nightwatch": true,
     "sail": false,
     "skills": [
         "ai-sdk-development",
