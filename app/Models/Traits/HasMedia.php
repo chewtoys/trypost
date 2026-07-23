@@ -107,7 +107,7 @@ trait HasMedia
 
     /**
      * Add media from a file path (used for chunked uploads).
-     * Non-images are streamed to storage instead of loaded into memory.
+     * Images are normalized in memory; videos/PDFs are streamed to storage.
      */
     public function addMediaFromPath(string $filePath, string $originalFilename, string $collection = 'default', array $meta = [], ?string $groupId = null): Media
     {
@@ -119,50 +119,20 @@ trait HasMedia
         $type = $this->getMediaType($mimeType);
         $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
 
-        if ($type === Type::Image->value) {
-            [$bytes, $storedMime, $storedExt] = $this->normalizeImageFormat(
-                $filePath,
-                $mimeType,
-                $type,
-                $extension,
-            );
-            $size = strlen($bytes);
-            $mediaMeta = array_merge($this->getMediaMetaFromBytes($bytes, $type, $meta), $meta);
-            $filename = Str::uuid().".{$storedExt}";
-            $storagePath = "medias/{$filename}";
-            Storage::put($storagePath, $bytes);
-        } else {
-            $storedMime = $mimeType;
-            $storedExt = $extension;
-            $size = (int) filesize($filePath);
-            $mediaMeta = $meta;
-            $filename = Str::uuid().".{$storedExt}";
-            $storagePath = "medias/{$filename}";
-            $stream = fopen($filePath, 'rb');
-
-            if ($stream === false) {
-                throw new RuntimeException("Unable to open media file for reading: {$filePath}");
-            }
-
-            try {
-                Storage::writeStream($storagePath, $stream);
-            } finally {
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }
-        }
+        $stored = $type === Type::Image->value
+            ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta)
+            : $this->streamFileToStorage($filePath, $mimeType, $extension, $meta);
 
         return $this->media()->create([
             'group_id' => $groupId ?? Str::uuid()->toString(),
             'collection' => $collection,
             'type' => $type,
-            'path' => $storagePath,
+            'path' => $stored['path'],
             'original_filename' => $originalFilename,
-            'mime_type' => $storedMime,
-            'size' => $size,
+            'mime_type' => $stored['mime_type'],
+            'size' => $stored['size'],
             'order' => 0,
-            'meta' => $mediaMeta,
+            'meta' => $stored['meta'],
         ]);
     }
 
@@ -209,6 +179,61 @@ trait HasMedia
         $config = self::$mediaCollections[$modelClass][$collection] ?? 'multiple';
 
         return $config === 'single';
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{path: string, mime_type: string, size: int, meta: array<string, mixed>}
+     */
+    private function storeImageFromPath(string $filePath, string $mimeType, string $type, string $extension, array $meta): array
+    {
+        [$bytes, $storedMime, $storedExt] = $this->normalizeImageFormat(
+            $filePath,
+            $mimeType,
+            $type,
+            $extension,
+        );
+
+        $filename = Str::uuid().".{$storedExt}";
+        $path = "medias/{$filename}";
+        Storage::put($path, $bytes);
+
+        return [
+            'path' => $path,
+            'mime_type' => $storedMime,
+            'size' => strlen($bytes),
+            'meta' => array_merge($this->getMediaMetaFromBytes($bytes, $type, $meta), $meta),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{path: string, mime_type: string, size: int, meta: array<string, mixed>}
+     */
+    private function streamFileToStorage(string $filePath, string $mimeType, string $extension, array $meta): array
+    {
+        $filename = Str::uuid().".{$extension}";
+        $path = "medias/{$filename}";
+        $stream = fopen($filePath, 'rb');
+
+        if ($stream === false) {
+            throw new RuntimeException("Unable to open media file for reading: {$filePath}");
+        }
+
+        try {
+            Storage::writeStream($path, $stream);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return [
+            'path' => $path,
+            'mime_type' => $mimeType,
+            'size' => (int) filesize($filePath),
+            'meta' => $meta,
+        ];
     }
 
     private function getMediaType(string $mimeType): string
