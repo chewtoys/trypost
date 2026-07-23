@@ -17,20 +17,16 @@ beforeEach(function () {
     Cache::flush();
 });
 
-test('chunked cloud uploader supports only s3 disks', function () {
-    $uploader = new ChunkedCloudUploader(Cache::store(), disk: 'local');
-    expect($uploader->supports('local'))->toBeFalse();
+test('chunked cloud uploader only uses multipart on object storage for video and pdf', function () {
+    $local = new ChunkedCloudUploader(Cache::store(), disk: 'local');
+    expect($local->shouldUseMultipart('clip.mp4'))->toBeFalse();
+    expect($local->shouldUseMultipart('photo.png'))->toBeFalse();
 
     config(['filesystems.disks.r2.driver' => 's3']);
-    expect($uploader->supports('r2'))->toBeTrue();
-});
-
-test('chunked cloud uploader uses multipart for video and pdf only', function () {
-    $uploader = new ChunkedCloudUploader(Cache::store());
-
-    expect($uploader->shouldUseMultipart('clip.mp4'))->toBeTrue();
-    expect($uploader->shouldUseMultipart('deck.pdf'))->toBeTrue();
-    expect($uploader->shouldUseMultipart('photo.png'))->toBeFalse();
+    $r2 = new ChunkedCloudUploader(Cache::store(), disk: 'r2');
+    expect($r2->shouldUseMultipart('clip.mp4'))->toBeTrue();
+    expect($r2->shouldUseMultipart('deck.pdf'))->toBeTrue();
+    expect($r2->shouldUseMultipart('photo.png'))->toBeFalse();
 });
 
 test('chunked cloud uploader uploads parts and completes multipart', function () {
@@ -96,7 +92,6 @@ test('chunked asset upload uses cloud multipart for videos when disk is s3', fun
     ]);
 
     $fake = Mockery::mock(ChunkedCloudUploader::class);
-    $fake->shouldReceive('supports')->andReturn(true);
     $fake->shouldReceive('shouldUseMultipart')->with('clip.mp4')->andReturn(true);
     $fake->shouldReceive('receiveChunk')
         ->once()

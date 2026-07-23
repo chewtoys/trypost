@@ -83,7 +83,7 @@ class AssetController extends Controller
 
         $identifier = md5($request->user()->id.$fileName.$totalSize);
 
-        if ($cloudUploader->supports() && $cloudUploader->shouldUseMultipart($fileName)) {
+        if ($cloudUploader->shouldUseMultipart($fileName)) {
             $result = $cloudUploader->receiveChunk(
                 $identifier,
                 $fileName,

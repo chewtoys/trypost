@@ -15,8 +15,8 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Multipart chunked uploads to S3-compatible disks (R2), so each request only
- * sends one part instead of re-uploading the full file on finalize.
+ * Fast path for large uploads on object-storage disks (S3 / R2 / Spaces).
+ * Local and public disks keep the normal assemble-then-store flow — both work.
  */
 class ChunkedCloudUploader
 {
@@ -31,22 +31,27 @@ class ChunkedCloudUploader
         private readonly ?string $disk = null,
     ) {}
 
-    public function supports(?string $disk = null): bool
+    /**
+     * Use S3 multipart when the default disk is object storage and the file is
+     * a video/PDF. Images still assemble locally (format normalization). Local
+     * and public disks always return false and use the regular chunk path.
+     */
+    public function shouldUseMultipart(string $fileName, ?string $disk = null): bool
+    {
+        if (! $this->isObjectStorageDisk($disk)) {
+            return false;
+        }
+
+        $type = MediaType::fromExtension(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        return in_array($type, [MediaType::Video, MediaType::Document], true);
+    }
+
+    public function isObjectStorageDisk(?string $disk = null): bool
     {
         $disk ??= $this->diskName();
 
         return config("filesystems.disks.{$disk}.driver") === 's3';
-    }
-
-    /**
-     * Images still need local assembly for format normalization. Videos and
-     * PDFs are safe to multipart directly to object storage.
-     */
-    public function shouldUseMultipart(string $fileName): bool
-    {
-        $type = MediaType::fromExtension(pathinfo($fileName, PATHINFO_EXTENSION));
-
-        return in_array($type, [MediaType::Video, MediaType::Document], true);
     }
 
     /**
