@@ -11,18 +11,18 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
-/**
- * Fast path for large uploads on object-storage disks (S3 / R2 / Spaces).
- * Local and public disks keep the normal assemble-then-store flow — both work.
- */
 class ChunkedCloudUploader
 {
     private const CACHE_PREFIX = 'chunked-cloud-upload:';
 
     private const CACHE_TTL_HOURS = 6;
+
+    /** S3/R2 require every non-final multipart part to be at least 5 MiB. */
+    public const MIN_PART_BYTES = 5 * 1024 * 1024;
 
     public function __construct(
         private readonly CacheRepository $cache,
@@ -32,9 +32,9 @@ class ChunkedCloudUploader
     ) {}
 
     /**
-     * Use S3 multipart when the default disk is object storage and the file is
-     * a video/PDF. Images still assemble locally (format normalization). Local
-     * and public disks always return false and use the regular chunk path.
+     * Multipart is only needed when the disk is remote object storage and the
+     * file will not be rewritten locally (videos/PDFs). Local, public, and
+     * image uploads keep the assemble-then-store path.
      */
     public function shouldUseMultipart(string $fileName, ?string $disk = null): bool
     {
@@ -66,24 +66,50 @@ class ChunkedCloudUploader
         int $totalSize,
     ): array {
         $cacheKey = self::CACHE_PREFIX.$identifier;
-        $client = $this->s3();
-        $bucket = $this->bucket();
+        $chunkSize = strlen($chunk);
+        $isLastChunk = ($rangeEnd + 1) >= $totalSize;
+
+        if ($rangeEnd < $rangeStart || $chunkSize !== ($rangeEnd - $rangeStart + 1)) {
+            throw new InvalidArgumentException('Chunk bytes do not match Content-Range.');
+        }
+
+        if (! $isLastChunk && $chunkSize < self::MIN_PART_BYTES) {
+            throw new InvalidArgumentException(
+                'Non-final multipart parts must be at least '.self::MIN_PART_BYTES.' bytes.'
+            );
+        }
+
+        $state = $this->cache->get($cacheKey);
 
         if ($rangeStart === 0) {
-            $this->abortIfPresent($cacheKey);
-            $state = $this->startUpload($client, $bucket, $fileName, $chunk);
-        } else {
-            $state = $this->cache->get($cacheKey);
+            $alreadyAcceptedFirstPart = is_array($state) && (int) data_get($state, 'next_offset', 0) > 0;
 
-            if (! is_array($state)) {
-                throw new RuntimeException('Chunked cloud upload session expired or missing.');
+            if (! $alreadyAcceptedFirstPart) {
+                $this->abortIfPresent($cacheKey);
+                $state = $this->startUpload($fileName, $chunk);
+                $this->cache->put($cacheKey, $state, now()->addHours(self::CACHE_TTL_HOURS));
             }
+        } elseif (! is_array($state)) {
+            throw new RuntimeException('Chunked cloud upload session expired or missing.');
+        }
+
+        $nextOffset = (int) data_get($state, 'next_offset', 0);
+
+        // Idempotent replay: client retried a chunk the server already accepted.
+        if ($rangeStart < $nextOffset) {
+            return $this->status($state, $totalSize, completed: $nextOffset >= $totalSize);
+        }
+
+        if ($rangeStart !== $nextOffset) {
+            throw new InvalidArgumentException(
+                "Unexpected chunk offset {$rangeStart}, expected {$nextOffset}."
+            );
         }
 
         $partNumber = count(data_get($state, 'parts', [])) + 1;
 
-        $result = $client->uploadPart([
-            'Bucket' => $bucket,
+        $result = $this->s3()->uploadPart([
+            'Bucket' => $this->bucket(),
             'Key' => data_get($state, 'key'),
             'UploadId' => data_get($state, 'upload_id'),
             'PartNumber' => $partNumber,
@@ -94,20 +120,17 @@ class ChunkedCloudUploader
             'ETag' => data_get($result, 'ETag'),
             'PartNumber' => $partNumber,
         ];
-
-        $isLastChunk = ($rangeEnd + 1) >= $totalSize;
+        $state['next_offset'] = $rangeEnd + 1;
+        $state['bytes_received'] = (int) data_get($state, 'bytes_received', 0) + $chunkSize;
 
         if (! $isLastChunk) {
             $this->cache->put($cacheKey, $state, now()->addHours(self::CACHE_TTL_HOURS));
 
-            return [
-                'done' => false,
-                'progress' => (int) round(($rangeEnd + 1) / $totalSize * 100),
-            ];
+            return $this->status($state, $totalSize, completed: false);
         }
 
-        $client->completeMultipartUpload([
-            'Bucket' => $bucket,
+        $this->s3()->completeMultipartUpload([
+            'Bucket' => $this->bucket(),
             'Key' => data_get($state, 'key'),
             'UploadId' => data_get($state, 'upload_id'),
             'MultipartUpload' => [
@@ -117,26 +140,47 @@ class ChunkedCloudUploader
 
         $this->cache->forget($cacheKey);
 
+        return $this->status($state, $totalSize, completed: true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array{done: bool, progress: int, path?: string, size?: int, mime_type?: string}
+     */
+    private function status(array $state, int $totalSize, bool $completed): array
+    {
+        $received = (int) data_get($state, 'bytes_received', 0);
+        $progress = $totalSize > 0
+            ? (int) round(min($received, $totalSize) / $totalSize * 100)
+            : 0;
+
+        if (! $completed) {
+            return [
+                'done' => false,
+                'progress' => $progress,
+            ];
+        }
+
         return [
             'done' => true,
             'progress' => 100,
             'path' => (string) data_get($state, 'key'),
-            'size' => $totalSize,
+            'size' => $received,
             'mime_type' => (string) data_get($state, 'mime_type'),
         ];
     }
 
     /**
-     * @return array{upload_id: string, key: string, mime_type: string, parts: array<int, array{ETag: string, PartNumber: int}>}
+     * @return array{upload_id: string, key: string, mime_type: string, parts: array<int, mixed>, next_offset: int, bytes_received: int}
      */
-    private function startUpload(S3Client $client, string $bucket, string $fileName, string $firstChunk): array
+    private function startUpload(string $fileName, string $firstChunk): array
     {
         $extension = strtolower((string) pathinfo($fileName, PATHINFO_EXTENSION));
         $key = 'medias/'.Str::uuid().'.'.$extension;
         $mimeType = $this->detectMimeType($firstChunk, $extension);
 
-        $created = $client->createMultipartUpload([
-            'Bucket' => $bucket,
+        $created = $this->s3()->createMultipartUpload([
+            'Bucket' => $this->bucket(),
             'Key' => $key,
             'ContentType' => $mimeType,
         ]);
@@ -146,6 +190,8 @@ class ChunkedCloudUploader
             'key' => $key,
             'mime_type' => $mimeType,
             'parts' => [],
+            'next_offset' => 0,
+            'bytes_received' => 0,
         ];
     }
 

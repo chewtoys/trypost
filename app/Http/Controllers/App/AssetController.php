@@ -9,6 +9,7 @@ use App\Http\Requests\App\Asset\StoreAssetRequest;
 use App\Http\Requests\App\Asset\StoreChunkedAssetRequest;
 use App\Http\Resources\App\MediaResource;
 use App\Models\Media;
+use App\Models\Workspace;
 use App\Services\Brand\SafeHttpFetcher;
 use App\Services\Media\ChunkedCloudUploader;
 use App\Services\UnsplashService;
@@ -22,6 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 class AssetController extends Controller
 {
@@ -80,11 +82,12 @@ class AssetController extends Controller
         $totalSize = (int) $request->validated('total_size');
         $fileName = (string) $request->validated('file_name');
         $chunk = $request->getContent();
-
         $identifier = md5($request->user()->id.$fileName.$totalSize);
 
         if ($cloudUploader->shouldUseMultipart($fileName)) {
-            $result = $cloudUploader->receiveChunk(
+            return $this->storeChunkedViaMultipart(
+                $cloudUploader,
+                $workspace,
                 $identifier,
                 $fileName,
                 $chunk,
@@ -92,58 +95,99 @@ class AssetController extends Controller
                 $rangeEnd,
                 $totalSize,
             );
+        }
 
-            if (! data_get($result, 'done')) {
-                return response()->json([
-                    'done' => false,
-                    'progress' => data_get($result, 'progress'),
-                ]);
-            }
+        return $this->storeChunkedViaLocalAssemble(
+            $workspace,
+            $identifier,
+            $fileName,
+            $chunk,
+            $rangeStart,
+            $rangeEnd,
+            $totalSize,
+        );
+    }
 
+    private function storeChunkedViaMultipart(
+        ChunkedCloudUploader $cloudUploader,
+        Workspace $workspace,
+        string $identifier,
+        string $fileName,
+        string $chunk,
+        int $rangeStart,
+        int $rangeEnd,
+        int $totalSize,
+    ): JsonResponse {
+        $result = $cloudUploader->receiveChunk(
+            $identifier,
+            $fileName,
+            $chunk,
+            $rangeStart,
+            $rangeEnd,
+            $totalSize,
+        );
+
+        if (! data_get($result, 'done')) {
+            return response()->json([
+                'done' => false,
+                'progress' => data_get($result, 'progress'),
+            ]);
+        }
+
+        $path = (string) data_get($result, 'path');
+
+        try {
             $media = $workspace->addMediaFromStoredPath(
-                (string) data_get($result, 'path'),
+                $path,
                 $fileName,
                 (string) data_get($result, 'mime_type'),
                 (int) data_get($result, 'size'),
                 'assets',
             );
+        } catch (Throwable $exception) {
+            Storage::delete($path);
 
-            return response()->json([
-                'done' => true,
-                'id' => $media->id,
-                'path' => $media->path,
-                'url' => $media->url,
-                'type' => $media->type->value,
-                'mime_type' => $media->mime_type,
-                'original_filename' => $media->original_filename,
-                'size' => $media->size,
-                'meta' => $media->meta,
-                'created_at' => $media->created_at->toISOString(),
-            ]);
+            throw $exception;
         }
 
+        return $this->chunkedMediaResponse($media);
+    }
+
+    private function storeChunkedViaLocalAssemble(
+        Workspace $workspace,
+        string $identifier,
+        string $fileName,
+        string $chunk,
+        int $rangeStart,
+        int $rangeEnd,
+        int $totalSize,
+    ): JsonResponse {
         $tempFile = storage_path("app/private/chunks/{$identifier}");
 
-        $directory = dirname($tempFile);
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        if (! is_dir(dirname($tempFile))) {
+            mkdir(dirname($tempFile), 0755, true);
         }
 
         file_put_contents($tempFile, $chunk, $rangeStart === 0 ? 0 : FILE_APPEND);
 
-        $isLastChunk = ($rangeEnd + 1) >= $totalSize;
-
-        if (! $isLastChunk) {
+        if (($rangeEnd + 1) < $totalSize) {
             return response()->json([
                 'done' => false,
                 'progress' => (int) round(($rangeEnd + 1) / $totalSize * 100),
             ]);
         }
 
-        $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
+        try {
+            $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
+        } finally {
+            @unlink($tempFile);
+        }
 
-        @unlink($tempFile);
+        return $this->chunkedMediaResponse($media);
+    }
 
+    private function chunkedMediaResponse(Media $media): JsonResponse
+    {
         return response()->json([
             'done' => true,
             'id' => $media->id,

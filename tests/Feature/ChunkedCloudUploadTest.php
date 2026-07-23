@@ -114,7 +114,7 @@ test('chunked cloud uploader uploads parts and completes multipart', function ()
         ->andReturn(new Result([]));
 
     $uploader = new ChunkedCloudUploader(Cache::store(), $client, 'test-bucket', 'r2');
-    $chunk1 = str_repeat('a', 100);
+    $chunk1 = str_repeat('a', ChunkedCloudUploader::MIN_PART_BYTES);
     $chunk2 = str_repeat('b', 50);
     $total = strlen($chunk1) + strlen($chunk2);
 
@@ -135,6 +135,69 @@ test('chunked cloud uploader uploads parts and completes multipart', function ()
     expect($done['path'])->toStartWith('medias/');
     expect($done['path'])->toEndWith('.mp4');
     expect(Cache::get('chunked-cloud-upload:id-1'))->toBeNull();
+});
+
+test('chunked cloud uploader rejects undersized non-final parts', function () {
+    $uploader = new ChunkedCloudUploader(
+        Cache::store(),
+        Mockery::mock(S3Client::class),
+        'test-bucket',
+        'r2',
+    );
+
+    expect(fn () => $uploader->receiveChunk(
+        'id-small',
+        'video.mp4',
+        str_repeat('a', 100),
+        0,
+        99,
+        ChunkedCloudUploader::MIN_PART_BYTES + 200,
+    ))->toThrow(InvalidArgumentException::class);
+});
+
+test('chunked cloud uploader rejects unexpected offsets', function () {
+    $client = Mockery::mock(S3Client::class);
+    $client->shouldReceive('createMultipartUpload')
+        ->once()
+        ->andReturn(new Result(['UploadId' => 'upload-1']));
+    $client->shouldReceive('uploadPart')
+        ->once()
+        ->andReturn(new Result(['ETag' => '"etag-a"']));
+
+    $uploader = new ChunkedCloudUploader(Cache::store(), $client, 'test-bucket', 'r2');
+    $chunk1 = str_repeat('a', ChunkedCloudUploader::MIN_PART_BYTES);
+    $total = ChunkedCloudUploader::MIN_PART_BYTES * 2;
+
+    $uploader->receiveChunk('id-gap', 'video.mp4', $chunk1, 0, strlen($chunk1) - 1, $total);
+
+    expect(fn () => $uploader->receiveChunk(
+        'id-gap',
+        'video.mp4',
+        $chunk1,
+        ChunkedCloudUploader::MIN_PART_BYTES + 10,
+        ChunkedCloudUploader::MIN_PART_BYTES * 2 + 9,
+        $total,
+    ))->toThrow(InvalidArgumentException::class);
+});
+
+test('chunked cloud uploader is idempotent when a chunk is retried', function () {
+    $client = Mockery::mock(S3Client::class);
+    $client->shouldReceive('createMultipartUpload')
+        ->once()
+        ->andReturn(new Result(['UploadId' => 'upload-1']));
+    $client->shouldReceive('uploadPart')
+        ->once()
+        ->andReturn(new Result(['ETag' => '"etag-a"']));
+
+    $uploader = new ChunkedCloudUploader(Cache::store(), $client, 'test-bucket', 'r2');
+    $chunk1 = str_repeat('a', ChunkedCloudUploader::MIN_PART_BYTES);
+    $total = ChunkedCloudUploader::MIN_PART_BYTES + 50;
+
+    $first = $uploader->receiveChunk('id-retry', 'video.mp4', $chunk1, 0, strlen($chunk1) - 1, $total);
+    $retry = $uploader->receiveChunk('id-retry', 'video.mp4', $chunk1, 0, strlen($chunk1) - 1, $total);
+
+    expect($first)->toMatchArray(['done' => false]);
+    expect($retry)->toMatchArray(['done' => false, 'progress' => $first['progress']]);
 });
 
 // ─── HTTP: local / public assemble path ──────────────────────────
