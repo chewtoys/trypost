@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Post;
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Models\Post;
@@ -25,6 +26,7 @@ class DuplicatePost
                 'content' => $original->content,
                 'media' => $original->media,
                 'status' => PostStatus::Draft,
+                'created_via' => CreatedVia::Web,
                 'scheduled_at' => null,
                 'published_at' => null,
             ]);

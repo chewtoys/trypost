@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class CreatePost
 {
@@ -39,18 +40,26 @@ class CreatePost
      *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>
      * }  $data
+     *
+     * @throws InvalidArgumentException when created_via is missing or not a CreatedVia case
      */
     public static function execute(Workspace $workspace, User $user, array $data): Post
     {
+        $createdVia = data_get($data, 'created_via');
+
+        if (! $createdVia instanceof CreatedVia) {
+            throw new InvalidArgumentException('created_via must be a CreatedVia enum case.');
+        }
+
         $scheduledAt = self::resolveScheduledAt($data);
 
-        $post = DB::transaction(function () use ($workspace, $user, $data, $scheduledAt): Post {
+        $post = DB::transaction(function () use ($workspace, $user, $data, $scheduledAt, $createdVia): Post {
             $post = $workspace->posts()->create([
                 'user_id' => $user->id,
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
                 'status' => PostStatus::Draft,
-                'created_via' => data_get($data, 'created_via'),
+                'created_via' => $createdVia,
                 'scheduled_at' => $scheduledAt,
             ]);
 

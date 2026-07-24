@@ -43,3 +43,12 @@ test('execute persists created_via for each entry point', function (CreatedVia $
     'api' => CreatedVia::Api,
     'automation' => CreatedVia::Automation,
 ]);
+
+test('execute requires created_via', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+
+    CreatePost::execute($workspace, $user, [
+        'content' => 'Hello world',
+    ]);
+})->throws(InvalidArgumentException::class, 'created_via must be a CreatedVia enum case.');

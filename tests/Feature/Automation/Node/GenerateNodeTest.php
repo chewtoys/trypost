@@ -7,6 +7,7 @@ use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
 use App\Enums\Ai\ContentStyle;
 use App\Enums\Ai\GeneratorFormat;
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Automation;
@@ -47,6 +48,7 @@ it('creates a draft post and writes generated output to run context', function (
     $post = Post::find($run->generated_post_id);
     expect($post)->not->toBeNull();
     expect($post->status)->toBe(PostStatus::Draft);
+    expect($post->created_via)->toBe(CreatedVia::Automation);
 });
 
 it('applies brand voice by default', function () {
