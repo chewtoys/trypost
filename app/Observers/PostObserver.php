@@ -9,12 +9,13 @@ use App\Enums\Post\Status as PostStatus;
 use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Post;
+use Illuminate\Support\Facades\DB;
 
 class PostObserver
 {
     public function created(Post $post): void
     {
-        PostCreated::dispatch($post);
+        DB::afterCommit(fn () => PostCreated::dispatch($post));
     }
 
     public function saved(Post $post): void
