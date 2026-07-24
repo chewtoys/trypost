@@ -33,7 +33,7 @@ class TrackPost implements ShouldQueue
         }
 
         $post = Post::query()
-            ->with(['workspace.account.plan', 'user'])
+            ->with(['workspace.account.plan'])
             ->find($this->postId);
 
         if (! $post) {
