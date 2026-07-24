@@ -14,6 +14,7 @@ use App\Enums\Ai\ContentStyle;
 use App\Enums\Ai\GeneratorFormat;
 use App\Enums\Notification\Channel as NotificationChannel;
 use App\Enums\Notification\Type as NotificationType;
+use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Events\Ai\PostCreationReady;
 use App\Jobs\SendNotification;
@@ -195,6 +196,7 @@ class StreamPostCreation implements ShouldQueue
             'content' => $generated->content,
             'media' => $generated->media,
             'date' => $this->date,
+            'created_via' => CreatedVia::Web,
         ]);
 
         if ($generated->contentType && $socialAccount) {

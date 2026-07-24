@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type;
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Observers\PostObserver;
@@ -34,6 +35,7 @@ class Post extends Model
         'content',
         'media',
         'status',
+        'created_via',
         'scheduled_at',
         'published_at',
     ];
@@ -42,6 +44,7 @@ class Post extends Model
     {
         return [
             'status' => PostStatus::class,
+            'created_via' => CreatedVia::class,
             'media' => 'array',
             'scheduled_at' => 'datetime',
             'published_at' => 'datetime',

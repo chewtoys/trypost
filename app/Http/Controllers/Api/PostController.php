@@ -10,6 +10,7 @@ use App\Actions\Post\HostInlineMedia;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
+use App\Enums\Post\CreatedVia;
 use App\Http\Requests\Api\Post\AttachMediaFromUrlRequest;
 use App\Http\Requests\Api\Post\StoreMediaRequest;
 use App\Http\Requests\Api\Post\StorePostRequest;
@@ -60,6 +61,8 @@ class PostController extends Controller
                 $data['media'],
             );
         }
+
+        $data['created_via'] = CreatedVia::Api;
 
         $post = CreatePost::execute($workspace, $workspace->owner, $data);
 

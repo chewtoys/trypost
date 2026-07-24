@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
@@ -109,7 +110,9 @@ test('create post with content and date', function () {
                 ->etc();
         });
 
-    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(1);
+    $post = Post::where('workspace_id', $this->workspace->id)->first();
+    expect($post)->not->toBeNull();
+    expect($post->created_via)->toBe(CreatedVia::Mcp);
 });
 
 test('create post with platforms enables only those', function () {

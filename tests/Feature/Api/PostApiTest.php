@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -72,7 +73,9 @@ it('creates a post', function () {
         ->assertCreated()
         ->assertJsonPath('status', PostStatus::Draft->value);
 
-    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(1);
+    $post = Post::where('workspace_id', $this->workspace->id)->first();
+    expect($post)->not->toBeNull();
+    expect($post->created_via)->toBe(CreatedVia::Api);
 });
 
 it('creates a post with content, media, and labels', function () {

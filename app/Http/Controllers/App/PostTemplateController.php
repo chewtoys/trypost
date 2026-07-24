@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Post\CreatePost;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\Post\CreatedVia;
 use App\Http\Requests\App\PostTemplate\ApplyPostTemplateRequest;
 use App\Http\Requests\App\PostTemplate\IndexPostTemplateRequest;
 use App\Http\Resources\App\PostTemplateResource;
@@ -89,6 +90,7 @@ class PostTemplateController extends Controller
             'content' => $content,
             'media' => $media,
             'date' => $request->input('date'),
+            'created_via' => CreatedVia::Web,
         ]);
 
         return response()->json([

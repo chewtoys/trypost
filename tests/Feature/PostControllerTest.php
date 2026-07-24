@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
@@ -257,6 +258,7 @@ test('store post creates draft and redirects to edit', function () {
     $post = Post::where('workspace_id', $this->workspace->id)->first();
     expect($post)->not->toBeNull();
     expect($post->status)->toBe(PostStatus::Draft);
+    expect($post->created_via)->toBe(CreatedVia::Web);
     expect($post->postPlatforms)->toHaveCount(1);
 });
 
