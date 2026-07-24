@@ -44,7 +44,7 @@ test('execute persists created_via for each entry point', function (CreatedVia $
     'automation' => CreatedVia::Automation,
 ]);
 
-test('execute defaults created_via to web when omitted', function () {
+test('execute leaves created_via null when omitted', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
 
@@ -52,10 +52,10 @@ test('execute defaults created_via to web when omitted', function () {
         'content' => 'Hello world',
     ]);
 
-    expect($post->fresh()->created_via)->toBe(CreatedVia::Web);
+    expect($post->fresh()->created_via)->toBeNull();
 });
 
-test('execute defaults created_via to web when null or invalid', function (mixed $createdVia) {
+test('execute leaves created_via null when null or invalid', function (mixed $createdVia) {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
 
@@ -64,7 +64,7 @@ test('execute defaults created_via to web when null or invalid', function (mixed
         'created_via' => $createdVia,
     ]);
 
-    expect($post->fresh()->created_via)->toBe(CreatedVia::Web);
+    expect($post->fresh()->created_via)->toBeNull();
 })->with([
     'null' => null,
     'invalid string' => 'not-a-channel',
