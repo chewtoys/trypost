@@ -157,6 +157,7 @@ class PublishToSocialPlatform implements ShouldQueue
                     'failed_at' => now()->toIso8601String(),
                     'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
                     'media_count' => count($this->postPlatform->post->media ?? []),
+                    'raw_response' => $e->context()['raw_response'],
                 ]);
                 break;
             } catch (\Throwable $e) {
