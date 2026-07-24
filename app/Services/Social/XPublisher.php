@@ -361,8 +361,13 @@ class XPublisher
     private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
     {
         for ($i = 0; $i < $maxAttempts; $i++) {
+            // Official status endpoint: GET /2/media/upload?media_id=...&command=STATUS
+            // (not GET /2/media/{id} — that path is not the upload-status contract).
             $response = $this->getHttpClient()
-                ->get("{$this->baseUrl}/media/{$mediaId}");
+                ->get("{$this->baseUrl}/media/upload", [
+                    'media_id' => $mediaId,
+                    'command' => 'STATUS',
+                ]);
 
             if ($response->failed()) {
                 Log::error('X media status check error', ['body' => $this->redactResponseBody($response->body())]);

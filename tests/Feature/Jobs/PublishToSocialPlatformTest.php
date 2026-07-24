@@ -729,6 +729,7 @@ test('publish to social platform saves error context on social publish exception
     expect($this->postPlatform->error_context['category'])->toBe('permission');
     expect($this->postPlatform->error_context['platform_error_code'])->toBe('403');
     expect($this->postPlatform->error_context['content_length'])->toBe(11);
+    expect($this->postPlatform->error_context['raw_response'])->toBe('{"error": "forbidden"}');
 });
 
 test('publish to social platform fails when scopes are missing', function () {

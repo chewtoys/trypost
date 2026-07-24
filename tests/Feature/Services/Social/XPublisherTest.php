@@ -14,7 +14,32 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\XPublisher;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+
+/**
+ * Official X upload STATUS: GET /2/media/upload?media_id=...&command=STATUS
+ */
+function isXMediaUploadStatusRequest(Request $request): bool
+{
+    if (strtoupper($request->method()) !== 'GET') {
+        return false;
+    }
+
+    $url = $request->url();
+
+    if (
+        ! str_contains($url, '/media/upload')
+        || str_contains($url, '/initialize')
+        || str_contains($url, '/append')
+        || str_contains($url, '/finalize')
+    ) {
+        return false;
+    }
+
+    return str_contains($url, 'media_id=')
+        || filled(data_get($request->data(), 'media_id'));
+}
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -258,7 +283,7 @@ test('x publisher handles gif upload with processing', function () {
             ], 200);
         }
 
-        if (str_contains($url, '/2/media/gif_media_555')) {
+        if (isXMediaUploadStatusRequest($request)) {
             return Http::response([
                 'data' => [
                     'processing_info' => ['state' => 'succeeded'],
@@ -301,8 +326,18 @@ test('x publisher handles gif upload with processing', function () {
         return str_contains($contentType, 'application/json')
             && $request->body() === '{}';
     });
-    // waitForProcessing was called
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/media/gif_media_555'));
+    // waitForProcessing polls the official STATUS endpoint
+    Http::assertSent(function ($request) {
+        return isXMediaUploadStatusRequest($request)
+            && (
+                str_contains($request->url(), 'media_id=gif_media_555')
+                || data_get($request->data(), 'media_id') === 'gif_media_555'
+            )
+            && (
+                str_contains($request->url(), 'command=STATUS')
+                || data_get($request->data(), 'command') === 'STATUS'
+            );
+    });
 });
 
 test('x publisher recovers a missing mime type from the downloaded bytes', function () {
@@ -585,6 +620,10 @@ test('x publisher does not send alt text metadata for a video even if it carries
             return Http::response(['data' => ['id' => 'video_media_777']], 200);
         }
 
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
         if (str_contains($url, '/2/tweets')) {
             return Http::response(['data' => ['id' => '7778889990', 'text' => 'Hello from X!']], 200);
         }
@@ -627,9 +666,9 @@ test('x publisher uploads video via chunked upload', function () {
             return Http::response(['data' => ['id' => 'media_id_999']], 200);
         }
 
-        if (str_contains($url, '/2/media/')) {
-            // STATUS check: GET /2/media/{id}
-            return Http::response(['processing_info' => ['state' => 'succeeded']], 200);
+        if (isXMediaUploadStatusRequest($request)) {
+            // STATUS check: GET /2/media/upload?media_id=...&command=STATUS
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
         }
 
         if (str_contains($url, '/2/tweets')) {
@@ -651,6 +690,7 @@ test('x publisher uploads video via chunked upload', function () {
             && (int) data_get($request->data(), 'segment_index') === 0;
     });
     Http::assertSent(fn ($request) => str_contains($request->url(), '/finalize'));
+    Http::assertSent(fn ($request) => isXMediaUploadStatusRequest($request));
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/2/tweets')) {
             return false;
@@ -692,8 +732,8 @@ test('x publisher sends JSON object bodies for chunked upload initialize and fin
             return Http::response(['data' => ['id' => 'media_id_json']], 200);
         }
 
-        if (str_contains($url, '/2/media/')) {
-            return Http::response(['processing_info' => ['state' => 'succeeded']], 200);
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
         }
 
         if (str_contains($url, '/2/tweets')) {
@@ -762,8 +802,8 @@ test('x publisher uploads a large video in sequential 1MB segments', function ()
             return Http::response(['data' => ['id' => 'media_id_999']], 200);
         }
 
-        if (str_contains($url, '/2/media/')) {
-            return Http::response(['processing_info' => ['state' => 'succeeded']], 200);
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
         }
 
         if (str_contains($url, '/2/tweets')) {
@@ -927,7 +967,7 @@ test('x publisher uses amplify_video category for videos larger than 15MB', func
             return Http::response(['data' => ['id' => 'amplify_1']], 200);
         }
 
-        if (str_contains($url, '/2/media/')) {
+        if (isXMediaUploadStatusRequest($request)) {
             return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
         }
 
@@ -1058,7 +1098,7 @@ test('x publisher fails when media processing reports failed', function () {
             ], 200);
         }
 
-        if (str_contains($url, '/2/media/media_proc_fail')) {
+        if (isXMediaUploadStatusRequest($request)) {
             return Http::response([
                 'data' => [
                     'processing_info' => [
@@ -1104,7 +1144,7 @@ test('x publisher fails when tweet rejects invalid media ids', function () {
             return Http::response(['data' => ['id' => 'media_invalid']], 200);
         }
 
-        if (str_contains($url, '/2/media/')) {
+        if (isXMediaUploadStatusRequest($request)) {
             return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
         }
 
