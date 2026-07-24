@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Post;
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
-use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
@@ -26,11 +26,15 @@ class CreatePost
      * `label_ids[]` are attached after creation so the same set of UUIDs
      * works for REST, MCP, and web callers.
      *
+     * `created_via` records which entry point created the post (web, mcp,
+     * api, or automation). Analytical only — null when omitted.
+     *
      * @param  array{
      *     content?: ?string,
      *     media?: array<int, mixed>,
      *     date?: ?string,
      *     scheduled_at?: ?string,
+     *     created_via?: ?CreatedVia,
      *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>
      * }  $data
@@ -45,6 +49,7 @@ class CreatePost
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
                 'status' => PostStatus::Draft,
+                'created_via' => data_get($data, 'created_via'),
                 'scheduled_at' => $scheduledAt,
             ]);
 
@@ -84,8 +89,6 @@ class CreatePost
 
             return $post;
         });
-
-        PostCreated::dispatch($post);
 
         return $post;
     }

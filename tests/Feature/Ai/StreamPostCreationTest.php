@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
+use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Ai\StreamPostCreation;
@@ -111,7 +112,8 @@ test('tweet_card template stores the tweet_text as post content and attaches a m
     $post = $this->user->currentWorkspace->posts()->latest()->first();
 
     expect($post->content)->toBe('Hello world\n\nSecond para.')
-        ->and($post->media)->toHaveCount(1);
+        ->and($post->media)->toHaveCount(1)
+        ->and($post->created_via)->toBe(CreatedVia::Web);
 
     $platform = PostPlatform::where('social_account_id', $this->account->id)->firstOrFail();
 

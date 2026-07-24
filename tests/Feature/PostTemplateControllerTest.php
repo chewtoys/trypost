@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\CreatedVia;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\SocialAccount;
@@ -72,6 +73,9 @@ test('apply creates post and returns post_id and redirect_url', function () {
 
     expect($response->json('post_id'))->toBeString();
     expect($response->json('redirect_url'))->toContain('edit');
+
+    $post = $this->workspace->posts()->find($response->json('post_id'));
+    expect($post->created_via)->toBe(CreatedVia::Web);
 });
 
 test('apply interpolates brand_name in content', function () {

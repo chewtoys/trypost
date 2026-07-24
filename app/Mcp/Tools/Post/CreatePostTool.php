@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Post;
 
 use App\Actions\Post\CreatePost;
+use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
 use App\Rules\ContentTypeMatchesPlatform;
@@ -40,6 +41,8 @@ class CreatePostTool extends Tool
             'platforms.*.content_type' => ['required', 'string', Rule::in(array_column(ContentType::cases(), 'value')), new ContentTypeMatchesPlatform],
             ...PostPlatformMetaRules::rules(),
         ]);
+
+        $validated['created_via'] = CreatedVia::Mcp;
 
         $post = CreatePost::execute($workspace, $request->user(), $validated);
 

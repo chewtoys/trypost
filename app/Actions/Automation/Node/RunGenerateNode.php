@@ -12,6 +12,7 @@ use App\Ai\Templates\TemplateContext;
 use App\DataTransferObjects\Automation\NodeRunResult;
 use App\Enums\Ai\ContentStyle;
 use App\Enums\Ai\GeneratorFormat;
+use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\AutomationRun;
 use App\Models\SocialAccount;
@@ -145,6 +146,7 @@ class RunGenerateNode
             'content' => $generated->content,
             'media' => $generated->media,
             'platforms' => $platforms,
+            'created_via' => CreatedVia::Automation,
         ]);
 
         $run->update(['generated_post_id' => $post->id]);

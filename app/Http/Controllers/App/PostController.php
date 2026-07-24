@@ -12,6 +12,7 @@ use App\Actions\Post\UpdatePost;
 use App\Ai\Templates\AiContentTemplate;
 use App\Ai\Templates\AiTemplateRegistry;
 use App\Enums\Post\Action as PostAction;
+use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Post\StorePostRequest;
@@ -189,6 +190,7 @@ class PostController extends Controller
         $post = CreatePost::execute($workspace, $request->user(), [
             'date' => $request->input('date'),
             'media' => $request->input('media', []),
+            'created_via' => CreatedVia::Web,
         ]);
 
         return Inertia::location(route('app.posts.edit', $post));
