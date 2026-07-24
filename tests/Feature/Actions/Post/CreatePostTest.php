@@ -54,19 +54,3 @@ test('execute leaves created_via null when omitted', function () {
 
     expect($post->fresh()->created_via)->toBeNull();
 });
-
-test('execute leaves created_via null when null or invalid', function (mixed $createdVia) {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-
-    $post = CreatePost::execute($workspace, $user, [
-        'content' => 'Hello world',
-        'created_via' => $createdVia,
-    ]);
-
-    expect($post->fresh()->created_via)->toBeNull();
-})->with([
-    'null' => null,
-    'invalid string' => 'not-a-channel',
-    'integer' => 1,
-]);

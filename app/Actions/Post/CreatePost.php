@@ -28,8 +28,7 @@ class CreatePost
      * works for REST, MCP, and web callers.
      *
      * `created_via` records which entry point created the post (web, mcp,
-     * api, or automation). Analytical only — null when omitted or invalid,
-     * and never blocks creation.
+     * api, or automation). Analytical only — null when omitted.
      *
      * @param  array{
      *     content?: ?string,
@@ -51,7 +50,7 @@ class CreatePost
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
                 'status' => PostStatus::Draft,
-                'created_via' => self::resolveCreatedVia($data),
+                'created_via' => data_get($data, 'created_via'),
                 'scheduled_at' => $scheduledAt,
             ]);
 
@@ -95,26 +94,6 @@ class CreatePost
         PostCreated::dispatch($post);
 
         return $post;
-    }
-
-    /**
-     * Analytical only — never fail creation over a missing/invalid value.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private static function resolveCreatedVia(array $data): ?CreatedVia
-    {
-        $value = data_get($data, 'created_via');
-
-        if ($value instanceof CreatedVia) {
-            return $value;
-        }
-
-        if (is_string($value)) {
-            return CreatedVia::tryFrom($value);
-        }
-
-        return null;
     }
 
     /**
