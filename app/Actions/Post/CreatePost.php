@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 class CreatePost
 {
@@ -29,37 +28,30 @@ class CreatePost
      * works for REST, MCP, and web callers.
      *
      * `created_via` records which entry point created the post (web, mcp,
-     * api, or automation). Callers must set it explicitly.
+     * api, or automation). Analytical only — defaults to web when omitted
+     * or invalid, and never blocks creation.
      *
      * @param  array{
      *     content?: ?string,
      *     media?: array<int, mixed>,
      *     date?: ?string,
      *     scheduled_at?: ?string,
-     *     created_via: CreatedVia,
+     *     created_via?: CreatedVia,
      *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>
      * }  $data
-     *
-     * @throws InvalidArgumentException when created_via is missing or not a CreatedVia case
      */
     public static function execute(Workspace $workspace, User $user, array $data): Post
     {
-        $createdVia = data_get($data, 'created_via');
-
-        if (! $createdVia instanceof CreatedVia) {
-            throw new InvalidArgumentException('created_via must be a CreatedVia enum case.');
-        }
-
         $scheduledAt = self::resolveScheduledAt($data);
 
-        $post = DB::transaction(function () use ($workspace, $user, $data, $scheduledAt, $createdVia): Post {
+        $post = DB::transaction(function () use ($workspace, $user, $data, $scheduledAt): Post {
             $post = $workspace->posts()->create([
                 'user_id' => $user->id,
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
                 'status' => PostStatus::Draft,
-                'created_via' => $createdVia,
+                'created_via' => self::resolveCreatedVia($data),
                 'scheduled_at' => $scheduledAt,
             ]);
 
@@ -103,6 +95,26 @@ class CreatePost
         PostCreated::dispatch($post);
 
         return $post;
+    }
+
+    /**
+     * Analytical only — never fail creation over a missing/invalid value.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function resolveCreatedVia(array $data): CreatedVia
+    {
+        $value = data_get($data, 'created_via');
+
+        if ($value instanceof CreatedVia) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            return CreatedVia::tryFrom($value) ?? CreatedVia::Web;
+        }
+
+        return CreatedVia::Web;
     }
 
     /**

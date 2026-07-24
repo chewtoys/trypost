@@ -44,11 +44,29 @@ test('execute persists created_via for each entry point', function (CreatedVia $
     'automation' => CreatedVia::Automation,
 ]);
 
-test('execute requires created_via', function () {
+test('execute defaults created_via to web when omitted', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
 
-    CreatePost::execute($workspace, $user, [
+    $post = CreatePost::execute($workspace, $user, [
         'content' => 'Hello world',
     ]);
-})->throws(InvalidArgumentException::class, 'created_via must be a CreatedVia enum case.');
+
+    expect($post->fresh()->created_via)->toBe(CreatedVia::Web);
+});
+
+test('execute defaults created_via to web when null or invalid', function (mixed $createdVia) {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+
+    $post = CreatePost::execute($workspace, $user, [
+        'content' => 'Hello world',
+        'created_via' => $createdVia,
+    ]);
+
+    expect($post->fresh()->created_via)->toBe(CreatedVia::Web);
+})->with([
+    'null' => null,
+    'invalid string' => 'not-a-channel',
+    'integer' => 1,
+]);
