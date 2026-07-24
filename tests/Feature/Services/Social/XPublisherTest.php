@@ -626,6 +626,72 @@ test('x publisher uploads video via chunked upload', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
 });
 
+test('x publisher sends JSON object bodies for chunked upload initialize and finalize', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test-video.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_id_json']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_id_json']], 200);
+        }
+
+        if (str_contains($url, '/2/media/')) {
+            return Http::response(['processing_info' => ['state' => 'succeeded']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1111222233334444', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/media/upload/initialize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        return str_contains($contentType, 'application/json')
+            && data_get($request->data(), 'media_type') === 'video/mp4'
+            && data_get($request->data(), 'media_category') === 'tweet_video';
+    });
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/finalize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        // Empty PHP array encodes as `[]`; X requires a JSON *object* (`{}`).
+        return str_contains($contentType, 'application/json')
+            && $request->body() === '{}';
+    });
+});
+
 test('x publisher uploads a large video in sequential 1MB segments', function () {
     $this->post->update([
         'media' => [

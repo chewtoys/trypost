@@ -243,9 +243,10 @@ class XPublisher
             $initPayload['media_category'] = $mediaCategory;
         }
 
-        // INIT
+        // INIT — X requires application/json (MediaUploadConfigRequest).
         $initResponse = $this->socialHttp()->withToken($this->accessToken)
             ->timeout(60)
+            ->asJson()
             ->post("{$this->baseUrl}/media/upload/initialize", $initPayload);
 
         if ($initResponse->failed()) {
@@ -307,9 +308,12 @@ class XPublisher
             fclose($handle);
         }
 
-        // FINALIZE - Use the new v2 endpoint
+        // FINALIZE — runtime rejects empty / non-JSON bodies with
+        // "Request body must be a JSON object." Send `{}` explicitly
+        // (empty array encodes as `[]`, which is not an object).
         $finalizeResponse = $this->socialHttp()->withToken($this->accessToken)
             ->timeout(60)
+            ->withBody('{}', 'application/json')
             ->post("{$this->baseUrl}/media/upload/{$mediaId}/finalize");
 
         if ($finalizeResponse->failed()) {
