@@ -9,9 +9,8 @@ use App\Enums\Post\Status as PostStatus;
 use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Post;
-use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
-class PostObserver implements ShouldHandleEventsAfterCommit
+class PostObserver
 {
     public function created(Post $post): void
     {
@@ -34,6 +33,6 @@ class PostObserver implements ShouldHandleEventsAfterCommit
             return;
         }
 
-        DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType);
+        DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
     }
 }
