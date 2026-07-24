@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
 
-test('execute dispatches PostCreated with the persisted post', function () {
+test('execute relies on the observer to dispatch PostCreated', function () {
     Event::fake([PostCreated::class]);
 
     $user = User::factory()->create();

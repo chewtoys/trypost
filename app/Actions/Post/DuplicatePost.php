@@ -7,7 +7,6 @@ namespace App\Actions\Post;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
-use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +20,7 @@ class DuplicatePost
 {
     public static function execute(Post $original, User $user): Post
     {
-        $copy = DB::transaction(function () use ($original, $user): Post {
+        return DB::transaction(function () use ($original, $user): Post {
             $copy = $original->workspace->posts()->create([
                 'user_id' => $user->id,
                 'content' => $original->content,
@@ -57,9 +56,5 @@ class DuplicatePost
 
             return $copy;
         });
-
-        PostCreated::dispatch($copy);
-
-        return $copy;
     }
 }

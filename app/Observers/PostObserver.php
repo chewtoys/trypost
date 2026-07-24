@@ -6,11 +6,18 @@ namespace App\Observers;
 
 use App\Enums\Automation\Trigger\Type as TriggerType;
 use App\Enums\Post\Status as PostStatus;
+use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Post;
+use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
-class PostObserver
+class PostObserver implements ShouldHandleEventsAfterCommit
 {
+    public function created(Post $post): void
+    {
+        PostCreated::dispatch($post);
+    }
+
     public function saved(Post $post): void
     {
         if (! $post->wasChanged('status')) {
@@ -27,6 +34,6 @@ class PostObserver
             return;
         }
 
-        DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
+        DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType);
     }
 }

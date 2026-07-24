@@ -32,15 +32,15 @@ test('execute clones the post as a draft created via web', function () {
         ->and($copy->published_at)->toBeNull();
 });
 
-test('execute dispatches PostCreated for the duplicated post', function () {
-    Event::fake([PostCreated::class]);
-
+test('execute relies on the observer to dispatch PostCreated for the duplicate', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $original = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
     ]);
+
+    Event::fake([PostCreated::class]);
 
     $copy = DuplicatePost::execute($original, $user);
 

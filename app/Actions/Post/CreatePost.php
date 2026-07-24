@@ -6,7 +6,6 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
-use App\Events\PostCreated;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
@@ -90,8 +89,6 @@ class CreatePost
 
             return $post;
         });
-
-        PostCreated::dispatch($post);
 
         return $post;
     }
