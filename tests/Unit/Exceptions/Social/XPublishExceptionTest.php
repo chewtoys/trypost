@@ -134,6 +134,38 @@ test('body containing "video longer than 2 minutes" maps to MediaFormat category
         ->and($exception->userMessage)->toBe('Video exceeds the 2-minute limit.');
 });
 
+test('invalid media IDs maps to MediaFormat category', function () {
+    $response = Http::response([
+        'type' => 'https://api.x.com/2/problems/invalid-request',
+        'title' => 'Invalid Request',
+        'detail' => 'One or more parameters to your request was invalid.',
+        'errors' => [['message' => 'Your media IDs are invalid.']],
+    ], 400);
+
+    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
+
+    $exception = XPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::MediaFormat)
+        ->and($exception->userMessage)->toBe('X rejected the attached media. Please re-upload and try again.');
+});
+
+test('JSON object body requirement maps to ServerError category', function () {
+    $response = Http::response([
+        'type' => 'https://api.x.com/2/problems/invalid-request',
+        'title' => 'Invalid Request',
+        'detail' => 'One or more parameters to your request was invalid.',
+        'errors' => [['message' => 'Request body must be a JSON object.']],
+    ], 400);
+
+    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
+
+    $exception = XPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ServerError)
+        ->and($exception->userMessage)->toBe('X rejected the media upload request. Please try again.');
+});
+
 test('platform returns x', function () {
     $response = Http::response([
         'type' => 'https://api.x.com/2/problems/some-unknown-problem',

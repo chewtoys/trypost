@@ -61,8 +61,9 @@ class XPublisher
                 // v2 API returns data.id, v1 returns media_id
                 $mediaId = data_get($uploadedMedia, 'data.id', data_get($uploadedMedia, 'media_id'));
                 if ($mediaId) {
-                    $mediaIds[] = $mediaId;
-                    $this->uploadAltText($mediaId, $mediaItem);
+                    // X expects media_ids as strings in the tweets payload.
+                    $mediaIds[] = (string) $mediaId;
+                    $this->uploadAltText((string) $mediaId, $mediaItem);
                 }
             }
         }
@@ -218,15 +219,7 @@ class XPublisher
                 $this->handleApiError($response);
             }
 
-            $responseData = $response->json();
-
-            $mediaId = $responseData['data']['id'] ?? $responseData['media_id'] ?? null;
-
-            if ($isGif && $mediaId) {
-                $this->waitForProcessing($mediaId);
-            }
-
-            return $responseData;
+            return $response->json();
         } finally {
             @unlink($tempFile);
         }
@@ -326,15 +319,24 @@ class XPublisher
 
         $finalizeData = $finalizeResponse->json();
 
-        // Wait for processing (videos need transcoding)
-        if (isset($finalizeData['processing_info']) || MediaType::classify($mimeType) === MediaType::Video) {
-            $this->waitForProcessing($mediaId);
+        // Videos/GIFs (and any finalize that reports processing_info) must finish
+        // before we attach the media_id to a tweet — otherwise X returns
+        // invalid-request / invalid media IDs.
+        $processingInfo = data_get($finalizeData, 'data.processing_info')
+            ?? data_get($finalizeData, 'processing_info');
+
+        if (
+            $processingInfo !== null
+            || MediaType::classify($mimeType) === MediaType::Video
+            || MediaType::isGif($mimeType)
+        ) {
+            $this->waitForProcessing((string) $mediaId);
         }
 
         // Return in same format as simple upload
         return [
             'data' => [
-                'id' => $mediaId,
+                'id' => (string) $mediaId,
             ],
         ];
     }
@@ -356,7 +358,7 @@ class XPublisher
         return null;
     }
 
-    private function waitForProcessing(string $mediaId, int $maxAttempts = 20): bool
+    private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
     {
         for ($i = 0; $i < $maxAttempts; $i++) {
             $response = $this->getHttpClient()
@@ -370,31 +372,44 @@ class XPublisher
             }
 
             $responseData = $response->json();
+            $processingInfo = data_get($responseData, 'processing_info')
+                ?? data_get($responseData, 'data.processing_info');
 
             // If processing_info doesn't exist, assume it's ready
-            if (! isset($responseData['processing_info'])) {
-                return true;
+            if ($processingInfo === null) {
+                return;
             }
 
-            $state = $responseData['processing_info']['state'] ?? 'unknown';
+            $state = data_get($processingInfo, 'state', 'unknown');
 
             if ($state === 'succeeded') {
-                return true;
+                return;
             }
 
             if ($state === 'failed') {
-                $error = $responseData['processing_info']['error'] ?? 'Unknown error';
-                Log::error('X media processing failed: '.$error);
+                $error = data_get($processingInfo, 'error', 'Unknown error');
+                $rawError = is_string($error) ? $error : json_encode($error);
 
-                return false;
+                Log::error('X media processing failed: '.$rawError);
+
+                throw new XPublishException(
+                    userMessage: 'X could not process the uploaded media. Please try a different file.',
+                    category: ErrorCategory::MediaFormat,
+                    platformErrorCode: 'media-processing-failed',
+                    rawResponse: $rawError ?: null,
+                );
             }
 
             // Wait before checking again
-            $waitTime = $responseData['processing_info']['check_after_secs'] ?? 3;
-            sleep($waitTime);
+            $waitTime = (int) data_get($processingInfo, 'check_after_secs', 3);
+            sleep(max(0, $waitTime));
         }
 
-        return false;
+        throw new XPublishException(
+            userMessage: 'X media processing timed out. Please try again.',
+            category: ErrorCategory::ServerError,
+            platformErrorCode: 'media-processing-timeout',
+        );
     }
 
     private function handleApiError(Response $response): never
