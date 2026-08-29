@@ -29,9 +29,21 @@ return new class extends Migration
      * Drops the index only. The data merge in `up()` is one-way: the losing
      * rows are gone, so rolling back leaves the collapsed identities collapsed.
      * Every merge is logged at warning level so it can be reconstructed.
+     *
+     * `social_accounts.workspace_id` carries a foreign key, and the composite
+     * unique is the only index covering it - as its leftmost prefix. MySQL
+     * refuses to drop the sole index backing a foreign key, so the constraint
+     * needs another one to rest on first. PostgreSQL has no such requirement
+     * and simply carries the extra index.
      */
     public function down(): void
     {
+        if (! Schema::hasIndex('social_accounts', 'social_accounts_workspace_id_index')) {
+            Schema::table('social_accounts', function (Blueprint $table) {
+                $table->index('workspace_id');
+            });
+        }
+
         Schema::table('social_accounts', function (Blueprint $table) {
             $table->dropUnique('social_accounts_workspace_platform_identity_unique');
         });

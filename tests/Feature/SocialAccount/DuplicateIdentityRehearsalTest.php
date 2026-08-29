@@ -9,9 +9,7 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * A rehearsal rather than a scenario test: build a deliberately messy database
@@ -26,9 +24,7 @@ beforeEach(function () {
         'migrations/2026_08_21_130941_add_workspace_platform_identity_unique_to_social_accounts_table.php',
     );
 
-    Schema::table('social_accounts', function (Blueprint $table) {
-        $table->dropUnique('social_accounts_workspace_platform_identity_unique');
-    });
+    $this->migration->down();
 });
 
 /**

@@ -143,14 +143,14 @@ test('create post with content and date', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'My new post',
-            'scheduled_at' => '2099-12-31T15:30:00Z',
+            'scheduled_at' => '2037-12-31T15:30:00Z',
         ]);
 
     $response->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->where('content', 'My new post')
                 ->where('status', 'draft')
-                ->where('scheduled_at', '2099-12-31 15:30:00')
+                ->where('scheduled_at', '2037-12-31 15:30:00')
                 ->etc();
         });
 
