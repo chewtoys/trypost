@@ -8,6 +8,7 @@ use App\Enums\Automation\Trigger\Type as TriggerType;
 use App\Enums\Post\Status as PostStatus;
 use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
+use App\Events\PostStatusChanged;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Account;
 use App\Models\Post;
@@ -43,6 +44,25 @@ class PostObserver
         if ($triggerType !== null) {
             DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
         }
+
+        $previousStatus = $this->previousStatus($post);
+
+        DB::afterCommit(fn () => PostStatusChanged::dispatch($post, $previousStatus));
+    }
+
+    private function previousStatus(Post $post): ?PostStatus
+    {
+        $previous = $post->getRawOriginal('status');
+
+        if ($previous instanceof PostStatus) {
+            return $previous;
+        }
+
+        if (is_string($previous)) {
+            return PostStatus::tryFrom($previous);
+        }
+
+        return null;
     }
 
     /**

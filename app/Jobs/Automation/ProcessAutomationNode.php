@@ -11,7 +11,6 @@ use App\Actions\Automation\Node\RunFetchRssNode;
 use App\Actions\Automation\Node\RunGenerateNode;
 use App\Actions\Automation\Node\RunHttpRequestNode;
 use App\Actions\Automation\Node\RunPublishNode;
-use App\Actions\Automation\Node\RunWebhookNode;
 use App\Actions\Automation\Run\AdvanceAutomationRun;
 use App\DataTransferObjects\Automation\NodeRunResult;
 use App\Enums\Automation\Node\Type as NodeType;
@@ -65,7 +64,17 @@ class ProcessAutomationNode implements ShouldQueue
             return;
         }
 
-        $nodeType = NodeType::from($node['type']);
+        $nodeType = NodeType::tryFrom((string) data_get($node, 'type', ''));
+
+        if ($nodeType === null) {
+            $this->run->update([
+                'status' => RunStatus::Failed,
+                'error' => ['message' => __('automations.errors.node_no_longer_exists', ['node_id' => $this->nodeId])],
+                'finished_at' => now(),
+            ]);
+
+            return;
+        }
 
         $this->run->update([
             'status' => RunStatus::Running,
@@ -143,7 +152,6 @@ class ProcessAutomationNode implements ShouldQueue
             NodeType::Delay => app(RunDelayNode::class),
             NodeType::Condition => app(RunConditionNode::class),
             NodeType::Publish => app(RunPublishNode::class),
-            NodeType::Webhook => app(RunWebhookNode::class),
             NodeType::End => app(RunEndNode::class),
             NodeType::FetchRss => app(RunFetchRssNode::class),
             NodeType::HttpRequest => app(RunHttpRequestNode::class),

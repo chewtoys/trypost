@@ -122,7 +122,7 @@ class MediaItem
         $meta = data_get($data, 'meta');
 
         return new self(
-            id: data_get($data, 'id', ''),
+            id: (string) data_get($data, 'id', ''),
             path: $path,
             url: data_get($data, 'url', ''),
             mime_type: $mimeType,
