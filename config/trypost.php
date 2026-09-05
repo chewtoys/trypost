@@ -72,7 +72,7 @@ return [
     |
     | SafeHttpFetcher blocks requests to private/reserved IP ranges (SSRF
     | protection) by default. Self-hosted operators who need to fetch from
-    | their own internal network (e.g. an internal RSS feed or webhook) can
+    | their own internal network (e.g. an internal webhook endpoint) can
     | opt in here. Leave disabled unless you understand the SSRF risk.
     |
     */
@@ -145,9 +145,9 @@ return [
     | Outbound User-Agent
     |--------------------------------------------------------------------------
     |
-    | Branded User-Agent applied to outbound HTTP from automation nodes
-    | (http_request) and workspace webhooks so recipients know the request came from
-    | TryPost.it. Self-hosters can override it.
+    | Branded User-Agent applied to outbound HTTP from workspace webhooks so
+    | recipients know the request came from TryPost.it. Self-hosters can
+    | override it.
     |
     */
 
