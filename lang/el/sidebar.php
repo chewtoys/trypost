@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Λογαριασμός και χρέωση',
     'workspace_settings' => 'Ρυθμίσεις workspace',
     'log_out' => 'Αποσύνδεση',
+    'help' => 'Βοήθεια',
     'workspace' => [
         'connections' => 'Συνδέσεις',
         'signatures' => 'Υπογραφές',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'Στατιστικά',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Ξεκινώντας',
-    'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
     'posts' => [
         'calendar' => 'Ημερολόγιο',
         'all' => 'Όλες',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'Αρχειοθέτηση όλων',
     'no_notifications' => 'Δεν υπάρχουν ειδοποιήσεις',
     'support' => [
+        'chat' => 'Υποστήριξη μέσω chat',
         'docs' => 'Τεκμηρίωση',
         'referral' => 'Κερδίστε 30% από συστάσεις',
         'discord' => 'Κοινότητα Discord',
+        'community' => 'Κοινότητα',
     ],
 ];

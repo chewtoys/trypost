@@ -8,6 +8,17 @@ return [
     'description' => 'Bağlı tüm sosyal hesaplarınıza genel bakış',
     'connect_cta' => 'Bağla',
     'connect_another' => 'Başka birini bağla',
+    'actions' => 'Hesap işlemleri',
+    'activate' => 'Aç',
+    'deactivate' => 'Kapat',
+    'active' => 'Aktif',
+    'paused' => 'Kapalı',
+    'accounts_count' => ':count hesap|:count hesap',
+
+    'variants' => [
+        'linkedin-page' => 'Sayfa',
+        'instagram-facebook' => 'Facebook üzerinden',
+    ],
 
     'not_connected' => 'Bağlı değil',
     'connect' => 'Bağla',

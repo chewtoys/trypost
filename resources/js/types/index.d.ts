@@ -1,6 +1,16 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
+import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+import type { WelcomeSummary } from '@/types/welcome';
+
+export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
+export type {
+    WelcomeNetwork,
+    WelcomeStep,
+    WelcomeSummary,
+} from '@/types/welcome';
+
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export interface Workspace {
@@ -9,13 +19,6 @@ export interface Workspace {
     logo_url: string | null;
     role?: WorkspaceRole | null;
     [key: string]: unknown;
-}
-
-export interface AuthPlan {
-    id: string;
-    slug: string;
-    name: string;
-    interval: 'monthly' | 'yearly';
 }
 
 export interface AuthAccount {
@@ -47,6 +50,10 @@ export interface Usage {
 export interface FlashData {
     banner?: string;
     bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
+    success?: string;
+    error?: string;
+    warning?: string;
+    info?: string;
     plainToken?: string;
     [key: string]: unknown;
 }
@@ -60,11 +67,6 @@ export interface NavItem {
     exact?: boolean;
     excludeActive?: string[];
     badge?: string;
-}
-
-export interface OnboardingProgress {
-    completed: number;
-    total: number;
 }
 
 export interface ContentTypeMediaRule {
@@ -94,12 +96,14 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingProgress?: OnboardingProgress | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
-    allowMultipleSocialAccounts: boolean;
     legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
+    features?: Features | null;
+    usage?: Usage | null;
+    plans?: PlanOption[];
+    welcome?: WelcomeSummary;
     [key: string]: unknown;
 }
 
@@ -163,4 +167,3 @@ export interface AiTemplate {
     supported_formats: string[];
     applies_brand_visuals: boolean;
 }
-

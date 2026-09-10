@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Hesap ve faturalandırma',
     'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
+    'help' => 'Yardım',
     'workspace' => [
         'connections' => 'Bağlantılar',
         'signatures' => 'İmzalar',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'Analitik',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Başlarken',
-    'onboarding_hint' => 'Kurulumu bitir',
     'posts' => [
         'calendar' => 'Takvim',
         'all' => 'Tümü',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'Tümünü arşivle',
     'no_notifications' => 'Bildirim yok',
     'support' => [
+        'chat' => 'Sohbet desteği',
         'docs' => 'Dokümantasyon',
         'referral' => '%30 referans kazanın',
         'discord' => 'Discord topluluğu',
+        'community' => 'Topluluk',
     ],
 ];

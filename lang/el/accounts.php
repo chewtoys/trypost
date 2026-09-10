@@ -6,6 +6,17 @@ return [
     'description' => 'Επισκόπηση όλων των συνδεδεμένων λογαριασμών κοινωνικών δικτύων σας',
     'connect_cta' => 'Σύνδεση',
     'connect_another' => 'Σύνδεση άλλου',
+    'actions' => 'Ενέργειες λογαριασμού',
+    'activate' => 'Ενεργοποίηση',
+    'deactivate' => 'Απενεργοποίηση',
+    'active' => 'Ενεργός',
+    'paused' => 'Ανενεργός',
+    'accounts_count' => ':count λογαριασμός|:count λογαριασμοί',
+
+    'variants' => [
+        'linkedin-page' => 'Σελίδα',
+        'instagram-facebook' => 'μέσω Facebook',
+    ],
 
     'not_connected' => 'Μη συνδεδεμένος',
     'connect' => 'Σύνδεση',

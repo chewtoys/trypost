@@ -6,6 +6,17 @@ return [
     'description' => '연결된 모든 소셜 계정 개요',
     'connect_cta' => '연결',
     'connect_another' => '다른 계정 연결',
+    'actions' => '계정 작업',
+    'activate' => '켜기',
+    'deactivate' => '끄기',
+    'active' => '활성',
+    'paused' => '꺼짐',
+    'accounts_count' => '계정 :count개',
+
+    'variants' => [
+        'linkedin-page' => '페이지',
+        'instagram-facebook' => 'Facebook 경유',
+    ],
 
     'not_connected' => '연결 안 됨',
     'connect' => '연결',

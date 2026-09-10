@@ -11,6 +11,7 @@ return [
     'account_settings' => 'アカウントと請求',
     'workspace_settings' => 'ワークスペース設定',
     'log_out' => 'ログアウト',
+    'help' => 'ヘルプ',
     'workspace' => [
         'connections' => '接続',
         'signatures' => '署名',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'アナリティクス',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'はじめに',
-    'onboarding_hint' => 'セットアップを完了',
     'posts' => [
         'calendar' => 'カレンダー',
         'all' => 'すべて',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'すべてアーカイブ',
     'no_notifications' => '通知はありません',
     'support' => [
+        'chat' => 'チャットサポート',
         'docs' => 'ドキュメント',
         'referral' => '30% の紹介報酬を獲得',
         'discord' => 'Discord コミュニティ',
+        'community' => 'コミュニティ',
     ],
 ];

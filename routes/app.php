@@ -11,7 +11,6 @@ use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\McpSettingsController;
 use App\Http\Controllers\App\NotificationController;
-use App\Http\Controllers\App\OnboardingController;
 use App\Http\Controllers\App\PostAiCreateController;
 use App\Http\Controllers\App\PostAiGenerateController;
 use App\Http\Controllers\App\PostAiRegenerateMediaController;
@@ -25,7 +24,6 @@ use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
-use App\Http\Controllers\App\Settings\UsageController;
 use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
@@ -72,6 +70,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.connect.store');
+    Route::get('welcome/plan', [WelcomeController::class, 'plan'])->name('app.welcome.plan');
+    Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.plan.store');
     Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
@@ -152,10 +154,6 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
-    Route::get('onboarding', [OnboardingController::class, 'index'])->name('app.onboarding');
-    Route::post('onboarding/mcp/skip', [OnboardingController::class, 'skipMcp'])->name('app.onboarding.mcp.skip');
-    Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('app.onboarding.complete');
-
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])
@@ -282,12 +280,11 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // Account Settings
     Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');
     Route::put('settings/account', [AccountController::class, 'update'])->name('app.account.update');
-    Route::get('settings/account/usage', [UsageController::class, 'index'])->name('app.usage.index');
 
     // Billing
     Route::get('settings/account/billing', [BillingController::class, 'index'])->name('app.billing.index');
     Route::get('settings/account/billing/portal', [BillingController::class, 'portal'])->name('app.billing.portal');
-    Route::post('settings/account/billing/swap-to-yearly', [BillingController::class, 'swapToYearly'])->name('app.billing.swap-to-yearly');
+    Route::post('settings/account/billing/change-plan', [BillingController::class, 'changePlan'])->name('app.billing.change-plan');
 
 });
 

@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Account & billing',
     'workspace_settings' => 'Workspace settings',
     'log_out' => 'Log out',
+    'help' => 'Help',
     'workspace' => [
         'connections' => 'Connections',
         'signatures' => 'Signatures',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'Analytics',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Getting started',
-    'onboarding_hint' => 'Finish setup',
     'posts' => [
         'calendar' => 'Calendar',
         'all' => 'All',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'Archive all',
     'no_notifications' => 'No notifications',
     'support' => [
+        'chat' => 'Chat support',
         'docs' => 'Documentation',
         'referral' => 'Earn 30% referral',
         'discord' => 'Discord community',
+        'community' => 'Community',
     ],
 ];

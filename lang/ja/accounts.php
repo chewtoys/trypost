@@ -6,6 +6,17 @@ return [
     'description' => '接続済みのソーシャルアカウントの一覧',
     'connect_cta' => '接続',
     'connect_another' => '別のアカウントを接続',
+    'actions' => 'アカウント操作',
+    'activate' => '有効にする',
+    'deactivate' => '無効にする',
+    'active' => '有効',
+    'paused' => '無効',
+    'accounts_count' => ':count 件のアカウント',
+
+    'variants' => [
+        'linkedin-page' => 'ページ',
+        'instagram-facebook' => 'Facebook経由',
+    ],
 
     'not_connected' => '未接続',
     'connect' => '接続',

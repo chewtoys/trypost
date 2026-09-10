@@ -11,6 +11,7 @@ return [
     'account_settings' => '账户与账单',
     'workspace_settings' => '工作区设置',
     'log_out' => '退出登录',
+    'help' => '帮助',
     'workspace' => [
         'connections' => '连接',
         'signatures' => '签名',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => '分析',
     'repurposes' => 'Repurpose',
-    'onboarding' => '开始使用',
-    'onboarding_hint' => '完成设置',
     'posts' => [
         'calendar' => '日历',
         'all' => '全部',
@@ -42,8 +41,10 @@ return [
     'archive_all' => '全部归档',
     'no_notifications' => '暂无通知',
     'support' => [
+        'chat' => '在线客服',
         'docs' => '文档',
         'referral' => '赚取 30% 推荐奖励',
         'discord' => 'Discord 社区',
+        'community' => '社区',
     ],
 ];

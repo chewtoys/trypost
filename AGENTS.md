@@ -212,25 +212,78 @@ Checkout options are configured only via env — do not hardcode trial/coupon/pr
 | --- | --- | --- | --- |
 | `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
 | `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
-| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | empty | Optional. When set for a qualifying first-time single-workspace checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.socials` | empty | Optional. `$18` off Socials monthly (`$19` → `$1`). When set for a qualifying first-time **monthly** checkout of that plan, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.workspaces` | empty | Optional. `$88` off Workspaces monthly (`$99` → `$1`). Same qualification as the Socials coupon. Never reuse one coupon on the other plan |
 | `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
 
 Standing constraints:
 - Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
 - A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
 - Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
-- Coupon qualification stays: card required, exactly one workspace, no prior real subscription (`incomplete` / `incomplete_expired` still qualify).
+- Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
+- First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
+- Welcome checkout (`app.welcome.plan`) is monthly only. Yearly stays on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
 - Prefer documenting durable billing decisions here (and in `CLAUDE.md`) — do **not** create a `.ai/` rules folder for this project.
+
+## Plans and the workspace limit
+
+TryPost sells two plans. Both are flat: Stripe subscription **quantity is never
+used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
+
+| slug | name | price | workspace_limit |
+| --- | --- | --- | --- |
+| `socials` | Socials | $19/mo, $190/yr | 1 |
+| `workspaces` | Workspaces | $99/mo, $990/yr | `null` (unlimited) |
+| `workspace` | Workspace (legacy, archived) | $12/mo per workspace | 1 |
+
+- The cap lives in `plans.workspace_limit`, **not** in code. `null` on that
+  column means unlimited. Read it through `Account::workspaceLimit()` /
+  `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
+  an account may do. A **missing** `plan_id` is not unlimited: it may create
+  only the signup workspace (`count === 0`).
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
+  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
+  submit). POST is redirected back to create with `workspaces.limit_reached`,
+  not 403'd.
+- First-month coupon qualification is card required + first-time subscriber +
+  that plan's monthly price. Workspace count is not part of it.
+  (`incomplete` / `incomplete_expired` still qualify; coupon +
+  `allow_promotion_codes` still throws.) Each plan has its own coupon.
+- Welcome is monthly only so the `$1` first month can exist. Billing keeps
+  yearly for subscribers swapping interval.
+- The legacy plan is archived: it never appears in the picker, so nobody can move
+  back to it. Its `workspace_limit` is 1 because it costs less than Socials.
+- Plan choice is a welcome step (`app.welcome.plan`) and the same `PlanPicker`
+  component drives upgrade/downgrade on the billing page (`app.billing.change-plan`).
+  A change is a `swap()` to another price id. `accounts.plan_id` is written by
+  `changePlan` after a successful `swap()` only when the subscription is
+  `active` or `trialing` (so create works before the webhook). Welcome checkout
+  never writes it — `StartSubscriptionCheckout` **clears** a leftover `plan_id`
+  so Processing cannot treat a stale Workspaces row as paid. The
+  `customer.subscription.created` / `updated` webhook writes on `active` /
+  `trialing`, **clears** on `unpaid` / `canceled` / `incomplete_expired`, and
+  leaves `past_due` / `incomplete` alone. `deleted` always clears.
+- **There is no AI credit ceiling.** `AiUsageLog` / `RecordAiUsage` still record
+  every AI call for cost visibility, but nothing meters or blocks a user.
+  `AccountPolicy::useAi` checks app access and nothing else.
 
 ## Multiple social accounts per network
 
-One connected identity per social network per workspace is the Cloud default. This is **not** tied to `SELF_HOSTED` — Cloud cannot flip that flag, but it can flip this one.
+A workspace may connect as many accounts of the same network as it wants (two
+LinkedIns, three Instagrams, ...). There is **no** one-per-network rule and no
+flag for it: `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` was removed in September 2026, along
+with `SocialAccount::occupiesNetwork()` and the observer's `creating` guard. Do
+not reintroduce either. What still holds:
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` | `trypost.allow_multiple_social_accounts` | `false` (falls back to `SELF_HOSTED` when unset) | `true`: a workspace may connect more than one account of the same network (two LinkedIns, two Instagrams, …). `false`: one per network (LinkedIn profile + page count as one; Instagram standalone + Instagram-via-Facebook count as one). Reconnecting the same `platform` + `platform_user_id` still updates the existing row. Shared to Inertia as `allowMultipleSocialAccounts`. |
-
-Self-hosted compose / `.env.example` set this `true`. When the env is unset, the config falls back to `SELF_HOSTED` so existing self-hosted installs keep multiple accounts. Do **not** use `selfHosted` for the occupancy check (observer, Telegram connect, `NetworkConnectGrid`).
+- Reconnecting the same `platform` + `platform_user_id` updates the existing row
+ (`SocialAccount::connectIdentity()`), and the identity pickers drop identities
+ already connected on that network, so one identity can never be seated twice
+ under two platforms of one network (Instagram directly and via Facebook).
+- `Platform::network()` still collapses variants (LinkedIn profile/page,
+ Instagram standalone/Facebook) — that grouping drives the accounts UI, not a cap.
+- `accounts.popup_callback.network_taken` / `accounts.telegram.network_taken` stay
+ in the lang files because `NetworkAlreadyConnectedException` still uses the key
+ for a reconnect that collides on the unique identity index.
 
 ## Database engines (PostgreSQL + MySQL)
 

@@ -23,16 +23,14 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
 import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
-import {
-    create as createWorkspaceRoute,
-    switchMethod,
-} from '@/routes/app/workspaces';
+import { switchMethod } from '@/routes/app/workspaces';
 import type { Language, User } from '@/types';
 
 interface Workspace {
@@ -48,8 +46,13 @@ const props = defineProps<{
     canCreateWorkspace: boolean;
 }>();
 
+const emit = defineEmits<{
+    upgradeRequired: [];
+}>();
+
 const page = usePage();
 const { canManageBilling, canManageWorkspace } = useWorkspaceRole();
+const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showAccountSettings = computed(
     () => canManageBilling.value && !selfHosted.value,
@@ -81,7 +84,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    router.visit(createWorkspaceRoute.url());
+    createOrUpgrade(() => emit('upgradeRequired'));
 };
 
 const handleLogout = (): void => {
@@ -212,6 +215,7 @@ const handleLogout = (): void => {
         </DropdownMenuItem>
         <DropdownMenuItem
             v-if="canCreateWorkspace"
+            data-testid="sidebar-create-workspace"
             @click="handleCreateWorkspace"
         >
             <IconPlus class="size-4" />

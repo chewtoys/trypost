@@ -8,6 +8,17 @@ return [
     'description' => 'Übersicht über alle deine verbundenen Social-Media-Konten',
     'connect_cta' => 'Verbinden',
     'connect_another' => 'Weitere verbinden',
+    'actions' => 'Kontoaktionen',
+    'activate' => 'Aktivieren',
+    'deactivate' => 'Deaktivieren',
+    'active' => 'Aktiv',
+    'paused' => 'Deaktiviert',
+    'accounts_count' => ':count Konto|:count Konten',
+
+    'variants' => [
+        'linkedin-page' => 'Seite',
+        'instagram-facebook' => 'über Facebook',
+    ],
 
     'not_connected' => 'Nicht verbunden',
     'connect' => 'Verbinden',

@@ -6,6 +6,17 @@ return [
     'description' => 'Visão geral de todas as suas contas sociais conectadas',
     'connect_cta' => 'Conectar',
     'connect_another' => 'Conectar outra',
+    'actions' => 'Ações da conta',
+    'activate' => 'Ativar',
+    'deactivate' => 'Desativar',
+    'active' => 'Ativa',
+    'paused' => 'Desativada',
+    'accounts_count' => ':count conta|:count contas',
+
+    'variants' => [
+        'linkedin-page' => 'Página',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Não conectado',
     'connect' => 'Conectar',

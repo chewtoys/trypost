@@ -6,6 +6,17 @@ return [
     'description' => 'Przegląd wszystkich Twoich połączonych kont społecznościowych',
     'connect_cta' => 'Połącz',
     'connect_another' => 'Połącz kolejne',
+    'actions' => 'Akcje konta',
+    'activate' => 'Włącz',
+    'deactivate' => 'Wyłącz',
+    'active' => 'Aktywne',
+    'paused' => 'Wyłączone',
+    'accounts_count' => ':count konto|:count konta|:count kont',
+
+    'variants' => [
+        'linkedin-page' => 'Strona',
+        'instagram-facebook' => 'przez Facebooka',
+    ],
 
     'not_connected' => 'Niepołączone',
     'connect' => 'Połącz',

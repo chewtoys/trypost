@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Account en facturatie',
     'workspace_settings' => 'Workspace-instellingen',
     'log_out' => 'Uitloggen',
+    'help' => 'Hulp',
     'workspace' => [
         'connections' => 'Koppelingen',
         'signatures' => 'Handtekeningen',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'Statistieken',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Aan de slag',
-    'onboarding_hint' => 'Setup afronden',
     'posts' => [
         'calendar' => 'Kalender',
         'all' => 'Alle',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'Alles archiveren',
     'no_notifications' => 'Geen meldingen',
     'support' => [
+        'chat' => 'Chatsupport',
         'docs' => 'Documentatie',
         'referral' => 'Verdien 30% referral',
         'discord' => 'Discord-community',
+        'community' => 'Community',
     ],
 ];

@@ -6,6 +6,17 @@ return [
     'description' => 'Огляд усіх підключених соціальних акаунтів',
     'connect_cta' => 'Підключити',
     'connect_another' => 'Підключити ще',
+    'actions' => 'Дії з акаунтом',
+    'activate' => 'Увімкнути',
+    'deactivate' => 'Вимкнути',
+    'active' => 'Активний',
+    'paused' => 'Вимкнений',
+    'accounts_count' => ':count акаунт|:count акаунти|:count акаунтів',
+
+    'variants' => [
+        'linkedin-page' => 'Сторінка',
+        'instagram-facebook' => 'через Facebook',
+    ],
 
     'not_connected' => 'Не підключено',
     'connect' => 'Підключити',

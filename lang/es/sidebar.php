@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Cuenta y facturación',
     'workspace_settings' => 'Configuración del workspace',
     'log_out' => 'Cerrar sesión',
+    'help' => 'Ayuda',
     'workspace' => [
         'connections' => 'Conexiones',
         'signatures' => 'Firmas',
@@ -27,8 +28,6 @@ return [
     ],
     'analytics' => 'Analytics',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Primeros pasos',
-    'onboarding_hint' => 'Termina la configuración',
     'posts' => [
         'calendar' => 'Calendario',
         'all' => 'Todos',
@@ -42,8 +41,10 @@ return [
     'archive_all' => 'Archivar todo',
     'no_notifications' => 'Sin notificaciones',
     'support' => [
+        'chat' => 'Soporte por chat',
         'docs' => 'Documentación',
         'referral' => 'Gana 30% de comisión',
         'discord' => 'Comunidad de Discord',
+        'community' => 'Comunidad',
     ],
 ];

@@ -6,6 +6,17 @@ return [
     'description' => 'نظرة عامة على جميع حساباتك الاجتماعية المتصلة',
     'connect_cta' => 'ربط',
     'connect_another' => 'ربط حساب آخر',
+    'actions' => 'إجراءات الحساب',
+    'activate' => 'تشغيل',
+    'deactivate' => 'إيقاف',
+    'active' => 'نشط',
+    'paused' => 'متوقف',
+    'accounts_count' => ':count حساب|:count حسابات',
+
+    'variants' => [
+        'linkedin-page' => 'صفحة',
+        'instagram-facebook' => 'عبر Facebook',
+    ],
 
     'not_connected' => 'غير متصل',
     'connect' => 'ربط',
