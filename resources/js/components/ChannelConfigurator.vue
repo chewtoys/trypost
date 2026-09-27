@@ -9,6 +9,7 @@ import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
+import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,12 +25,10 @@ const props = withDefaults(defineProps<{
     media?: MediaItem[];
     videoDurationSec?: number | null;
     disabled?: boolean;
-    previewOnly?: boolean;
 }>(), {
     media: () => [],
     videoDurationSec: null,
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -172,13 +171,17 @@ const settingsProps = (channel: Channel) => ({
                 :platform="channel.platform"
                 :media="media"
             />
+            <YouTubeSettings
+                v-else-if="channel.platform === Platform.YouTube"
+                v-bind="settingsProps(channel)"
+                :platform-index="index"
+            />
             <GoogleBusinessSettings
                 v-else-if="channel.platform === Platform.GoogleBusiness"
                 :social-account="channel.socialAccount"
                 :platform-index="index"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
             <DiscordSettings v-else-if="channel.platform === Platform.Discord" v-bind="settingsProps(channel)" />

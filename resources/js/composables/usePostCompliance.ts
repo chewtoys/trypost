@@ -16,6 +16,7 @@ import {
     resolveGoogleBusinessCtaAction,
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
+import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -62,6 +63,10 @@ type MetaRule = (meta: Record<string, any>) => { valid: boolean; tooltipKey: str
 // — null means "blocks the publish but no dedicated message, fall through
 // to the generic incomplete tooltip".
 const PLATFORM_META_RULES: Record<string, MetaRule> = {
+    [Platform.YouTube]: (meta) => {
+        const tooltipKey = getYouTubeDescriptionIssue(meta.description);
+        return { valid: tooltipKey === null, tooltipKey };
+    },
     [Platform.TikTok]: (meta) => {
         const disclosureIncomplete = Boolean(meta.disclose)
             && !meta.brand_organic_toggle

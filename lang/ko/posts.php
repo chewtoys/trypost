@@ -142,6 +142,15 @@ return [
             'document_title' => '문서 제목',
             'document_title_placeholder' => 'PDF 문서 게시물에 표시됩니다',
         ],
+        'youtube' => [
+            'settings' => 'YouTube 설정',
+            'posting_to' => '게시 대상',
+            'description' => '설명',
+            'description_placeholder' => '동영상 설명',
+            'description_max' => 'YouTube 설명은 5,000바이트를 초과할 수 없습니다.',
+            'description_invalid' => 'YouTube 설명은 유효한 텍스트여야 합니다.',
+            'description_bytes' => ':used / :limit 바이트',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 설정',
             'posting_to' => '게시 대상',

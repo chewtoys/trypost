@@ -10,6 +10,8 @@ use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Rules\ValidYouTubeDescription;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -55,6 +57,9 @@ class PostPlatformMetaRules
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+
+            // YouTube
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
 
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
@@ -112,6 +117,7 @@ class PostPlatformMetaRules
     {
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
+            'platforms.*.meta.description' => __('posts.form.youtube.description'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
             'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
             'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
@@ -135,7 +141,11 @@ class PostPlatformMetaRules
 
             if ($violation !== null) {
                 [$field, $message] = $violation;
-                $validator->errors()->add("platforms.{$index}.meta.{$field}", $message);
+                $key = "platforms.{$index}.meta.{$field}";
+
+                if (! $validator->errors()->has($key)) {
+                    $validator->errors()->add($key, $message);
+                }
             }
         }
     }
@@ -146,13 +156,24 @@ class PostPlatformMetaRules
      * without resubmitting platforms (e.g. the MCP publish tool), so a misconfigured
      * post fails fast with a clear message instead of only at publish time.
      *
+     * @param  array<int, string>  $platformIds  Submitted order for indexed errors.
+     *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post): void
+    public static function assertStoredPostPublishable(Post $post, array $platformIds = []): void
     {
+        $platforms = $post->postPlatforms()->enabled()->get()->values();
+
+        if ($platformIds !== []) {
+            $platformsById = $platforms->keyBy('id');
+            $platforms = collect($platformIds)
+                ->map(fn (string $id): ?PostPlatform => $platformsById->get($id))
+                ->filter();
+        }
+
         $errors = [];
 
-        foreach ($post->postPlatforms()->enabled()->get()->values() as $index => $postPlatform) {
+        foreach ($platforms as $index => $postPlatform) {
             $violation = self::requiredMetaViolation($postPlatform->platform, $postPlatform->meta);
 
             if ($violation !== null) {
@@ -179,6 +200,7 @@ class PostPlatformMetaRules
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();
 
         return match (true) {
+            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
@@ -206,6 +228,16 @@ class PostPlatformMetaRules
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private static function youtubeDescriptionViolation(mixed $meta): ?array
+    {
+        $key = YouTubeDescription::violation(data_get($meta, 'description'));
+
+        return $key === null ? null : ['description', __($key)];
     }
 
     /**

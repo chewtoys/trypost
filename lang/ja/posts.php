@@ -142,6 +142,15 @@ return [
             'document_title' => 'ドキュメントタイトル',
             'document_title_placeholder' => 'PDF ドキュメント投稿に表示されます',
         ],
+        'youtube' => [
+            'settings' => 'YouTube設定',
+            'posting_to' => '投稿先',
+            'description' => '説明',
+            'description_placeholder' => '動画の説明',
+            'description_max' => 'YouTubeの説明は5,000バイト以内にしてください。',
+            'description_invalid' => 'YouTubeの説明には有効なテキストを入力してください。',
+            'description_bytes' => ':used / :limit バイト',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 設定',
             'posting_to' => '投稿先',
