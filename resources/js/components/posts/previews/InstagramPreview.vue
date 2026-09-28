@@ -16,6 +16,7 @@ import { computed } from 'vue';
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import { getInitials } from '@/composables/useInitials';
+import { AspectRatio } from '@/types/aspect-ratio';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -57,17 +58,23 @@ const isFeed = computed(() => !isReel.value && !isStory.value);
 
 // Padding-bottom percentage = height/width. Used instead of CSS `aspect-ratio`
 // because inside this flex column some rendering paths ignored `aspect-ratio`
-// and the frame stuck to a stale height. `null` = use original media height.
-const ASPECT_PADDING: Record<string, number | null> = {
-    '1:1': 100,
-    '4:5': 125,
-    '16:9': 56.25,
-    'original': null,
+// and the frame stuck to a stale height.
+const ASPECT_PADDING: Record<string, number> = {
+    [AspectRatio.Square]: 100,
+    [AspectRatio.Portrait]: 125,
+    [AspectRatio.Landscape]: 56.25,
 };
 
-const feedAspectStyle = computed(() => {
-    const fraction = ASPECT_PADDING[props.meta?.aspect_ratio ?? '1:1'] ?? 100;
-    return fraction === null ? { aspectRatio: 'auto' } : { paddingBottom: `${fraction}%` };
+const feedAspectPadding = computed(() => {
+    const selectedRatio = props.meta?.aspect_ratio ?? AspectRatio.Original;
+
+    if (selectedRatio !== AspectRatio.Original) {
+        return ASPECT_PADDING[selectedRatio] ?? 100;
+    }
+
+    const { width = 0, height = 0 } = props.media[0]?.meta ?? {};
+
+    return width > 0 && height > 0 ? (height / width) * 100 : 100;
 });
 
 // Format numbers like Instagram
@@ -127,7 +134,7 @@ const truncatedCaption = computed(() => {
                 </div>
 
                 <!-- Post Media - Aspect ratio matches user's chosen crop -->
-                <div class="relative w-full shrink-0 bg-black" :style="feedAspectStyle">
+                <div class="relative w-full shrink-0 bg-black" :style="{ paddingBottom: `${feedAspectPadding}%` }" data-testid="instagram-feed-media">
                     <div class="absolute inset-0">
                         <PostMediaPreview
                             :media="media"

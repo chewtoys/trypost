@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { AspectRatio, type AspectRatioValue } from '@/types/aspect-ratio';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -46,21 +47,21 @@ const variants = [
 
 
 const aspectRatios = [
-    { value: '1:1', labelKey: 'posts.form.instagram.aspect.square' },
-    { value: '4:5', labelKey: 'posts.form.instagram.aspect.portrait' },
-    { value: '16:9', labelKey: 'posts.form.instagram.aspect.landscape' },
-    { value: 'original', labelKey: 'posts.form.instagram.aspect.original' },
-];
+    { value: AspectRatio.Square, labelKey: 'posts.form.instagram.aspect.square' },
+    { value: AspectRatio.Portrait, labelKey: 'posts.form.instagram.aspect.portrait' },
+    { value: AspectRatio.Landscape, labelKey: 'posts.form.instagram.aspect.landscape' },
+    { value: AspectRatio.Original, labelKey: 'posts.form.instagram.aspect.original' },
+] as const;
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
-const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? AspectRatio.Original);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
     emit('update:contentType', value);
 };
 
-const pickAspectRatio = (value: string) => {
+const pickAspectRatio = (value: AspectRatioValue) => {
     if (props.disabled) return;
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
@@ -71,6 +72,7 @@ const pickAspectRatio = (value: string) => {
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
+            data-testid="instagram-settings-toggle"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
@@ -126,6 +128,7 @@ const pickAspectRatio = (value: string) => {
                         v-for="ratio in aspectRatios"
                         :key="ratio.value"
                         type="button"
+                        :data-testid="`instagram-aspect-${ratio.value.replace(':', '-')}`"
                         class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         :class="selectedAspectRatio === ratio.value
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
